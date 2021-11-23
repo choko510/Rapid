@@ -57,7 +57,6 @@ const discard = [
 
   /^openpt_map$/,
   /^openrailwaymap$/,
-  /^openseamap$/,
   /^opensnowmap-overlay$/,
 
   /^geoscribble/,              // 'GeoScribble' overlays (we built a service for this instead)
