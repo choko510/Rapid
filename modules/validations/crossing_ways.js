@@ -298,7 +298,8 @@ export function validationCrossingWays(context) {
       return bothLines ? { ford: 'yes' } : {};
 
     } else if (crossingType === 'railway-railway') {
-      return {};  // allowed, no tag suggestion
+      // When connecting two rails at-grade, suggest a dedicated crossing tag.
+      return bothLines ? { railway: 'railway_crossing' } : {};
 
     } else if (crossingType === 'railway-waterway') {
       return null;  // not allowed
