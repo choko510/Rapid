@@ -45,9 +45,17 @@ export function validationSuspiciousName(context) {
     return false;
   }
 
-  function isGenericName(name, tags) {
+  /** @param {string} name @param {string} presetName */
+  function nameMatchesPresetName(name, presetName) {
+    if (!presetName) return false;
+
+    return name.toLowerCase() === presetName.toLowerCase();
+  }
+
+  /** @param {string} name @param {string} presetName */
+  function isGenericName(name, tags, presetName) {
     name = name.toLowerCase();
-    return nameMatchesRawTag(name, tags) || isGenericMatchInNsi(tags);
+    return nameMatchesRawTag(name, tags) || nameMatchesPresetName(name, presetName) || isGenericMatchInNsi(tags);
   }
 
   function makeGenericNameIssue(entityID, nameKey, genericName, langCode) {
@@ -161,6 +169,8 @@ export function validationSuspiciousName(context) {
     let issues = [];
     const notNames = new Set((tags['not:name'] ?? '').split(';').map(s => s.trim()).filter(Boolean));
 
+    const presetName = presets.match(entity, editor.staging.graph).name();
+
     for (const [k, v] of Object.entries(tags)) {
       if (!v) continue;   // no value
       const m = k.match(/^name(?:(?::)([a-zA-Z_-]+))?$/);
@@ -170,7 +180,7 @@ export function validationSuspiciousName(context) {
       if (notNames.has(v)) {
         issues.push(makeIncorrectNameIssue(entity.id, k, v, langCode));
       }
-      if (isGenericName(v, tags)) {
+      if (isGenericName(v, tags, presetName)) {
         issues.provisional = _waitingForNsi;  // retry later if we are waiting on NSI to finish loading
         issues.push(makeGenericNameIssue(entity.id, k, v, langCode));
       }
