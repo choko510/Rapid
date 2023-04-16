@@ -256,6 +256,16 @@ export function validationCrossingWays(context) {
           return {};  // allowed, no tag suggestion
         }
 
+        const path = entity1IsPath ? entity1 : entity2;
+        const crossing = path.tags.crossing;
+        if (['marked', 'unmarked', 'traffic_signals', 'uncontrolled'].includes(crossing)) {
+          const tags = { highway: 'crossing', crossing: crossing };
+          if ('crossing:markings' in path.tags) {
+            tags['crossing:markings'] = path.tags['crossing:markings'];
+          }
+          return tags;
+        }
+
         // Suggest joining them with a `highway=crossing` node.
         // We'll run the `actionsyncCrossingTags` afterwards to make sure the tags are synced.
         return { highway: 'crossing' };
