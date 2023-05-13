@@ -1,10 +1,12 @@
 import { utilArrayGroupBy } from '@rapid-sdk/util';
 
+import { actionChangeTags } from '../actions/index.js';
 import { KeyOperationBehavior } from '../behaviors/KeyOperationBehavior.js';
 
 
 export function operationContinue(context, selectedIDs) {
-  const graph = context.systems.editor.staging.graph;
+  const editor = context.systems.editor;
+  const graph = editor.staging.graph;
   const filters = context.systems.filters;
   const l10n = context.systems.l10n;
 
@@ -31,6 +33,25 @@ export function operationContinue(context, selectedIDs) {
 
   let operation = function() {
     if (!candidates.length) return;
+
+    // If continuing from an endpoint tagged as a dead-end marker, clear those
+    // tags before entering draw mode because the endpoint is no longer terminal.
+    const newTags = { ...continueFromNode.tags };
+    let removedDeadEndTags = false;
+
+    if (newTags.fixme === 'continue') {
+      delete newTags.fixme;
+      removedDeadEndTags = true;
+    }
+    if (newTags.noexit === 'yes') {
+      delete newTags.noexit;
+      removedDeadEndTags = true;
+    }
+
+    if (removedDeadEndTags) {
+      editor.perform(actionChangeTags(continueFromNode.id, newTags));
+      editor.commit({ annotation: operation.annotation(), selectedIDs: [continueFromNode.id] });
+    }
 
     context.enter('draw-line', { continueWayID: candidates[0].id, continueNodeID: continueFromNode.id });
   };
