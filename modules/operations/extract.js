@@ -32,13 +32,19 @@ export function operationExtract(context, selectedIDs) {
   }).filter(Boolean);
 
 
-  let operation = function() {
+  /**
+   * Hold Shift when triggering this operation to also update parent relations
+   * for extracted vertices.
+   * @param {KeyboardEvent|PointerEvent|undefined} d3_event
+   */
+  let operation = function(d3_event) {
     if (!actions.length) return;
+    const includeParentRelations = !!d3_event?.shiftKey;
 
     const extractedNodeIDs = [];
     const combinedAction = (graph) => {
       for (const action of actions) {
-        graph = action(graph);
+        graph = action(graph, includeParentRelations);
         extractedNodeIDs.push(action.getExtractedNodeID());
       }
       return graph;

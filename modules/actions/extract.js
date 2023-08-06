@@ -7,17 +7,21 @@ import { osmNode } from '../osm/node.js';
 export function actionExtract(entityID, viewport) {
   let _extractedNodeID;
 
-  let action = function(graph) {
+  /**
+   * @param {Object} graph
+   * @param {boolean} includeParentRelations
+   */
+  let action = function(graph, includeParentRelations = false) {
     const entity = graph.entity(entityID);
     if (entity.type === 'node') {
-      return _extractFromNode(entity, graph);
+      return _extractFromNode(entity, graph, includeParentRelations);
     } else {
       return _extractFromWayOrRelation(entity, graph);
     }
   };
 
 
-  function _extractFromNode(node, graph) {
+  function _extractFromNode(node, graph, includeParentRelations) {
     _extractedNodeID = node.id;
 
     // Create a new node to replace the one we will detach
@@ -27,9 +31,15 @@ export function actionExtract(entityID, viewport) {
     for (const parentWay of graph.parentWays(node)) {
       graph = graph.replace(parentWay.replaceNode(entityID, replacement.id));
     }
-    for (const parentRelation of graph.parentRelations(node)) {
-      graph = graph.replace(parentRelation.replaceMember(node, replacement));
+
+    // Default behavior: ignore parent relations.
+    // Hold Shift while triggering extract to also update parent relations.
+    if (includeParentRelations) {
+      for (const parentRelation of graph.parentRelations(node)) {
+        graph = graph.replace(parentRelation.replaceMember(node, replacement));
+      }
     }
+
     return graph;
   }
 
