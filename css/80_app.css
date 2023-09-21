@@ -4117,11 +4117,11 @@ li.issue-fix-item button:not(.actionable) .fix-icon {
     border: 1px solid #ccc;
 }
 
-/* scrollbars only when necessary */
-/*.inspector-hover div {*/
-/*  overflow-x: hidden;*/
-/*  overflow-y: auto;*/
-/*}*/
+/* scrollbars only when necessary*/
+.inspector-hover div {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
 
 /* hide and remove from layout */
 .inspector-hidden,
