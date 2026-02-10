@@ -551,10 +551,6 @@ export class UiRapidCatalog extends EventEmitter {
       rapid.removeDatasets(d.id);  // remove from menu and disable/uncheck
     } else {
       rapid.enableDatasets(d.id);  // add to menu and enable/check
-      // If adding an Esri building dataset, disable the Microsoft buildings to avoid clutter
-      if (d.categories.has('esri') && d.categories.has('buildings') && added.has('msBuildings')) {
-        rapid.disableDatasets('msBuildings');
-      }
     }
     context.enter('browse');   // return to browse mode (in case something was selected)
     this.render();

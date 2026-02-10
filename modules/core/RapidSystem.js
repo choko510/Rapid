@@ -141,8 +141,8 @@ export class RapidSystem extends AbstractSystem {
 
         // Set some defaults
         if (!urlhash.initialHashParams.has('datasets')) {
-          this._addedDatasetIDs = new Set(['fbRoads', 'overture-esri-buildings', 'overture-ml-buildings', 'omdFootways']);  // on menu
-          this._enabledDatasetIDs = new Set(['overture-ml-buildings']);  // checked
+          this._addedDatasetIDs = new Set(['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways']);  // on menu
+          this._enabledDatasetIDs = new Set(['ml-buildings-overture']);  // checked
           this._datasetsChanged();
         }
 
@@ -398,13 +398,13 @@ export class RapidSystem extends AbstractSystem {
     for (const [datasetID, dataset] of this.catalog) {
       // This code is a bit weird - I don't like it and we should change it...
       // I'm trying to match the legacy color-choosing behavior from before Rapid#1642 (which changed a bunch of things)
-      // - If adding fbRoads/msBuildings, choose "Rapid magenta".
+      // - If adding fbRoads, choose "Rapid magenta".
       // - If adding an Overture dataset, choose "Overture cyan".
       // - If adding an Esri dataset, choose a color based on how many datasets were added already.
       const wasAdded = dataset.added;
       const nowAdded = this._addedDatasetIDs.has(datasetID);
       if (!wasAdded && nowAdded && dataset.color === RAPID_MAGENTA) {  // being added right now with the default color
-        if (dataset.categories.has('meta') || dataset.categories.has('microsoft')) {
+        if (dataset.categories.has('meta')) {
           dataset.color = RAPID_MAGENTA;
         } else if (dataset.categories.has('overture')) {
           dataset.color = OVERTURE_CYAN;

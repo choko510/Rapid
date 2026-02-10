@@ -92,11 +92,18 @@ export class EsriService extends AbstractSystem {
    * Called by `RapidSystem` to get the datasets that this service provides.
    * @return {Array<RapidDataset>}  The datasets this service provides
    */
-  getAvailableDatasets() {
+    getAvailableDatasets() {
     // Convert the internal datasets into "Rapid" datasets for the catalog.
     // We expect them to be all loaded now because `_loadDatasetsAsync` is called by `initAsync`
     //  and `getAvailableDatasets` is called by RapidSystem's `startAsync`.
-    return Object.values(this._datasets).map(d => {
+    // Note: Building datasets are excluded here because they are now provided by OvertureService
+    //  (Esri Community Maps and ML Buildings via Overture PMTiles).
+    return Object.values(this._datasets)
+      .filter(d => {
+        const categories = (d.groupCategories ?? []).map(c => c.toLowerCase().replace('/categories/', ''));
+        return !categories.includes('buildings');
+      })
+      .map(d => {
       // gather categories
       const categories = new Set(['esri']);
       for (const c of d.groupCategories) {

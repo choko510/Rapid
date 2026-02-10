@@ -100,17 +100,6 @@ export class MapWithAIService extends AbstractSystem {
       descriptionStringID: 'rapid_menu.fbRoads.description'
     });
 
-    const msBuildings = new RapidDataset(context, {
-      id: 'msBuildings',
-      conflated: true,
-      service: 'mapwithai',
-      categories: new Set(['microsoft', 'buildings', 'featured']),
-      dataUsed: ['mapwithai', 'Microsoft Buildings'],
-      itemUrl: 'https://github.com/microsoft/GlobalMLBuildingFootprints',
-      licenseUrl: 'https://github.com/microsoft/USBuildingFootprints/blob/master/LICENSE-DATA',
-      labelStringID: 'rapid_menu.msBuildings.label',
-      descriptionStringID: 'rapid_menu.msBuildings.description'
-    });
 
     const omdFootways = new RapidDataset(context, {
       id: 'omdFootways',
@@ -155,7 +144,7 @@ export class MapWithAIService extends AbstractSystem {
       label: 'Rapid Walkthrough'
     });
 
-    return [fbRoads, msBuildings, omdFootways, metaSyntheticFootways, introGraph];
+    return [fbRoads, omdFootways, metaSyntheticFootways, introGraph];
   }
 
 
