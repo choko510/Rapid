@@ -302,6 +302,17 @@ describe('OvertureService', () => {
       };
       expect(overture._isConflatedWithOSM(lineCoords, [highway])).to.be.false;
     });
+
+    it('returns false when line diverges from OSM highway at an angle', () => {
+      // A road that shares a starting point with an OSM highway but diverges at ~45 degrees.
+      // The interior sample points should be far enough away to avoid conflation.
+      const lineCoords = [[10, 10], [10.0003, 10.0003], [10.0006, 10.0006]];
+      const highway = {
+        coords: [[10, 10], [10.0003, 10], [10.0006, 10]],
+        bbox: { minX: 9.999, minY: 9.999, maxX: 10.001, maxY: 10.001 }
+      };
+      expect(overture._isConflatedWithOSM(lineCoords, [highway])).to.be.false;
+    });
   });
 
 

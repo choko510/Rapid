@@ -71,7 +71,7 @@ const MAX_FEATURES_PER_FRAME = 500;
 const BBOX_PAD_DEG = 0.0003;
 
 // Conflation parameters for transportation
-const CONFLATION_THRESHOLD_METERS = 10;   // distance within which a sample point is "near" an OSM highway
+const CONFLATION_THRESHOLD_METERS = 5;    // distance within which a sample point is "near" an OSM highway
 const CONFLATION_REJECT_RATIO = 0.2;      // fraction of near sample points to reject a feature
 const CONFLATION_MAX_SAMPLES = 20;        // maximum sample points along a LineString
 const CONFLATION_MIN_SPACING_METERS = 5;  // minimum spacing between sample points
@@ -823,9 +823,18 @@ export class OvertureService extends AbstractSystem {
     const samplePoints = this._sampleLinePoints(coords, CONFLATION_MAX_SAMPLES, CONFLATION_MIN_SPACING_METERS);
     if (!samplePoints.length) return false;
 
+    // Exclude first and last sample points (endpoints) from the near count.
+    // Diverging roads naturally share proximity at their junction, so counting
+    // endpoints would cause false positives for roads that split off at an angle.
+    const startIdx = samplePoints.length > 2 ? 1 : 0;
+    const endIdx = samplePoints.length > 2 ? samplePoints.length - 1 : samplePoints.length;
+    const interiorCount = endIdx - startIdx;
+    if (interiorCount <= 0) return false;
+
     let nearCount = 0;
 
-    for (const pt of samplePoints) {
+    for (let i = startIdx; i < endIdx; i++) {
+      const pt = samplePoints[i];
       let minDist = Infinity;
       for (const highway of sameModHighways) {
         // Bbox pre-filter
@@ -841,7 +850,7 @@ export class OvertureService extends AbstractSystem {
       if (minDist < CONFLATION_THRESHOLD_METERS) nearCount++;
     }
 
-    return nearCount / samplePoints.length > CONFLATION_REJECT_RATIO;
+    return nearCount / interiorCount > CONFLATION_REJECT_RATIO;
   }
 
 
