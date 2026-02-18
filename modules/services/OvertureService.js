@@ -306,7 +306,7 @@ export class OvertureService extends AbstractSystem {
       conflated: false,  // We do client-side conflation
       service: 'overture',
       categories: new Set(['overture', 'tomtom', 'roads', 'featured']),
-      color: '#ff6600',  // Orange
+      color: '#da26d3',  // Rapid magenta
       dataUsed: ['overture', 'TomTom'],
       itemUrl: 'https://docs.overturemaps.org/guides/transportation/',
       licenseUrl: 'https://docs.overturemaps.org/attribution/',
