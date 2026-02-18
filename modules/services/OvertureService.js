@@ -810,7 +810,7 @@ export class OvertureService extends AbstractSystem {
   /**
    * _isConflatedWithOSM
    * Determine whether a LineString is already represented by existing OSM highways.
-   * Uses point-sampling: if >20% of sample points along the line are within 10m of
+   * Uses point-sampling: if >20% of sample points along the line are within 5m of
    * a same-mode OSM highway, the feature is considered conflated.
    *
    * @param   {Array}   coords - Array of [lon, lat] coordinates for the LineString
