@@ -310,12 +310,28 @@ export class PixiLayerRapid extends AbstractLayer {
           if (entity.type === 'way') {
             data.polygons.push(entity);
           }
+        } else if (datasetID.includes('roads')) {
+          // Lines for roads (OSM entities from OvertureService)
+          if (entity.type === 'way') {
+            data.lines.push(entity);
+            const graph = service.graph(dataset.id);
+            if (graph) {
+              try {
+                const first = graph.entity(entity.first());
+                const last = graph.entity(entity.last());
+                data.vertices.add(first);
+                data.vertices.add(last);
+              } catch (e) {
+                // Skip if we can't resolve endpoint nodes
+              }
+            }
+          }
         }
       }
 
-      // For buildings, we need the graph to resolve node coordinates
-      if (datasetID.includes('buildings')) {
-        dsGraph = service.graph(datasetID);
+      // For buildings and roads, we need the graph to resolve node coordinates
+      if (datasetID.includes('buildings') || datasetID.includes('roads')) {
+        dsGraph = service.graph(dataset.id);
       }
     }
 

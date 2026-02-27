@@ -1168,6 +1168,9 @@ en:
       ml_buildings:
         label: Microsoft ML + Google Open Buildings
         description: "ML-derived building footprints from Microsoft and Google Open Buildings, conflated by the Overture Maps Foundation."
+      tomtom_roads:
+        label: TomTom Roads
+        description: "Road network data sourced from TomTom, available through the Overture Maps Foundation."
     omdFootways:
       label: Open Data Footways
       description: Open footways data collected from various local government entities.

@@ -199,7 +199,7 @@ export class UiRapidInspector {
       dataUsed: dataset?.dataUsed || [datasetID]
     };
 
-    editor.perform(actionRapidAcceptFeature(datum.id, graph));
+    editor.perform(actionRapidAcceptFeature(datum.id, graph, editor.tree));
     editor.commit({ annotation: annotation, selectedIDs: [datum.id] });
 
     // What next

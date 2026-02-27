@@ -1,4 +1,5 @@
 import * as Polyclip from 'polyclip-ts';
+import { geoSphericalDistance, vecProject } from '@rapid-sdk/math';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { Graph, Tree, RapidDataset } from '../core/lib/index.js';
@@ -32,8 +33,58 @@ const DEBUG_SOURCES = true;
 const seenSources = new Set();
 
 
+// Source filter for TomTom-sourced transportation data
+const TOMTOM_SOURCES = new Set(['TomTom']);
+
 // Minimum zoom level for loading building data (prevents slowdown at low zooms)
 const MIN_BUILDING_ZOOM = 17;
+
+// Minimum zoom level for loading transportation data
+const MIN_TRANSPORTATION_ZOOM = 16;
+
+// Highway classes grouped by travel mode (used for conflation)
+const MOTORIZED_HIGHWAYS = new Set([
+  'motorway', 'motorway_link', 'trunk', 'trunk_link',
+  'primary', 'primary_link', 'secondary', 'secondary_link',
+  'tertiary', 'tertiary_link', 'residential', 'unclassified',
+  'service', 'road', 'living_street', 'track'
+]);
+const NON_MOTORIZED_HIGHWAYS = new Set([
+  'footway', 'cycleway', 'path', 'pedestrian', 'bridleway', 'steps', 'corridor'
+]);
+
+// Overture class values that map to non-motorized highways
+const NON_MOTORIZED_CLASSES = new Set([
+  'footway', 'cycleway', 'path', 'pedestrian', 'bridleway', 'steps', 'corridor'
+]);
+
+// Highway classes eligible for _link suffix
+const LINK_HIGHWAY_TYPES = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary']);
+
+// STAC themes to fetch PMTiles URLs for
+const WANTED_THEMES = new Set(['buildings', 'places', 'transportation']);
+
+// Maximum features to process per render frame (prevents main thread blocking)
+const MAX_FEATURES_PER_FRAME = 500;
+
+// Bbox padding in degrees for proximity matching (~30m, enlarged to account for longitude compression at high latitudes)
+const BBOX_PAD_DEG = 0.0003;
+
+// Conflation parameters for transportation
+const CONFLATION_THRESHOLD_METERS = 5;    // distance within which a sample point is "near" an OSM highway
+const CONFLATION_REJECT_RATIO = 0.2;      // fraction of near sample points to reject a feature
+const CONFLATION_MAX_SAMPLES = 20;        // maximum sample points along a LineString
+const CONFLATION_MIN_SPACING_METERS = 5;  // minimum spacing between sample points
+
+// Map Overture road_surface values to OSM surface= tag values
+const SURFACE_MAP = {
+  'paved': 'paved',
+  'unpaved': 'unpaved',
+  'gravel': 'gravel',
+  'dirt': 'dirt',
+  'paving_stones': 'paving_stones',
+  'metal': 'metal'
+};
 
 
 /**
@@ -66,6 +117,11 @@ export class OvertureService extends AbstractSystem {
     this._mlBuildingsGraph = null;
     this._mlBuildingsTree = null;
     this._mlBuildingsCache = { seen: new Set() };
+
+    // For transportation conflation
+    this._tomtomRoadsGraph = null;
+    this._tomtomRoadsTree = null;
+    this._tomtomRoadsCache = { seen: new Set() };
   }
 
 
@@ -93,8 +149,7 @@ export class OvertureService extends AbstractSystem {
       const releaseData = await fetch(releaseUrl).then(utilFetchResponse);
       this._releaseId = releaseData.id ?? '';
 
-      // 3. Fetch only the themes we need (buildings, places)
-      const WANTED_THEMES = new Set(['buildings', 'places']);
+      // 3. Fetch only the themes we need
       const themeLinks = (releaseData.links ?? []).filter(l => l.rel === 'child' && WANTED_THEMES.has(l.title));
       const themeFetches = themeLinks.map(async link => {
         const themeUrl = new URL(link.href, releaseUrl).href;
@@ -151,10 +206,10 @@ export class OvertureService extends AbstractSystem {
 
   /**
    * _invalidateConflationCaches
-   * Clear the "seen" sets so that all Overture buildings get re-conflated
+   * Clear all conflation state so that all Overture features get re-conflated
    * against the latest OSM graph on the next render pass.
-   * We keep the internal graph and tree intact — only the `seen` flags need
-   * resetting so features are re-evaluated for overlap.
+   * Both the `seen` sets and internal graphs/trees are reset to avoid
+   * duplicate entities from re-processing already-rebased features.
    */
   _invalidateConflationCaches() {
     if (this._esriBuildingsCache) {
@@ -169,6 +224,12 @@ export class OvertureService extends AbstractSystem {
     this._esriBuildingsTree = null;
     this._mlBuildingsGraph = null;
     this._mlBuildingsTree = null;
+
+    if (this._tomtomRoadsCache) {
+      this._tomtomRoadsCache.seen.clear();
+    }
+    this._tomtomRoadsGraph = null;
+    this._tomtomRoadsTree = null;
   }
 
 
@@ -186,6 +247,10 @@ export class OvertureService extends AbstractSystem {
     this._mlBuildingsGraph = null;
     this._mlBuildingsTree = null;
     this._mlBuildingsCache = { seen: new Set() };
+
+    this._tomtomRoadsGraph = null;
+    this._tomtomRoadsTree = null;
+    this._tomtomRoadsCache = { seen: new Set() };
 
     return Promise.resolve();
   }
@@ -236,7 +301,20 @@ export class OvertureService extends AbstractSystem {
       descriptionStringID: 'rapid_menu.overture.ml_buildings.description'
     });
 
-    return [places, esriBuildings, mlBuildings];
+    const tomtomRoads = new RapidDataset(this.context, {
+      id: 'tomtom-roads',
+      conflated: false,  // We do client-side conflation
+      service: 'overture',
+      categories: new Set(['overture', 'tomtom', 'roads', 'featured']),
+      color: '#da26d3',  // Rapid magenta
+      dataUsed: ['overture', 'TomTom'],
+      itemUrl: 'https://docs.overturemaps.org/guides/transportation/',
+      licenseUrl: 'https://docs.overturemaps.org/attribution/',
+      labelStringID: 'rapid_menu.overture.tomtom_roads.label',
+      descriptionStringID: 'rapid_menu.overture.tomtom_roads.description'
+    });
+
+    return [places, esriBuildings, mlBuildings, tomtomRoads];
   }
 
 
@@ -256,6 +334,12 @@ export class OvertureService extends AbstractSystem {
       if (zoom < MIN_BUILDING_ZOOM) return;
 
       const url = this._pmtilesUrls.get('buildings');
+      if (url) vtService.loadTiles(url);
+    } else if (datasetID === 'tomtom-roads') {
+      const zoom = this.context.viewport.transform.zoom;
+      if (zoom < MIN_TRANSPORTATION_ZOOM) return;
+
+      const url = this._pmtilesUrls.get('transportation');
       if (url) vtService.loadTiles(url);
     }
   }
@@ -289,6 +373,14 @@ export class OvertureService extends AbstractSystem {
       if (!url) return [];
       const geojsonFeatures = vtService.getData(url);
       return this._conflateBuildings(geojsonFeatures, datasetID, ML_SOURCES);
+    } else if (datasetID === 'tomtom-roads') {
+      const zoom = this.context.viewport.transform.zoom;
+      if (zoom < MIN_TRANSPORTATION_ZOOM) return [];
+
+      const url = this._pmtilesUrls.get('transportation');
+      if (!url) return [];
+      const geojsonFeatures = vtService.getData(url);
+      return this._conflateTransportation(geojsonFeatures, datasetID);
     } else {
       return [];
     }
@@ -306,6 +398,8 @@ export class OvertureService extends AbstractSystem {
       return this._esriBuildingsGraph;
     } else if (datasetID === 'ml-buildings-overture') {
       return this._mlBuildingsGraph;
+    } else if (datasetID === 'tomtom-roads') {
+      return this._tomtomRoadsGraph;
     }
     return null;
   }
@@ -394,7 +488,6 @@ export class OvertureService extends AbstractSystem {
     const newEntities = [];
 
     // Limit processing to avoid blocking the main thread
-    const MAX_FEATURES_PER_FRAME = 500;
     let processedCount = 0;
 
     for (const feature of geojsonFeatures) {
@@ -564,6 +657,416 @@ export class OvertureService extends AbstractSystem {
     entities.push(way);
 
     return entities;
+  }
+
+
+  /**
+   * _conflateTransportation
+   * Filter out Overture transportation features that overlap with existing OSM highways,
+   * filter by source (TomTom only), and convert remaining features to OSM entities.
+   * Uses mode-aware point-sampling: motorized roads are only conflated against motorized
+   * OSM highways, and non-motorized paths against non-motorized ones.
+   *
+   * @param   {Array}   geojsonFeatures - GeoJSON features from VectorTileService
+   * @param   {string}  datasetID - Which dataset we're processing
+   * @return  {Array}   OSM way entities that pass all filters
+   */
+  _conflateTransportation(geojsonFeatures, datasetID) {
+    if (!geojsonFeatures || !geojsonFeatures.length) return [];
+
+    // Ensure graph/tree/cache exist
+    if (!this._tomtomRoadsGraph) {
+      this._tomtomRoadsGraph = new Graph();
+      this._tomtomRoadsTree = new Tree(this._tomtomRoadsGraph);
+    }
+    const roadsGraph = this._tomtomRoadsGraph;
+    const roadsTree = this._tomtomRoadsTree;
+    const roadsCache = this._tomtomRoadsCache;
+
+    const context = this.context;
+    const viewport = context.viewport;
+    const extent = viewport.visibleExtent();
+
+    const { motorized, nonMotorized } = this._getOSMHighwaysByMode(extent);
+
+    const newEntities = [];
+    let processedCount = 0;
+
+    for (const feature of geojsonFeatures) {
+      if (processedCount >= MAX_FEATURES_PER_FRAME) break;
+
+      const geojson = feature.geojson;
+      if (!geojson?.geometry) continue;
+
+      const geomType = geojson.geometry.type;
+      if (geomType !== 'LineString' && geomType !== 'MultiLineString') continue;
+
+      const featureID = feature.id || geojson.id;
+      if (roadsCache.seen.has(featureID)) continue;
+      roadsCache.seen.add(featureID);
+      processedCount++;
+
+      // Filter by source — only keep TomTom, reject OSM
+      // Transportation theme uses `sources` array with `dataset` field,
+      // unlike buildings which use `@geometry_source`.
+      const geometrySource = this._getTransportationSource(geojson.properties);
+
+      if (geometrySource && OSM_SOURCES.has(geometrySource)) continue;
+      if (!geometrySource || !TOMTOM_SOURCES.has(geometrySource)) continue;
+
+      // Get line coordinates (handle both LineString and MultiLineString)
+      const lineStrings = geomType === 'LineString'
+        ? [geojson.geometry.coordinates]
+        : geojson.geometry.coordinates;
+
+      // Determine travel mode from Overture class
+      const overtureClass = geojson.properties?.class || '';
+      const isNonMotorized = NON_MOTORIZED_CLASSES.has(overtureClass);
+      const sameModHighways = isNonMotorized ? nonMotorized : motorized;
+
+      // Check if any linestring in this feature is conflated with existing OSM
+      let rejected = false;
+      for (const coords of lineStrings) {
+        if (rejected) break;
+        if (this._isConflatedWithOSM(coords, sameModHighways)) {
+          rejected = true;
+        }
+      }
+
+      if (rejected) continue;
+
+      // Convert surviving features to OSM entities
+      for (let j = 0; j < lineStrings.length; j++) {
+        const partID = lineStrings.length > 1 ? `${featureID}-p${j}` : featureID;
+        const entities = this._geojsonToOSMLine(lineStrings[j], geojson.properties, partID, datasetID);
+        if (entities) {
+          newEntities.push(...entities);
+        }
+      }
+    }
+
+    // Update the internal graph with new entities
+    if (newEntities.length) {
+      roadsGraph.rebase(newEntities, [roadsGraph], true);
+      roadsTree.rebase(newEntities, true);
+    }
+
+    // Return ways from the tree that intersect the visible extent
+    return roadsTree.intersects(extent, roadsGraph)
+      .filter(entity => entity.type === 'way');
+  }
+
+
+  /**
+   * _getOSMHighwaysByMode
+   * Collect existing OSM highway ways in the given extent, categorized by travel mode.
+   * Each highway entry includes its coordinates and a padded bounding box for fast filtering.
+   *
+   * @param   {Object}  extent - Visible extent from the viewport
+   * @return  {Object}  `{ motorized, nonMotorized }` arrays of `{ coords, bbox }` objects
+   */
+  _getOSMHighwaysByMode(extent) {
+    const editor = this.context.systems.editor;
+    const osmGraph = editor.staging.graph;
+    const osmEntities = editor.intersects(extent);
+    const motorized = [];
+    const nonMotorized = [];
+
+    for (const entity of osmEntities) {
+      if (entity.type !== 'way' || !entity.tags.highway) continue;
+      const hw = entity.tags.highway;
+      try {
+        const nodes = entity.nodes.map(nodeID => osmGraph.entity(nodeID));
+        const coords = nodes.map(n => n.loc);
+        if (coords.length < 2) continue;
+
+        // Compute bbox for fast pre-filtering
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const c of coords) {
+          if (c[0] < minX) minX = c[0];
+          if (c[0] > maxX) maxX = c[0];
+          if (c[1] < minY) minY = c[1];
+          if (c[1] > maxY) maxY = c[1];
+        }
+        const data = {
+          coords,
+          bbox: { minX: minX - BBOX_PAD_DEG, minY: minY - BBOX_PAD_DEG, maxX: maxX + BBOX_PAD_DEG, maxY: maxY + BBOX_PAD_DEG }
+        };
+
+        if (MOTORIZED_HIGHWAYS.has(hw)) {
+          motorized.push(data);
+        } else if (NON_MOTORIZED_HIGHWAYS.has(hw)) {
+          nonMotorized.push(data);
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+
+    return { motorized, nonMotorized };
+  }
+
+
+  /**
+   * _isConflatedWithOSM
+   * Determine whether a LineString is already represented by existing OSM highways.
+   * Uses point-sampling: if >20% of sample points along the line are within 5m of
+   * a same-mode OSM highway, the feature is considered conflated.
+   *
+   * @param   {Array}   coords - Array of [lon, lat] coordinates for the LineString
+   * @param   {Array}   sameModHighways - Array of `{ coords, bbox }` for same-mode OSM highways
+   * @return  {boolean} true if the line is conflated (should be rejected)
+   */
+  _isConflatedWithOSM(coords, sameModHighways) {
+    if (!coords || coords.length < 2) return false;
+
+    const samplePoints = this._sampleLinePoints(coords, CONFLATION_MAX_SAMPLES, CONFLATION_MIN_SPACING_METERS);
+    if (!samplePoints.length) return false;
+
+    // Exclude first and last sample points (endpoints) from the near count.
+    // Diverging roads naturally share proximity at their junction, so counting
+    // endpoints would cause false positives for roads that split off at an angle.
+    const startIdx = samplePoints.length > 2 ? 1 : 0;
+    const endIdx = samplePoints.length > 2 ? samplePoints.length - 1 : samplePoints.length;
+    const interiorCount = endIdx - startIdx;
+    if (interiorCount <= 0) return false;
+
+    let nearCount = 0;
+
+    for (let i = startIdx; i < endIdx; i++) {
+      const pt = samplePoints[i];
+      let minDist = Infinity;
+      for (const highway of sameModHighways) {
+        // Bbox pre-filter
+        if (pt[0] < highway.bbox.minX || pt[0] > highway.bbox.maxX ||
+            pt[1] < highway.bbox.minY || pt[1] > highway.bbox.maxY) {
+          continue;
+        }
+        const dist = this._distToPolylineMeters(pt, highway.coords);
+        if (dist < minDist) minDist = dist;
+        if (minDist < CONFLATION_THRESHOLD_METERS) break;  // early exit
+      }
+      if (minDist < CONFLATION_THRESHOLD_METERS) nearCount++;
+    }
+
+    return nearCount / interiorCount > CONFLATION_REJECT_RATIO;
+  }
+
+
+  /**
+   * _sampleLinePoints
+   * Generate sample points along a LineString at regular intervals.
+   * @param   {Array}   coords - Array of [lon, lat] coordinates
+   * @param   {number}  maxSamples - Maximum number of sample points
+   * @param   {number}  minSpacingMeters - Minimum spacing between samples in meters
+   * @return  {Array}   Array of [lon, lat] sample points
+   */
+  _sampleLinePoints(coords, maxSamples, minSpacingMeters) {
+    if (!coords || coords.length < 2) return [];
+
+    // Compute approximate total length in meters
+    let totalLength = 0;
+    for (let i = 1; i < coords.length; i++) {
+      totalLength += geoSphericalDistance(coords[i - 1], coords[i]);
+    }
+
+    if (totalLength === 0) return [coords[0]];
+
+    // Determine number of samples
+    const maxBySpacing = Math.floor(totalLength / minSpacingMeters) + 1;
+    const numSamples = Math.min(maxSamples, maxBySpacing);
+    if (numSamples <= 1) return [coords[0]];
+
+    const spacing = totalLength / (numSamples - 1);
+    const samples = [];
+    let accumulated = 0;
+    let nextSampleDist = 0;
+
+    samples.push(coords[0]);
+    nextSampleDist = spacing;
+
+    for (let i = 1; i < coords.length && samples.length < numSamples; i++) {
+      const segLen = geoSphericalDistance(coords[i - 1], coords[i]);
+      const prevAccum = accumulated;
+      accumulated += segLen;
+
+      while (nextSampleDist <= accumulated && samples.length < numSamples) {
+        const t = (segLen > 0) ? (nextSampleDist - prevAccum) / segLen : 0;
+        const lon = coords[i - 1][0] + t * (coords[i][0] - coords[i - 1][0]);
+        const lat = coords[i - 1][1] + t * (coords[i][1] - coords[i - 1][1]);
+        samples.push([lon, lat]);
+        nextSampleDist += spacing;
+      }
+    }
+
+    return samples;
+  }
+
+
+  /**
+   * _distToPolylineMeters
+   * Compute the minimum distance in meters from a point to any segment of a polyline.
+   * Uses vecProject for segment projection, then geoSphericalDistance for the metric.
+   *
+   * @param   {Array}   pt - [lon, lat] point
+   * @param   {Array}   coords - Array of [lon, lat] polyline vertices
+   * @return  {number}  Minimum distance in meters
+   */
+  _distToPolylineMeters(pt, coords) {
+    if (!coords || coords.length === 0) return Infinity;
+    if (coords.length === 1) return geoSphericalDistance(pt, coords[0]);
+
+    const edge = vecProject(pt, coords);
+    if (!edge) return Infinity;
+    return geoSphericalDistance(pt, edge.target);
+  }
+
+
+  /**
+   * _getTransportationSource
+   * Extract the primary source dataset name from transportation feature properties.
+   * Transportation features use a `sources` array with `dataset` fields,
+   * unlike buildings which use `@geometry_source`.
+   * The `sources` property may be a JSON string (from MVT encoding) or an array.
+   * @param   {Object}  props - Feature properties
+   * @return  {string|null}  Source dataset name (e.g. 'TomTom', 'OpenStreetMap'), or null
+   */
+  _getTransportationSource(props) {
+    if (!props) return null;
+
+    // Transportation uses `sources` array with `dataset` field
+    let sources = props.sources;
+    if (!sources) return null;
+
+    // MVT may encode arrays as JSON strings
+    if (typeof sources === 'string') {
+      try { sources = JSON.parse(sources); } catch (e) { return null; }
+    }
+
+    if (Array.isArray(sources) && sources.length > 0) {
+      return sources[0].dataset || null;
+    }
+
+    return null;
+  }
+
+
+  /**
+   * _geojsonToOSMLine
+   * Convert a LineString's coordinates to osmNode/osmWay entities
+   * @param   {Array}   coords - Array of [lon, lat] coordinates
+   * @param   {Object}  properties - GeoJSON feature properties
+   * @param   {string}  featureID - Unique identifier for this feature
+   * @param   {string}  datasetID - The dataset this feature belongs to
+   * @return  {Array}   Array of [osmNodes..., osmWay], or null if invalid
+   */
+  _geojsonToOSMLine(coords, properties, featureID, datasetID) {
+    if (!coords || coords.length < 2) return null;
+
+    const entities = [];
+    const nodeIDs = [];
+
+    for (let i = 0; i < coords.length; i++) {
+      const loc = coords[i];
+      const nodeID = osmEntity.id('node');
+
+      const node = new osmNode({
+        id: nodeID,
+        loc: loc,
+        tags: {}
+      });
+
+      node.__fbid__ = `${datasetID}-${featureID}-n${i}`;
+      node.__service__ = 'overture';
+      node.__datasetid__ = datasetID;
+
+      entities.push(node);
+      nodeIDs.push(nodeID);
+    }
+
+    // Build tags from Overture transportation properties
+    const tags = this._mapOvertureTransportationTags(properties || {});
+
+    const wayID = osmEntity.id('way');
+    const way = new osmWay({
+      id: wayID,
+      nodes: nodeIDs,
+      tags: tags
+    });
+
+    way.__fbid__ = `${datasetID}-${featureID}`;
+    way.__service__ = 'overture';
+    way.__datasetid__ = datasetID;
+    way.__gersid__ = (properties || {}).id || null;
+
+    entities.push(way);
+    return entities;
+  }
+
+
+  /**
+   * _mapOvertureTransportationTags
+   * Map Overture transportation properties to OSM tags.
+   * PMTiles MVT may encode nested properties differently than the raw schema,
+   * so this includes fallback handling for flattened property names.
+   *
+   * @param   {Object}  props - Feature properties from Overture PMTiles
+   * @return  {Object}  OSM tags
+   */
+  _mapOvertureTransportationTags(props) {
+    const tags = {};
+
+    // highway= from class
+    let highwayClass = props.class || '';
+    if (highwayClass === 'unknown') {
+      highwayClass = 'road';  // TomTom-sourced unknowns → road (OSM equivalent for unknown classification)
+    }
+
+    // Check for _link subclass
+    const subclassRules = props.subclass_rules || props.subclass || [];
+    let isLink = false;
+    let footwayValue = null;
+    if (Array.isArray(subclassRules)) {
+      for (const rule of subclassRules) {
+        const val = rule?.value || rule;
+        if (val === 'link') isLink = true;
+        if (val === 'sidewalk') footwayValue = 'sidewalk';
+        if (val === 'crosswalk') footwayValue = 'crossing';
+      }
+    } else if (typeof subclassRules === 'string') {
+      if (subclassRules === 'link') isLink = true;
+      if (subclassRules === 'sidewalk') footwayValue = 'sidewalk';
+      if (subclassRules === 'crosswalk') footwayValue = 'crossing';
+    }
+
+    if (highwayClass) {
+      if (isLink && LINK_HIGHWAY_TYPES.has(highwayClass)) {
+        tags.highway = highwayClass + '_link';
+      } else {
+        tags.highway = highwayClass;
+      }
+    }
+
+    // footway= from subclass
+    if (footwayValue && tags.highway === 'footway') {
+      tags.footway = footwayValue;
+    }
+
+    // surface= from road_surface
+    const roadSurface = props.road_surface || props.surface || [];
+    if (Array.isArray(roadSurface) && roadSurface.length > 0) {
+      const surfVal = roadSurface[0]?.value || roadSurface[0];
+      if (surfVal && SURFACE_MAP[surfVal]) {
+        tags.surface = SURFACE_MAP[surfVal];
+      }
+    } else if (typeof roadSurface === 'string' && SURFACE_MAP[roadSurface]) {
+      tags.surface = SURFACE_MAP[roadSurface];
+    }
+
+    // source — safe to hardcode because _conflateTransportation filters to TomTom-only
+    tags.source = 'TomTom';
+
+    return tags;
   }
 
 }

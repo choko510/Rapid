@@ -142,7 +142,7 @@ export class RapidSystem extends AbstractSystem {
 
         // Set some defaults
         if (!urlhash.initialHashParams.has('datasets')) {
-          this._addedDatasetIDs = new Set(['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways']);  // on menu
+          this._addedDatasetIDs = new Set(['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways', 'tomtom-roads']);  // on menu
           this._enabledDatasetIDs = new Set(['ml-buildings-overture']);  // checked
           this._datasetsChanged();
         }
@@ -401,7 +401,7 @@ export class RapidSystem extends AbstractSystem {
       const nowAdded = this._addedDatasetIDs.has(datasetID);
       // Ensure that the familiar RAPID_MAGENTA color is used for the ML buildings
       if (!wasAdded && nowAdded && dataset.color === RAPID_MAGENTA) {  // being added right now with the default color
-        if (dataset.categories.has('meta') || dataset.categories.has('microsoft') || dataset.categories.has('google')) {
+        if (dataset.categories.has('meta') || dataset.categories.has('microsoft') || dataset.categories.has('google') || dataset.categories.has('tomtom')) {
           dataset.color = RAPID_MAGENTA;
         } else if (dataset.categories.has('overture')) {
           dataset.color = OVERTURE_CYAN;
