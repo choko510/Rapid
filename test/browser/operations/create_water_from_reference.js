@@ -66,12 +66,6 @@ describe('operationCreateWaterFromReference', () => {
     _flashCalls = [];
     _mode = { id: 'browse' };
     _viewport = new Rapid.sdk.Viewport();
-    _viewport.transform = _viewport.transform.props({
-      x: 0,
-      y: 0,
-      k: 1,
-      r: 0
-    });
 
     _graph = new Rapid.Graph([]);
     fetchMock.removeRoutes().clearHistory();
@@ -130,7 +124,7 @@ describe('operationCreateWaterFromReference', () => {
       });
 
       const operation = Rapid.operationCreateWaterFromReference(context);
-      operation.point([0, 0]);
+      operation.point(_viewport.project([0, 0]));
 
       window.setTimeout(() => {
         expect(operation.disabled()).to.be.false;
@@ -166,7 +160,7 @@ describe('operationCreateWaterFromReference', () => {
       });
 
       const operation = Rapid.operationCreateWaterFromReference(context);
-      operation.point([0, 0]);
+      operation.point(_viewport.project([0, 0]));
 
       window.setTimeout(() => {
         expect(operation.disabled()).to.be.false;
@@ -203,7 +197,7 @@ describe('operationCreateWaterFromReference', () => {
       });
 
       const operation = Rapid.operationCreateWaterFromReference(context);
-      operation.point([0, 0]);
+      operation.point(_viewport.project([0, 0]));
 
       window.setTimeout(() => {
         expect(operation.disabled()).to.eql('no_containing_water');
@@ -215,7 +209,7 @@ describe('operationCreateWaterFromReference', () => {
       fetchMock.route(/\/geojson\?/, 500);
 
       const operation = Rapid.operationCreateWaterFromReference(context);
-      operation.point([0, 0]);
+      operation.point(_viewport.project([0, 0]));
 
       window.setTimeout(() => {
         expect(operation.disabled()).to.eql('reference_fetch_failed');
