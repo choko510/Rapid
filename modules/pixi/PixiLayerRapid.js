@@ -333,6 +333,31 @@ export class PixiLayerRapid extends AbstractLayer {
       if (datasetID.includes('buildings') || datasetID.includes('roads')) {
         dsGraph = service.graph(dataset.id);
       }
+
+    } else if (dataset.service === 'external') {
+      if (zoom >= 13) {
+        service.loadTiles(datasetID);
+      }
+
+      const features = service.getData(datasetID);
+      for (const feature of features) {
+        if (!feature?.geometry) continue;
+
+        const type = feature.geometry.type;
+        if (type === 'Point' || type === 'MultiPoint') {
+          feature.overture = true;  // mark as geojson-style feature for point label/render branch
+          feature.__datasetid__ = datasetID;
+          data.points.push(feature);
+        } else if (type === 'LineString' || type === 'MultiLineString') {
+          feature.overture = true;
+          feature.__datasetid__ = datasetID;
+          data.lines.push(feature);
+        } else if (type === 'Polygon' || type === 'MultiPolygon') {
+          feature.overture = true;
+          feature.__datasetid__ = datasetID;
+          data.polygons.push(feature);
+        }
+      }
     }
 
     const pointsContainer = this.scene.groups.get('points');
@@ -370,16 +395,23 @@ export class PixiLayerRapid extends AbstractLayer {
     const l10n = this.context.systems.l10n;
 
     for (const entity of data.polygons) {
-      // Cache GeoJSON resolution, as we expect the rewind and asGeoJSON calls to be kinda slow.
-      // This is ok because the rapid features won't change once loaded.
-      let geojson = this._resolved.get(entity.id);
-      if (!geojson) {
-        geojson = geojsonRewind(entity.asGeoJSON(graph), true);
-        this._resolved.set(entity.id, geojson);
-      }
+      let parts = [];
+      if (entity.overture) {
+        const geojson = entity.geometry;
+        parts = (geojson.type === 'Polygon') ? [geojson.coordinates]
+          : (geojson.type === 'MultiPolygon') ? geojson.coordinates : [];
+      } else {
+        // Cache GeoJSON resolution, as we expect the rewind and asGeoJSON calls to be kinda slow.
+        // This is ok because the rapid features won't change once loaded.
+        let geojson = this._resolved.get(entity.id);
+        if (!geojson) {
+          geojson = geojsonRewind(entity.asGeoJSON(graph), true);
+          this._resolved.set(entity.id, geojson);
+        }
 
-      const parts = (geojson.type === 'Polygon') ? [geojson.coordinates]
-        : (geojson.type === 'MultiPolygon') ? geojson.coordinates : [];
+        parts = (geojson.type === 'Polygon') ? [geojson.coordinates]
+          : (geojson.type === 'MultiPolygon') ? geojson.coordinates : [];
+      }
 
       for (let i = 0; i < parts.length; ++i) {
         const coords = parts[i];
@@ -395,6 +427,9 @@ export class PixiLayerRapid extends AbstractLayer {
 
           feature.parentContainer = parentContainer;
           feature.rapidFeature = true;
+          if (entity.overture) {
+            feature.allowInteraction = false;
+          }
           feature.setData(entity.id, entity);
 // shader experiment:
 // check https://github.com/pixijs/pixijs/discussions/7728 for some discussion
@@ -414,7 +449,11 @@ export class PixiLayerRapid extends AbstractLayer {
             // fill: { width: 2, color: color, alpha: 1, pattern: 'stripe' }
           };
           feature.style = style;
-          feature.label = l10n.displayName(entity.tags);
+          if (entity.geojson) {
+            feature.label = entity.geojson.properties['@name'];
+          } else {
+            feature.label = l10n.displayName(entity.tags);
+          }
           feature.update(viewport, zoom);
         }
 
@@ -436,16 +475,24 @@ export class PixiLayerRapid extends AbstractLayer {
       let feature = this.features.get(featureID);
 
       if (!feature) {
-        const geojson = entity.asGeoJSON(graph);
-        const coords = geojson.coordinates;
-        if (entity.tags.oneway === '-1') {
-          coords.reverse();
+        let coords;
+        if (entity.overture) {
+          coords = entity.geometry.coordinates;
+        } else {
+          const geojson = entity.asGeoJSON(graph);
+          coords = geojson.coordinates;
+          if (entity.tags.oneway === '-1') {
+            coords.reverse();
+          }
         }
 
         feature = new PixiFeatureLine(this, featureID);
         feature.geometry.setCoords(coords);
         feature.parentContainer = parentContainer;
         feature.rapidFeature = true;
+        if (entity.overture) {
+          feature.allowInteraction = false;
+        }
         feature.setData(entity.id, entity);
       }
 
@@ -457,9 +504,13 @@ export class PixiLayerRapid extends AbstractLayer {
           casing: { width: 5, color: 0x444444 },
           stroke: { width: 3, color: color },
         };
-        style.lineMarkerName = entity.isOneWay() ? 'oneway' : '';
+        style.lineMarkerName = (entity.overture || !entity.isOneWay || !entity.isOneWay()) ? '' : 'oneway';
         feature.style = style;
-        feature.label = l10n.displayName(entity.tags);
+        if (entity.geojson) {
+          feature.label = entity.geojson.properties['@name'];
+        } else {
+          feature.label = l10n.displayName(entity.tags);
+        }
         feature.update(viewport, zoom);
       }
 
@@ -496,6 +547,9 @@ export class PixiLayerRapid extends AbstractLayer {
         feature.geometry.setCoords(entity.loc || entity.geojson.geometry.coordinates);
         feature.parentContainer = parentContainer;
         feature.rapidFeature = true;
+        if (entity.overture) {
+          feature.allowInteraction = false;
+        }
         feature.setData(entity.id, entity);
       }
 

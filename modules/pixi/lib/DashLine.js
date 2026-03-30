@@ -71,6 +71,7 @@ export class DashLine {
         color: options.color,
         matrix: new PIXI.Matrix(),
         texture: this.activeTexture,
+        textureSpace: 'global',
         width: options.width * options.scale
       };
     } else {

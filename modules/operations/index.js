@@ -1,4 +1,5 @@
 export { operationCircularize } from './circularize.js';
+export { operationAutoAlignRoads } from './auto_align_roads.js';
 export { operationContinue } from './continue.js';
 export { operationCycleHighwayTag } from './cycle_highway_tag.js';
 export { operationCopy } from './copy.js';

@@ -203,6 +203,20 @@ describe('Tree', () => {
       assert.ok(intersects.includes('w1'));
     });
 
+    it('updates parent geometry when a child node has only tag changes', () => {
+      let graph = new Rapid.Graph();
+      const tree = new Rapid.Tree(graph);
+      const node = Rapid.osmNode({ id: 'n', loc: [1, 1] });
+      const way = Rapid.osmWay({ id: 'w', nodes: ['n'] });
+      const extent = new Rapid.sdk.Extent([0, 0], [2, 2]);
+
+      graph = graph.replace(node).replace(way);
+      assert.deepEqual(tree.intersects(extent, graph), [node, way]);
+
+      graph = graph.replace(node.mergeTags({ amenity: 'bench' }));
+      assert.deepEqual(tree.intersects(extent, graph).map(entity => entity.id), ['n', 'w']);
+    });
+
     it('doesn\'t include removed entities', () => {
       let graph = new Rapid.Graph();
       const tree = new Rapid.Tree(graph);

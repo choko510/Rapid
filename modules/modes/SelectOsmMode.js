@@ -44,6 +44,7 @@ export class SelectOsmMode extends AbstractMode {
     this._keydown = this._keydown.bind(this);
     this._hover = this._hover.bind(this);
     this._merge = this._merge.bind(this);
+    this._redrawEditMenu = this._redrawEditMenu.bind(this);
     this._firstVertex = this._firstVertex.bind(this);
     this._focusNextParent = this._focusNextParent.bind(this);
     this._lastVertex = this._lastVertex.bind(this);
@@ -73,6 +74,7 @@ export class SelectOsmMode extends AbstractMode {
     const ui = context.systems.ui;
     const urlhash = context.systems.urlhash;
     const eventManager = gfx.events;
+    const roadAlignment = context.services.roadAlignment;
 
     const selection = options.selection ?? {};
     let entityIDs = selection.osm ?? [];
@@ -132,6 +134,7 @@ export class SelectOsmMode extends AbstractMode {
     eventManager.on('keydown', this._keydown);
     editor.on('merge', this._merge);
     hover.on('hoverchange', this._hover);
+    roadAlignment?.on('loadedData', this._redrawEditMenu);
 
     ui.Sidebar.showInspector(entityIDs, this._newFeature);
 
@@ -156,6 +159,7 @@ export class SelectOsmMode extends AbstractMode {
     const ui = context.systems.ui;
     const urlhash = context.systems.urlhash;
     const eventManager = gfx.events;
+    const roadAlignment = context.services.roadAlignment;
 
     // If the user added an empty relation, we should clean it up.
     const graph = editor.staging.graph;
@@ -203,6 +207,7 @@ export class SelectOsmMode extends AbstractMode {
     editor.off('merge', this._merge);
     eventManager.off('keydown', this._keydown);
     hover.off('hoverchange', this._hover);
+    roadAlignment?.off('loadedData', this._redrawEditMenu);
   }
 
 
@@ -371,6 +376,16 @@ export class SelectOsmMode extends AbstractMode {
     if (needsRefresh) {
       this._setupOperations(entityIDs);
     }
+  }
+
+
+  /**
+   * _redrawEditMenu
+   * Keep operation disabled/enabled states fresh while async data loads.
+   */
+  _redrawEditMenu() {
+    if (!this._active) return;
+    this.context.systems.ui.redrawEditMenu();
   }
 
 

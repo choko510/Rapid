@@ -45,7 +45,8 @@ export class ValidationSystem extends AbstractSystem {
     this._disabledRuleIDs = new Set();
     this._ignoredIssueIDs = new Set();
     this._resolvedIssueIDs = new Set();
-    this._completeDiff = new Map();    // complete diff base -> head of what the user changed
+    this._completeDiff = new Set();    // complete diff base -> head of what the user changed
+    this._completeDiffEmpty = true;
     this._deferredRIC = new Map();   // Deferred `requestIdleCallback` - Map(handle -> Promise.reject)
     this._deferredST = new Set();    // Deferred `setTimeout` - Set(handles)
     this._errorOverrides = [];
@@ -161,7 +162,8 @@ export class ValidationSystem extends AbstractSystem {
     this._resolvedIssueIDs.clear();
     this._base = new ValidationCache('base');
     this._head = new ValidationCache('head');
-    this._completeDiff = new Map();
+    this._completeDiff = new Set();
+    this._completeDiffEmpty = true;
     return Promise.resolve();
   }
 
@@ -290,7 +292,7 @@ export class ValidationSystem extends AbstractSystem {
         // In the head cache, only count features that the user is responsible for - iD#8632
         // For example, a user can undo some work and an issue will still present in the
         // head graph, but we don't want to credit the user for causing that issue.
-        const userModified = (issue.entityIds || []).some(entityID => this._completeDiff.has(entityID));
+        const userModified = this._isIssueUserModified(issue);
         if (opts.what === 'edited' && !userModified) continue;   // present in head but user didn't touch it
 
         if (!filter(issue)) continue;
@@ -522,7 +524,8 @@ export class ValidationSystem extends AbstractSystem {
   validateAsync() {
     const context = this.context;
     const editor = context.systems.editor;
-    this._completeDiff = editor.difference().complete();
+    this._completeDiff = editor.difference().completeEntityIDs();
+    this._completeDiffEmpty = !this._completeDiff.size;
 
     if (editor.canRestoreBackup) return Promise.resolve();   // Wait to see if the user wants to restore their backup
     if (this._validationPromise) return this._validationPromise;   // Validation already in progress
@@ -549,7 +552,7 @@ export class ValidationSystem extends AbstractSystem {
     // If we get here, stable !== previous, so it's time to validate the stable graph..
     this._head.graph = stableGraph;   // take snapshot
     const incrementalDiff = new Difference(previousGraph, stableGraph);
-    let entityIDs = [ ...incrementalDiff.complete().keys() ];
+    let entityIDs = incrementalDiff.completeEntityIDs();
     entityIDs = this._head.withAllRelatedEntities(entityIDs);  // expand set
 
     if (!entityIDs.size) {    // nothing to do - committed a no-op edit?
@@ -683,21 +686,39 @@ export class ValidationSystem extends AbstractSystem {
    * @param  {Array|Set}  entityIDs - Array or Set containing entity IDs.
    */
   _updateResolvedIssues(entityIDs = []) {
-    for (const entityID of entityIDs) {
-      const issues = this._base.entityIssueIDs.get(entityID) ?? [];
-      for (const issueID of issues) {
-        // Check if the user did something to one of the entities involved in this issue.
-        // (This issue could involve multiple entities, e.g. disconnected routable features)
-        const issue = this._base.issues.get(issueID);
-        const userModified = (issue?.entityIds || []).some(entityID => this._completeDiff.has(entityID));
+    const issueIDsToCheck = new Set();
 
-        if (userModified && !this._head.issues.has(issueID)) {  // issue seems fixed
-          this._resolvedIssueIDs.add(issueID);
-        } else {                                   // issue still not resolved
-          this._resolvedIssueIDs.delete(issueID);  // (did undo, or possibly fixed and then re-caused the issue)
-        }
+    for (const entityID of entityIDs) {
+      const issueIDs = this._base.entityIssueIDs.get(entityID) ?? [];
+      for (const issueID of issueIDs) {
+        issueIDsToCheck.add(issueID);
       }
     }
+
+    for (const issueID of issueIDsToCheck) {
+      // Check if the user did something to one of the entities involved in this issue.
+      // (This issue could involve multiple entities, e.g. disconnected routable features)
+      const issue = this._base.issues.get(issueID);
+      const userModified = this._isIssueUserModified(issue);
+
+      if (userModified && !this._head.issues.has(issueID)) {  // issue seems fixed
+        this._resolvedIssueIDs.add(issueID);
+      } else {                                   // issue still not resolved
+        this._resolvedIssueIDs.delete(issueID);  // (did undo, or possibly fixed and then re-caused the issue)
+      }
+    }
+  }
+
+
+  /**
+   * _isIssueUserModified
+   * Checks whether the user modified any entity involved in the issue.
+   * @param   {ValidationIssue}  issue
+   * @return  {boolean}
+   */
+  _isIssueUserModified(issue) {
+    if (this._completeDiffEmpty) return false;
+    return (issue?.entityIds || []).some(entityID => this._completeDiff.has(entityID));
   }
 
 
@@ -950,10 +971,12 @@ class ValidationCache {
 
       if (entity.type === 'way' || entity.type === 'node') {
         // Gather nearby connectivity Issues (impossible oneway, disconnected way)
-        const extent = entity.extent(graph);
-        const boxes = this.recheckRBush.search(extent.bbox()) ?? [];
-        for (const box of boxes) {
-          relatedIssueIDs.add(box.issueID);
+        if (this.recheckBoxes.size) {
+          const extent = entity.extent(graph);
+          const boxes = this.recheckRBush.search(extent.bbox()) ?? [];
+          for (const box of boxes) {
+            relatedIssueIDs.add(box.issueID);
+          }
         }
 
         // Gather other Entities connected to this Entity..

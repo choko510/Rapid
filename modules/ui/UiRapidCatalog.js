@@ -28,6 +28,8 @@ export class UiRapidCatalog extends EventEmitter {
 
     this._filterText = null;
     this._filterCategory = null;
+    this._importURL = '';
+    this._importResult = null;
     this._myClose = () => true;   // custom close handler
 
     // Child components
@@ -46,6 +48,8 @@ export class UiRapidCatalog extends EventEmitter {
     this.renderDatasets = this.renderDatasets.bind(this);
     this.sortCategories = this.sortCategories.bind(this);
     this.sortDatasets = this.sortDatasets.bind(this);
+    this.importFromURL = this.importFromURL.bind(this);
+    this.importFromFile = this.importFromFile.bind(this);
     this.toggleDataset = this.toggleDataset.bind(this);
     this.highlight = this.highlight.bind(this);
 
@@ -77,6 +81,8 @@ export class UiRapidCatalog extends EventEmitter {
     this._myClose = () => {
       this._filterText = null;
       this._filterCategory = null;
+      this._importURL = '';
+      this._importResult = null;
       this.$modal
         .transition()
         .duration(200)
@@ -270,6 +276,67 @@ export class UiRapidCatalog extends EventEmitter {
       .text(l10n.t('rapid_menu.clear_filters'));
 
 
+    /* Import section */
+    let $import = $content.selectAll('.rapid-catalog-import')
+      .data([0]);
+
+    const $$import = $import.enter()
+      .append('div')
+      .attr('class', 'modal-section rapid-catalog-import');
+
+    const $$importRow = $$import
+      .append('div')
+      .attr('class', 'rapid-catalog-import-row');
+
+    $$importRow
+      .append('input')
+      .attr('class', 'rapid-catalog-import-url')
+      .call(utilNoAuto)
+      .on('input', e => {
+        const element = e.currentTarget;
+        this._importURL = (element && element.value) || '';
+      });
+
+    $$importRow
+      .append('button')
+      .attr('class', 'button rapid-catalog-import-url-button')
+      .on('click', this.importFromURL);
+
+    const $$fileWrap = $$import
+      .append('div')
+      .attr('class', 'rapid-catalog-import-file-wrap');
+
+    $$fileWrap
+      .append('div')
+      .attr('class', 'rapid-catalog-import-file-label');
+
+    $$fileWrap
+      .append('input')
+      .attr('class', 'rapid-catalog-import-file')
+      .attr('type', 'file')
+      .attr('accept', '.json,application/json')
+      .on('change', this.importFromFile);
+
+    $$import
+      .append('div')
+      .attr('class', 'rapid-catalog-import-result');
+
+    // update
+    $import = $import.merge($$import);
+
+    $import.selectAll('.rapid-catalog-import-url')
+      .attr('placeholder', l10n.t('rapid_menu.import_url_placeholder'))
+      .property('value', this._importURL);
+
+    $import.selectAll('.rapid-catalog-import-url-button')
+      .text(l10n.t('rapid_menu.import_url_button'));
+
+    $import.selectAll('.rapid-catalog-import-file-label')
+      .text(l10n.t('rapid_menu.import_file_label'));
+
+    this.renderImportResult($import.selectAll('.rapid-catalog-import-result'));
+
+
     /* Dataset section */
     let $datasets = $content.selectAll('.rapid-catalog-datasets-section')
       .data([0]);
@@ -313,6 +380,86 @@ export class UiRapidCatalog extends EventEmitter {
 
     $buttons.selectAll('.button')
       .text(l10n.t('confirm.okay'));
+  }
+
+
+  /**
+   * renderImportResult
+   * Render summary for the latest import attempt.
+   * @param {d3-selection} $selection
+   */
+  renderImportResult($selection) {
+    const l10n = this.context.systems.l10n;
+    const result = this._importResult;
+    if (!result) {
+      $selection.classed('hide', true).text('');
+      return;
+    }
+
+    const imported = result.datasets?.length ?? 0;
+    const failed = result.errors?.length ?? 0;
+    const lines = [l10n.t('rapid_menu.import_result_summary', { imported: imported, failed: failed })];
+
+    if (failed) {
+      for (const err of result.errors) {
+        const name = err.id || `#${(err.index ?? 0) + 1}`;
+        lines.push(`${name}: ${err.message}`);
+      }
+    }
+
+    $selection
+      .classed('hide', false)
+      .classed('has-errors', failed > 0)
+      .text(lines.join('\n'));
+  }
+
+
+  /**
+   * importFromURL
+   * Import manifest from URL.
+   */
+  async importFromURL() {
+    const context = this.context;
+    const rapid = context.systems.rapid;
+    const url = this._importURL.trim();
+    if (!url) return;
+
+    try {
+      this._importResult = await rapid.importExternalManifestFromURL(url);
+    } catch (err) {
+      this._importResult = {
+        datasets: [],
+        errors: [{ index: -1, id: null, message: err.message }]
+      };
+    }
+
+    context.enter('browse');
+    this.render();
+  }
+
+
+  /**
+   * importFromFile
+   * Import manifest from local file.
+   * @param {Event} e
+   */
+  async importFromFile(e) {
+    const context = this.context;
+    const rapid = context.systems.rapid;
+    const file = e?.currentTarget?.files?.[0];
+    if (!file) return;
+
+    try {
+      this._importResult = await rapid.importExternalManifestFromFile(file);
+    } catch (err) {
+      this._importResult = {
+        datasets: [],
+        errors: [{ index: -1, id: null, message: err.message }]
+      };
+    }
+
+    context.enter('browse');
+    this.render();
   }
 
 
@@ -363,6 +510,7 @@ export class UiRapidCatalog extends EventEmitter {
     let count = 0;
     const datasets = [...rapid.catalog.values()]
       .filter(d => !d.hidden)
+      .filter(d => showPreview || !d.beta)
       .sort(this.sortDatasets);
 
     // Apply filters..
@@ -578,4 +726,3 @@ export class UiRapidCatalog extends EventEmitter {
   }
 
 }
-

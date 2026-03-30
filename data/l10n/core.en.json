@@ -449,6 +449,61 @@
           "other": "These features can't be moved because parts of them have not yet been downloaded."
         }
       },
+      "auto_align_roads": {
+        "title": "Auto Align Roads",
+        "description": {
+          "one": "Move this road to match reference roads.",
+          "other": "Move these roads to match reference roads."
+        },
+        "annotation": {
+          "one": "Auto-aligned a road.",
+          "other": "Auto-aligned {n} roads."
+        },
+        "not_eligible": {
+          "one": "This selection can't be auto-aligned.",
+          "other": "These features can't be auto-aligned."
+        },
+        "too_large": {
+          "one": "This road can't be auto-aligned because not enough of it is currently visible.",
+          "other": "These roads can't be auto-aligned because not enough of them are currently visible."
+        },
+        "connected_to_hidden": {
+          "one": "This road can't be auto-aligned because it is connected to a hidden feature.",
+          "other": "These roads can't be auto-aligned because some are connected to hidden features."
+        },
+        "not_downloaded": {
+          "one": "This road can't be auto-aligned because parts of it have not yet been downloaded.",
+          "other": "These roads can't be auto-aligned because parts of them have not yet been downloaded."
+        },
+        "reference_service_unavailable": {
+          "one": "Road alignment service is unavailable.",
+          "other": "Road alignment service is unavailable."
+        },
+        "reference_loading": {
+          "one": "Reference roads are still loading.",
+          "other": "Reference roads are still loading."
+        },
+        "reference_fetch_failed": {
+          "one": "Reference roads could not be fetched.",
+          "other": "Reference roads could not be fetched."
+        },
+        "no_reference_data": {
+          "one": "No reference roads were found for this area.",
+          "other": "No reference roads were found for this area."
+        },
+        "not_enough_matches": {
+          "one": "Not enough matching reference roads were found.",
+          "other": "Not enough matching reference roads were found."
+        },
+        "shift_too_large": {
+          "one": "The detected shift is too large to apply safely.",
+          "other": "The detected shift is too large to apply safely."
+        },
+        "already_aligned": {
+          "one": "This road is already aligned closely enough (no further shape edits needed).",
+          "other": "These roads are already aligned closely enough (no further shape edits needed)."
+        }
+      },
       "reflect": {
         "title": {
           "long": "Flip Long",
@@ -1405,6 +1460,10 @@
       "license": "License",
       "toggle_all": "Toggle all {rapidicon} data",
       "add_manage_datasets": "Add/Manage Datasets",
+      "import_url_placeholder": "Import URL...",
+      "import_url_button": "Import",
+      "import_file_label": "Or import a file:",
+      "import_result_summary": "Imported {imported} datasets, {failed} failed",
       "center_map": "Center map here",
       "worldwide": "Worldwide",
       "no_datasets": "No datasets available.",
@@ -3567,11 +3626,13 @@
       "chy": "Cheyenne",
       "cic": "Chickasaw",
       "ckb": "Kurdish, Central",
+      "ckb-menu-core": "Kurdish",
+      "ckb-menu-extension": "Central",
       "clc": "Chilcotin",
       "co": "Corsican",
       "cop": "Coptic",
       "cps": "Capiznon",
-      "cr": "Cree",
+      "cr": "Woods Cree",
       "crg": "Michif",
       "crh": "Crimean Tatar",
       "crj": "Southern East Cree",
@@ -3585,7 +3646,6 @@
       "csw": "Swampy Cree",
       "cu": "Church Slavic",
       "cv": "Chuvash",
-      "cwd": "Woods Cree",
       "cy": "Welsh",
       "da": "Danish",
       "dak": "Dakota",
@@ -3687,7 +3747,6 @@
       "hak": "Hakka Chinese",
       "haw": "Hawaiian",
       "hax": "Southern Haida",
-      "hdn": "Northern Haida",
       "he": "Hebrew",
       "hi": "Hindi",
       "hi-Latn": "Hindi (Latin)",
@@ -3714,7 +3773,6 @@
       "ig": "Igbo",
       "ii": "Sichuan Yi",
       "ik": "Inupiaq",
-      "ike": "Eastern Canadian Inuktitut",
       "ikt": "Western Canadian Inuktitut",
       "ilo": "Iloko",
       "inh": "Ingush",
@@ -3744,6 +3802,7 @@
       "kcg": "Tyap",
       "kde": "Makonde",
       "kea": "Kabuverdianu",
+      "kek": "Qʼeqchiʼ",
       "ken": "Kenyang",
       "kfo": "Koro",
       "kg": "Kongo",
@@ -3778,6 +3837,8 @@
       "ksf": "Bafia",
       "ksh": "Colognian",
       "ku": "Kurdish",
+      "ku-menu-core": "Kurdish",
+      "ku-menu-extension": "Kurmanji",
       "kum": "Kumyk",
       "kut": "Kutenai",
       "kv": "Komi",
@@ -3899,7 +3960,6 @@
       "oj": "Ojibwa",
       "ojb": "Northwestern Ojibwa",
       "ojc": "Central Ojibwa",
-      "ojg": "Eastern Ojibwa",
       "ojs": "Oji-Cree",
       "ojw": "Western Ojibwa",
       "oka": "Okanagan",
@@ -3963,7 +4023,7 @@
       "saq": "Samburu",
       "sas": "Sasak",
       "sat": "Santali",
-      "saz": "Saurashtra",
+      "saz": "Sourashtra",
       "sba": "Ngambay",
       "sbp": "Sangu",
       "sc": "Sardinian",
@@ -3972,6 +4032,8 @@
       "sd": "Sindhi",
       "sdc": "Sassarese Sardinian",
       "sdh": "Southern Kurdish",
+      "sdh-menu-core": "Kurdish",
+      "sdh-menu-extension": "Southern",
       "se": "Sami, Northern",
       "see": "Seneca",
       "seh": "Sena",
@@ -4038,7 +4100,7 @@
       "tig": "Tigre",
       "tiv": "Tiv",
       "tk": "Turkmen",
-      "tkl": "Tokelau",
+      "tkl": "Tokelauan",
       "tkr": "Tsakhur",
       "tl": "Tagalog",
       "tlh": "Klingon",
@@ -4135,6 +4197,7 @@
       "Bass": "Bassa Vah",
       "Batk": "Batak",
       "Beng": "Bangla",
+      "Berf": "Beria Erfe",
       "Bhks": "Bhaiksuki",
       "Blis": "Blissymbols",
       "Bopo": "Bopomofo",
@@ -4274,11 +4337,12 @@
       "Samr": "Samaritan",
       "Sara": "Sarati",
       "Sarb": "Old South Arabian",
-      "Saur": "Saurashtra",
+      "Saur": "Sourashtra",
       "Sgnw": "SignWriting",
       "Shaw": "Shavian",
       "Shrd": "Sharada",
       "Sidd": "Siddham",
+      "Sidt": "Sidetic",
       "Sind": "Khudawadi",
       "Sinh": "Sinhala",
       "Sogd": "Sogdian",
@@ -4299,6 +4363,7 @@
       "Taml": "Tamil",
       "Tang": "Tangut",
       "Tavt": "Tai Viet",
+      "Tayo": "Tai Yo",
       "Telu": "Telugu",
       "Teng": "Tengwar",
       "Tfng": "Tifinagh",
@@ -4309,6 +4374,7 @@
       "Tirh": "Tirhuta",
       "Tnsa": "Tangsa",
       "Todr": "Todhri",
+      "Tols": "Tolong Siki",
       "Toto": "Toto",
       "Tutg": "Tulu-Tigalari",
       "Ugar": "Ugaritic",

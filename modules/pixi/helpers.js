@@ -351,6 +351,27 @@ export function flatCoordsToPoints(coords) {
 }
 
 
+/**
+ * normalizeRect
+ * Pixi's bounds width/height may be negative for some display objects in older v8 releases.
+ * Normalize to positive dimensions while preserving the covered area.
+ *
+ * @param  {PIXI.Rectangle} rect
+ * @return {PIXI.Rectangle}
+ */
+export function normalizeRect(rect) {
+  if (rect.width < 0) {
+    rect.x += rect.width;
+    rect.width *= -1;
+  }
+  if (rect.height < 0) {
+    rect.y += rect.height;
+    rect.height *= -1;
+  }
+  return rect;
+}
+
+
 export function getDebugBBox(x, y, width, height, color, alpha, name) {
   const sprite = new PIXI.Sprite({ texture: PIXI.Texture.WHITE });
   sprite.eventMode = 'none';

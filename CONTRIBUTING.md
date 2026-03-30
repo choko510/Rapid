@@ -42,9 +42,9 @@ This section suggests a toolset and method to start contributing to Rapid. Howev
 3. From the CLI, open your freshly cloned Rapid directory by running the command `code Rapid`
 4. Once in VSCode, type **Ctrl+Shift+`** to open a terminal. Alternatively, use the **Terminal>New Terminal** menu option.
 5. Make sure you are using [the latest `node`](https://nodejs.org/en/download) by running `node --version`. If not, then running `nvm install node` will set it up for you.
-6. Install all required dependencies with `npm install`
-7. Then run `npm run all` to set up Rapid.
-8. Finally, run `npm run start` to start the server on port 8080.
+6. Install all required dependencies with `pnpm install`
+7. Then run `pnpm run all` to set up Rapid.
+8. Finally, run `pnpm run start` to start the server on port 8080.
 
 Congrats! 🎉 You should now be able to use rapid by navigating to [http://127.0.0.1:8080/](http://127.0.0.1:8080/) on Chrome.
 
@@ -72,7 +72,7 @@ VSCode provides a debugging mode using Chrome. To use it, follow these steps:
 }
 ```
 
-Great! You should now be able to run the Rapid server with `npm run start` and then the debugger by either pressing **F5** on your keyboard, or clicking on **Run>Start Debugging**.
+Great! You should now be able to run the Rapid server with `pnpm run start` and then the debugger by either pressing **F5** on your keyboard, or clicking on **Run>Start Debugging**.
 
 This will launch Chrome on whatever address you provided to `url` on `launch.json`, allowing you to use Rapid as well as entering debugging mode on VSCode.
 
@@ -88,7 +88,7 @@ Here are the relevant parts of the directory tree along with short descriptions 
 - `css`: It contains the `.css` for styling things like the sidebars, top bars, buttons, etc. Note that there is no `.css` 'inside' the map itself - That's all styled using WebGL.
 - `data`: Static data files that define the imagery, data formats, language resources, and walkthrough data. 
 - `dist`: Where all the built artifacts get served from. 
-- `docs`: The 'docs' directory is populated each time you execute 'npm run doc,' making it a valuable resource for documentation-related tasks.
+- `docs`: The 'docs' directory is populated each time you execute 'pnpm run docs,' making it a valuable resource for documentation-related tasks.
 - `modules`: The 'modules' directory is the heart of our codebase, housing the majority of the substantial code. Module subdirectories are: 
     - `actions`: Discrete modifications to the map state - Changing tags, moving a node, rotating a shape, scaling a polygon, these are all 'actions'.  Actions are only fired when the user changes the map. 
     - `behaviors`: Bundles of event handlers that can apply to different modes (see `modes` below). Behaviors include **Drag**, **Draw**, **Hover**, **Select**, and **Paste**.

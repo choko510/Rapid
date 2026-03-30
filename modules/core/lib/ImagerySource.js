@@ -708,7 +708,7 @@ export class ImagerySourceEsriWayback extends ImagerySourceEsri {
     return this._refreshPromise = new Promise(resolve => {
       Wayback.getWaybackItemsWithLocalChanges({ latitude: lat, longitude: lon }, TILEZOOM)
         .then(data => {
-          if (!Array.isArray(data) || !data.length) throw new Error('No locally changed Wayback data');
+          if (!Array.isArray(data)) throw new Error('Invalid locally changed Wayback data');
 
           const box = tile.wgs84Extent.bbox();
           box.id = tile.id;
@@ -779,4 +779,3 @@ export class ImagerySourceEsriWayback extends ImagerySourceEsri {
   }
 
 }
-

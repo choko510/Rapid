@@ -70,6 +70,7 @@ export class FilterSystem extends AbstractSystem {
     this._hidden = new Set();         // Set(filterID) to hide
     this._forceVisible = new Set();   // Set(entityIDs) to show
     this._cache = {};                 // Cache of entity.key to matched filterIDs
+    this._cacheByEntityID = new Map();  // Map(entityID -> Set(cache keys))
     this._initPromise = null;
 //    this._deferred = new Set();
 
@@ -179,6 +180,7 @@ export class FilterSystem extends AbstractSystem {
 //    }
 //    this._deferred.clear();
     this._cache = {};
+    this._cacheByEntityID.clear();
     this._forceVisible.clear();
     return Promise.resolve();
   }
@@ -364,8 +366,41 @@ export class FilterSystem extends AbstractSystem {
    * @param  {Entity}  entity
    */
   clearEntity(entity) {
-    const ekey = osmEntity.key(entity);
-    delete this._cache[ekey];
+    this.clearEntityID(entity?.id);
+  }
+
+
+  /**
+   * clearEntityID
+   * Clears the cache of entity matches for all cached versions of a single entity id.
+   * @param  {string}  entityID
+   */
+  clearEntityID(entityID) {
+    if (!entityID) return;
+
+    const cacheKeys = this._cacheByEntityID.get(entityID);
+    if (!cacheKeys) return;
+
+    for (const ekey of cacheKeys) {
+      delete this._cache[ekey];
+    }
+    this._cacheByEntityID.delete(entityID);
+  }
+
+
+  /**
+   * _trackCacheKey
+   * Tracks cache keys per entityID to support efficient invalidation.
+   * @param  {string}  entityID
+   * @param  {string}  ekey
+   */
+  _trackCacheKey(entityID, ekey) {
+    let cacheKeys = this._cacheByEntityID.get(entityID);
+    if (!cacheKeys) {
+      cacheKeys = new Set();
+      this._cacheByEntityID.set(entityID, cacheKeys);
+    }
+    cacheKeys.add(ekey);
   }
 
 
@@ -388,6 +423,7 @@ export class FilterSystem extends AbstractSystem {
     let cached = this._cache[ekey];
     if (!cached) {
       this._cache[ekey] = cached = { parents: null, matches: null };
+      this._trackCacheKey(entity.id, ekey);
     }
     if (cached.matches) {    // done already
       return cached.matches;
@@ -453,6 +489,7 @@ export class FilterSystem extends AbstractSystem {
     let cached = this._cache[ekey];
     if (!cached) {
       this._cache[ekey] = cached = { parents: null, matches: null };
+      this._trackCacheKey(entity.id, ekey);
     }
 
     if (!cached.parents) {

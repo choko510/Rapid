@@ -24,6 +24,15 @@ export class Difference {
     this._head = head;
     this._changes = new Map();   // Map(entityID -> Object)
     this.didChange = {};         // 'addition', 'deletion', 'geometry', 'properties'
+    this._geometryChangedIDs = new Set();
+    this._propertyChangedIDs = new Set();
+    this._created = null;
+    this._modified = null;
+    this._modifiedGeometry = null;
+    this._deleted = null;
+    this._summary = null;
+    this._complete = null;
+    this._completeEntityIDs = null;
 
     if (base === head) return;   // same Graph, no difference
 
@@ -48,23 +57,35 @@ export class Difference {
       }
 
       if (h && b) {
+        let geometryChanged = false;
+        let propertiesChanged = false;
+
         if (h.members && b.members && !deepEqual(h.members, b.members)) {
-          this._changes.set(id, { base: b, head: h });
-          this.didChange.geometry = true;
-          this.didChange.properties = true;
-          continue;
+          geometryChanged = true;
+          propertiesChanged = true;
+        } else {
+          if (h.loc && b.loc && !vecEqual(h.loc, b.loc)) {
+            geometryChanged = true;
+          }
+          if (h.nodes && b.nodes && !deepEqual(h.nodes, b.nodes)) {
+            geometryChanged = true;
+          }
+          if (h.tags && b.tags && !deepEqual(h.tags, b.tags)) {
+            propertiesChanged = true;
+          }
         }
-        if (h.loc && b.loc && !vecEqual(h.loc, b.loc)) {
+
+        if (geometryChanged || propertiesChanged) {
           this._changes.set(id, { base: b, head: h });
-          this.didChange.geometry = true;
-        }
-        if (h.nodes && b.nodes && !deepEqual(h.nodes, b.nodes)) {
-          this._changes.set(id, { base: b, head: h });
-          this.didChange.geometry = true;
-        }
-        if (h.tags && b.tags && !deepEqual(h.tags, b.tags)) {
-          this._changes.set(id, { base: b, head: h });
-          this.didChange.properties = true;
+
+          if (geometryChanged) {
+            this.didChange.geometry = true;
+            this._geometryChangedIDs.add(id);
+          }
+          if (propertiesChanged) {
+            this.didChange.properties = true;
+            this._propertyChangedIDs.add(id);
+          }
         }
       }
     }
@@ -80,19 +101,60 @@ export class Difference {
     return this._changes;
   }
 
+  /**
+   * hasGeometryChange
+   * @param   {string}  entityID
+   * @return  {boolean}
+   */
+  hasGeometryChange(entityID) {
+    return this._geometryChangedIDs.has(entityID);
+  }
+
+
+  /**
+   * hasPropertyChange
+   * @param   {string}  entityID
+   * @return  {boolean}
+   */
+  hasPropertyChange(entityID) {
+    return this._propertyChangedIDs.has(entityID);
+  }
+
 
   /**
    * modified
    * @return  `Array`
    */
   modified() {
-    let result = [];
-    for (const change of this._changes.values()) {
-      if (change.base && change.head) {
-        result.push(change.head);
+    if (!this._modified) {
+      const result = [];
+      for (const change of this._changes.values()) {
+        if (change.base && change.head) {
+          result.push(change.head);
+        }
       }
+      this._modified = result;
     }
-    return result;
+    return this._modified.slice();
+  }
+
+
+  /**
+   * modifiedGeometry
+   * @return  `Array`
+   */
+  modifiedGeometry() {
+    if (!this._modifiedGeometry) {
+      const result = [];
+      for (const entityID of this._geometryChangedIDs) {
+        const change = this._changes.get(entityID);
+        if (change?.base && change?.head) {
+          result.push(change.head);
+        }
+      }
+      this._modifiedGeometry = result;
+    }
+    return this._modifiedGeometry.slice();
   }
 
 
@@ -101,13 +163,16 @@ export class Difference {
    * @return  `Array`
    */
   created() {
-    let result = [];
-    for (const change of this._changes.values()) {
-      if (!change.base && change.head) {
-        result.push(change.head);
+    if (!this._created) {
+      const result = [];
+      for (const change of this._changes.values()) {
+        if (!change.base && change.head) {
+          result.push(change.head);
+        }
       }
+      this._created = result;
     }
-    return result;
+    return this._created.slice();
   }
 
 
@@ -116,13 +181,16 @@ export class Difference {
    * @return  `Array`
    */
   deleted() {
-    let result = [];
-    for (const change of this._changes.values()) {
-      if (change.base && !change.head) {
-        result.push(change.base);
+    if (!this._deleted) {
+      const result = [];
+      for (const change of this._changes.values()) {
+        if (change.base && !change.head) {
+          result.push(change.base);
+        }
       }
+      this._deleted = result;
     }
-    return result;
+    return this._deleted.slice();
   }
 
 
@@ -133,6 +201,8 @@ export class Difference {
    * @return  Map(entityID -> change detail)
    */
   summary() {
+    if (this._summary) return new Map(this._summary);
+
     const base = this._base;
     const head = this._head;
     const result = new Map();  // Map(entityID -> change detail)
@@ -168,7 +238,8 @@ export class Difference {
       }
     }
 
-    return result;
+    this._summary = result;
+    return new Map(this._summary);
 
 
     function _addEntity(entity, graph, changeType) {
@@ -184,6 +255,31 @@ export class Difference {
    * @return  Map(entityID -> Entity)
    */
   complete() {
+    return new Map(this._ensureComplete());
+  }
+
+
+  /**
+   * completeEntityIDs
+   * Returns complete set of affected entity IDs.
+   * @return  Set(entityID)
+   */
+  completeEntityIDs() {
+    if (!this._completeEntityIDs) {
+      this._completeEntityIDs = new Set(this._ensureComplete().keys());
+    }
+    return new Set(this._completeEntityIDs);
+  }
+
+
+  /**
+   * _ensureComplete
+   * Computes and caches the complete map if needed.
+   * @return  Map(entityID -> Entity)
+   */
+  _ensureComplete() {
+    if (this._complete) return this._complete;
+
     const head = this._head;
     const result = new Map();  // Map(entityID -> Entity)
 
@@ -216,7 +312,8 @@ export class Difference {
       _addParents(head.parentRelations(entity), result);
     }
 
-    return result;
+    this._complete = result;
+    return this._complete;
 
 
     function _addParents(parents) {

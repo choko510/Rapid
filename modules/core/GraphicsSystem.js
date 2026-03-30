@@ -112,6 +112,21 @@ export class GraphicsSystem extends AbstractSystem {
       resolution: 1
     });
 
+    // Pixi v8.8 restored default graphics texture/gradient space to `local`.
+    // Rapid's texture-based fills and strokes are authored in screen/global coordinates.
+    if (PIXI.FillGradient?.defaultLinearOptions) {
+      PIXI.FillGradient.defaultLinearOptions.textureSpace = 'global';
+    }
+    if (PIXI.FillGradient?.defaultRadialOptions) {
+      PIXI.FillGradient.defaultRadialOptions.textureSpace = 'global';
+    }
+    if (PIXI.GraphicsContext?.defaultFillStyle) {
+      PIXI.GraphicsContext.defaultFillStyle.textureSpace = 'global';
+    }
+    if (PIXI.GraphicsContext?.defaultStrokeStyle) {
+      PIXI.GraphicsContext.defaultStrokeStyle.textureSpace = 'global';
+    }
+
 
     // Prepare a basic bitmap font that we can use for things like debug messages
     PIXI.BitmapFont.install({
@@ -663,14 +678,20 @@ export class GraphicsSystem extends AbstractSystem {
 
     // For testing, allow user to override the renderer preference:
     // `renderer=val` one of `webgl1`, `webgl2`/`webgl`, `webgpu`
-    let renderPreference = 'webgl';
+    // By default, prefer WebGPU and let Pixi fallback automatically if unavailable.
+    let renderPreference = 'webgpu';
     let renderGLVersion = 2;
     switch (urlhash.initialHashParams.get('renderer')) {
-      case 'webgpu':
-        renderPreference = 'webgpu';
+      case 'webgl2':
+      case 'webgl':
+        renderPreference = 'webgl';
         break;
       case 'webgl1':
+        renderPreference = 'webgl';
         renderGLVersion = 1;
+        break;
+      case 'webgpu':
+        renderPreference = 'webgpu';
         break;
     }
 

@@ -3,7 +3,7 @@ import RBush from 'rbush';
 import { HALF_PI, TAU, numWrap, vecAdd, vecAngle, vecScale, vecSubtract, geomRotatePoints } from '@rapid-sdk/math';
 
 import { AbstractLayer } from './AbstractLayer.js';
-import { getLineSegments, /*getDebugBBox,*/ lineToPoly } from './helpers.js';
+import { getLineSegments, /*getDebugBBox,*/ lineToPoly, normalizeRect } from './helpers.js';
 
 
 const MINZOOM = 12;
@@ -379,7 +379,7 @@ export class PixiLayerLabels extends AbstractLayer {
       // To work in a coordinate system that is consistent, remove the label offset.
       // If we didn't do this, as the user pans or rotates the map, the objects that leave
       // and re-enter the scene would end up with different coordinates each time!
-      const fRect = sourceObject.getBounds().rectangle;
+      const fRect = normalizeRect(sourceObject.getBounds().rectangle);
       fRect.x -= this._labelOffset.x;
       fRect.y -= this._labelOffset.y;
 
@@ -555,7 +555,7 @@ this.placeRopeLabel(feature, labelObj, coords);
     // To work in a coordinate system that is consistent, remove the label offset.
     // If we didn't do this, as the user pans or rotates the map, the objects that leave
     // and re-enter the scene would end up with different coordinates each time!
-    const fRect = container.getBounds().clone().pad(1, 0);
+    const fRect = normalizeRect(container.getBounds().rectangle.clone().pad(1, 0));
     fRect.x -= this._labelOffset.x;
     fRect.y -= this._labelOffset.y;
 

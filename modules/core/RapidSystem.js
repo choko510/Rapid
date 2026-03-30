@@ -115,6 +115,7 @@ export class RapidSystem extends AbstractSystem {
     const urlhash = context.systems.urlhash;
 
     const esri = context.services.esri;
+    const external = context.services.external;
     const mapwithai = context.services.mapwithai;
     const overture = context.services.overture;
 
@@ -122,6 +123,7 @@ export class RapidSystem extends AbstractSystem {
     // data-providing services are installed.
     const services = [];
     if (esri)      services.push(esri);
+    if (external)  services.push(external);
     if (mapwithai) services.push(mapwithai);
     if (overture)  services.push(overture);
 
@@ -149,6 +151,82 @@ export class RapidSystem extends AbstractSystem {
 
         this._started = true;
       });
+  }
+
+
+  /**
+   * importExternalManifest
+   * Import external datasets from a manifest object/string.
+   * @param   {Object|string}  manifest
+   * @return  {Object} import result from ExternalDatasetService
+   */
+  importExternalManifest(manifest) {
+    const external = this.context.services.external;
+    if (!external) {
+      throw new Error('External dataset service is unavailable');
+    }
+
+    const result = external.importManifest(manifest);
+    this._upsertExternalDatasets(result.datasets);
+    return result;
+  }
+
+
+  /**
+   * importExternalManifestFromURL
+   * Import external datasets from a remote manifest URL.
+   * @param   {string}  url
+   * @return  {Promise<Object>} import result from ExternalDatasetService
+   */
+  async importExternalManifestFromURL(url) {
+    const external = this.context.services.external;
+    if (!external) {
+      throw new Error('External dataset service is unavailable');
+    }
+
+    const result = await external.importFromURL(url);
+    this._upsertExternalDatasets(result.datasets);
+    return result;
+  }
+
+
+  /**
+   * importExternalManifestFromFile
+   * Import external datasets from a local JSON file.
+   * @param   {File}  file
+   * @return  {Promise<Object>} import result from ExternalDatasetService
+   */
+  async importExternalManifestFromFile(file) {
+    const external = this.context.services.external;
+    if (!external) {
+      throw new Error('External dataset service is unavailable');
+    }
+
+    const result = await external.importFromFile(file);
+    this._upsertExternalDatasets(result.datasets);
+    return result;
+  }
+
+
+  /**
+   * _upsertExternalDatasets
+   * Insert or replace external datasets into the catalog and auto enable them.
+   * @param   {Array<RapidDataset>}  datasets
+   */
+  _upsertExternalDatasets(datasets) {
+    for (const dataset of datasets) {
+      if (!dataset) continue;
+
+      this.catalog.set(dataset.id, dataset);
+      for (const category of dataset.categories) {
+        this.categories.add(category);
+      }
+
+      this._addedDatasetIDs.add(dataset.id);
+      this._enabledDatasetIDs.add(dataset.id);
+    }
+
+    this._datasetsChanged();
   }
 
 

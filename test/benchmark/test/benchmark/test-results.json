@@ -1,0 +1,235 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\eita2\\Downloads\\fer\\Rapid\\test\\benchmark\\playwright.config.mjs",
+    "rootDir": "C:/Users/eita2/Downloads/fer/Rapid/test/benchmark/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/eita2/Downloads/fer/Rapid/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/eita2/Downloads/fer/Rapid/test/benchmark/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "*.mjs"
+        ],
+        "timeout": 90000
+      },
+      {
+        "outputDir": "C:/Users/eita2/Downloads/fer/Rapid/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/Users/eita2/Downloads/fer/Rapid/test/benchmark/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "*.mjs"
+        ],
+        "timeout": 90000
+      },
+      {
+        "outputDir": "C:/Users/eita2/Downloads/fer/Rapid/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/eita2/Downloads/fer/Rapid/test/benchmark/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "*.mjs"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "github",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test/benchmark/test-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "benchmark.spec.mjs",
+      "file": "benchmark.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Run benchmarks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5218,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[Execution error] messageUncaught TypeError: Cannot read properties of undefined (reading 'assetPath') sourcehttp://127.0.0.1:8080/test/benchmark/bench_helpers.js line10 col19\n"
+                    },
+                    {
+                      "text": "[Execution error] messageUncaught SyntaxError: Cannot use import statement outside a module sourcehttp://127.0.0.1:8080/test/benchmark/tests/bench.js line2 col1\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-03-24T17:31:00.347Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c5fc9dfc02e868f7e7a2-3ce25c5778f694fb60b8",
+          "file": "benchmark.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "Run benchmarks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5543,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[Execution error] messageUncaught TypeError: Cannot read properties of undefined (reading 'assetPath') sourcehttp://127.0.0.1:8080/test/benchmark/bench_helpers.js line10 col19\n"
+                    },
+                    {
+                      "text": "[Execution error] messageUncaught SyntaxError: Cannot use import statement outside a module sourcehttp://127.0.0.1:8080/test/benchmark/tests/bench.js line2 col1\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-03-24T17:31:06.797Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c5fc9dfc02e868f7e7a2-6152174a5cafbba4b188",
+          "file": "benchmark.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "Run benchmarks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4941,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "[Execution error] messageUncaught TypeError: Cannot read properties of undefined (reading 'assetPath') sourcehttp://127.0.0.1:8080/test/benchmark/bench_helpers.js line10 col19\n"
+                    },
+                    {
+                      "text": "[Execution error] messageUncaught SyntaxError: Cannot use import statement outside a module sourcehttp://127.0.0.1:8080/test/benchmark/tests/bench.js line2 col1\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-03-24T17:31:13.527Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c5fc9dfc02e868f7e7a2-ac83b1fa5ac9f7dec68c",
+          "file": "benchmark.spec.mjs",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-24T17:30:59.337Z",
+    "duration": 19356.904,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

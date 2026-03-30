@@ -979,6 +979,62 @@ hide this one and style something on top of it.  */
   border-bottom: 1px solid #aaaa;
   color: #fff;
 }
+.modal-catalog .modal-section.rapid-catalog-import {
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
+  padding: 10px 20px;
+  border-bottom: 1px solid #aaaa;
+  color: #fff;
+  gap: 8px;
+}
+.rapid-catalog-import-row {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 8px;
+}
+.rapid-catalog-import-url {
+  flex: 1 1 auto;
+  background: #444;
+  color: #ddd;
+  padding: 4px 12px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  font-size: 14px;
+}
+.rapid-catalog-import-url:focus,
+.rapid-catalog-import-url:active {
+  background: #444;
+  color: #eee;
+  outline: none;
+  border: 1px solid #aaa;
+}
+.rapid-catalog-import-url-button {
+  flex: 0 0 auto;
+}
+.rapid-catalog-import-file-wrap {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 10px;
+}
+.rapid-catalog-import-file-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #ddd;
+}
+.rapid-catalog-import-file {
+  flex: 1 1 auto;
+}
+.rapid-catalog-import-result {
+  white-space: pre-line;
+  font-size: 12px;
+  color: #8ff58f;
+}
+.rapid-catalog-import-result.has-errors {
+  color: #ffb3b3;
+}
 .rapid-catalog-filter-search-wrap,
 .rapid-catalog-filter-type-wrap {
   position: relative;

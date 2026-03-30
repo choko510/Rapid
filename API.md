@@ -245,3 +245,64 @@ A "name" field must be included:
 ```
 
 -->
+
+
+## External Rapid Dataset Manifest (Assist Catalog Import)
+
+Rapid Assist catalog can import external datasets from:
+
+* A manifest URL
+* A local JSON file
+
+This import is session-scoped (in-memory only). Imported datasets are not persisted across page reloads.
+
+### Manifest shape
+
+```json
+{
+  "version": 1,
+  "datasets": [
+    {
+      "id": "my-dataset-id",
+      "label": "My Dataset",
+      "description": "Optional description",
+      "categories": ["roads", "featured"],
+      "source": {
+        "type": "geojson",
+        "url": "https://example.com/data.geojson"
+      },
+      "itemUrl": "https://example.com/info",
+      "licenseUrl": "https://example.com/license",
+      "thumbnailUrl": "https://example.com/thumb.png",
+      "color": "#da26d3",
+      "beta": false,
+      "featured": false
+    }
+  ]
+}
+```
+
+The root payload may also be a bare array of dataset objects.
+
+### Required fields
+
+Each dataset object must include:
+
+* `id` (string)
+* `label` (string)
+* `categories` (non-empty string array)
+* `source.type` (`geojson` or `vectortile`)
+* `source.url` (string URL)
+
+### Source types
+
+* `geojson`:
+  * URL should return GeoJSON (`FeatureCollection`, `Feature`, or Geometry object)
+* `vectortile`:
+  * URL template (`.../{z}/{x}/{y}.mvt`) or `.pmtiles` URL is supported
+
+### Import behavior
+
+* Duplicate IDs are replaced by the imported definition.
+* Imported datasets are automatically added and enabled.
+* Invalid dataset entries are skipped; valid entries are still imported.

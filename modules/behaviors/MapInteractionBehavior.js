@@ -1,4 +1,4 @@
-import { DEG2RAD, MIN_K, MAX_K, numClamp, vecLength, vecSubtract } from '@rapid-sdk/math';
+import { DEG2RAD, geoZoomToScale, numClamp, vecLength, vecSubtract } from '@rapid-sdk/math';
 
 import { AbstractBehavior } from './AbstractBehavior.js';
 import { osmNode } from '../osm/node.js';
@@ -7,6 +7,8 @@ const NEAR_TOLERANCE = 1;
 const FAR_TOLERANCE = 4;
 const MIN_Z = 2;
 const MAX_Z = 24;
+const MIN_K = geoZoomToScale(MIN_Z);
+const MAX_K = geoZoomToScale(MAX_Z);
 const ROTATION_THRESHOLD = 0.01;
 
 /**

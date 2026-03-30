@@ -127,6 +127,24 @@ describe('Difference', () => {
       assert.ok(diff.changes instanceof Map);
       assert.equal(diff.changes.size, 0);
     });
+
+    it('tracks geometry and property changes independently', () => {
+      const n1 = Rapid.osmNode({ id: 'n', loc: [0, 0], tags: { amenity: 'bench' } });
+      const n2 = n1.move([1, 1]);
+      const n3 = n1.mergeTags({ amenity: 'cafe' });
+
+      const base = new Rapid.Graph([n1]);
+      const moved = base.replace(n2);
+      const retagged = base.replace(n3);
+
+      const movedDiff = new Rapid.Difference(base, moved);
+      assert.equal(movedDiff.hasGeometryChange('n'), true);
+      assert.equal(movedDiff.hasPropertyChange('n'), false);
+
+      const retaggedDiff = new Rapid.Difference(base, retagged);
+      assert.equal(retaggedDiff.hasGeometryChange('n'), false);
+      assert.equal(retaggedDiff.hasPropertyChange('n'), true);
+    });
   });
 
 
@@ -137,6 +155,17 @@ describe('Difference', () => {
       const head = base.replace(node);
       const diff = new Rapid.Difference(base, head);
       assert.deepEqual(diff.created(), [node]);
+    });
+
+    it('returns a fresh array instance each call', () => {
+      const node = Rapid.osmNode({ id: 'n' });
+      const base = new Rapid.Graph();
+      const head = base.replace(node);
+      const diff = new Rapid.Difference(base, head);
+      const created1 = diff.created();
+      const created2 = diff.created();
+      assert.notEqual(created1, created2);
+      assert.deepEqual(created1, created2);
     });
   });
 
@@ -149,6 +178,59 @@ describe('Difference', () => {
       const diff = new Rapid.Difference(base, head);
       assert.deepEqual(diff.modified(), [n2]);
     });
+
+    it('returns a fresh array instance each call', () => {
+      const n1 = Rapid.osmNode({ id: 'n' });
+      const n2 = n1.move([1, 2]);
+      const base = new Rapid.Graph([n1]);
+      const head = base.replace(n2);
+      const diff = new Rapid.Difference(base, head);
+      const modified1 = diff.modified();
+      const modified2 = diff.modified();
+      assert.notEqual(modified1, modified2);
+      assert.deepEqual(modified1, modified2);
+    });
+  });
+
+  describe('#modifiedGeometry', () => {
+    it('returns only entities with geometry changes', () => {
+      const n1 = Rapid.osmNode({ id: 'n', loc: [0, 0], tags: { amenity: 'bench' } });
+      const n2 = n1.move([1, 1]);
+      const n3 = n1.mergeTags({ amenity: 'cafe' });
+
+      const base = new Rapid.Graph([n1]);
+      const head = base.replace(n2).replace(n3);
+      const diff = new Rapid.Difference(base, head);
+      const modifiedGeometry = diff.modifiedGeometry();
+
+      assert.deepEqual(modifiedGeometry, []);
+    });
+
+    it('includes moved entities and excludes tag-only entities', () => {
+      const n1 = Rapid.osmNode({ id: 'n1', loc: [0, 0], tags: { amenity: 'bench' } });
+      const n2 = Rapid.osmNode({ id: 'n2', loc: [0, 0], tags: { amenity: 'bench' } });
+      const moved = n1.move([1, 1]);
+      const retagged = n2.mergeTags({ amenity: 'cafe' });
+
+      const base = new Rapid.Graph([n1, n2]);
+      const head = base.replace(moved).replace(retagged);
+      const diff = new Rapid.Difference(base, head);
+      const modifiedGeometry = diff.modifiedGeometry();
+
+      assert.deepEqual(modifiedGeometry, [moved]);
+    });
+
+    it('returns a fresh array instance each call', () => {
+      const n1 = Rapid.osmNode({ id: 'n' });
+      const n2 = n1.move([1, 2]);
+      const base = new Rapid.Graph([n1]);
+      const head = base.replace(n2);
+      const diff = new Rapid.Difference(base, head);
+      const modified1 = diff.modifiedGeometry();
+      const modified2 = diff.modifiedGeometry();
+      assert.notEqual(modified1, modified2);
+      assert.deepEqual(modified1, modified2);
+    });
   });
 
   describe('#deleted', () => {
@@ -158,6 +240,17 @@ describe('Difference', () => {
       const head = base.remove(node);
       const diff = new Rapid.Difference(base, head);
       assert.deepEqual(diff.deleted(), [node]);
+    });
+
+    it('returns a fresh array instance each call', () => {
+      const node = Rapid.osmNode({ id: 'n' });
+      const base = new Rapid.Graph([node]);
+      const head = base.remove(node);
+      const diff = new Rapid.Difference(base, head);
+      const deleted1 = diff.deleted();
+      const deleted2 = diff.deleted();
+      assert.notEqual(deleted1, deleted2);
+      assert.deepEqual(deleted1, deleted2);
     });
   });
 
@@ -291,6 +384,16 @@ describe('Difference', () => {
       assert.ok(summary instanceof Map);
       assert.deepEqual(summary.get('-'), { changeType: 'modified', entity: way, graph: head });
       assert.deepEqual(summary.get('c'), { changeType: 'created', entity: vertex, graph: head });
+    });
+
+    it('returns a fresh map instance each call', () => {
+      const way = Rapid.osmWay({ id: '+' });
+      const head = base.replace(way);
+      const diff = new Rapid.Difference(base, head);
+      const summary1 = diff.summary();
+      const summary2 = diff.summary();
+      assert.notEqual(summary1, summary2);
+      assert.deepEqual([...summary1.entries()], [...summary2.entries()]);
     });
   });
 
@@ -446,5 +549,44 @@ describe('Difference', () => {
       assert.equal(complete.get('r2'), r2);
     });
 
+    it('returns a fresh map instance each call', () => {
+      const node = Rapid.osmNode({ id: 'n' });
+      const base = new Rapid.Graph();
+      const head = base.replace(node);
+      const diff = new Rapid.Difference(base, head);
+      const complete1 = diff.complete();
+      const complete2 = diff.complete();
+      assert.notEqual(complete1, complete2);
+      assert.deepEqual([...complete1.entries()], [...complete2.entries()]);
+    });
+
+  });
+
+  describe('#completeEntityIDs', () => {
+    it('returns the complete set of affected ids', () => {
+      const n1 = Rapid.osmNode({ id: 'n1' });
+      const n2 = Rapid.osmNode({ id: 'n2' });
+      const w1 = Rapid.osmWay({ id: 'w1', nodes: ['n1'] });
+      const w2 = w1.addNode('n2');
+      const base = new Rapid.Graph([n1, n2, w1]);
+      const head = base.replace(w2);
+      const diff = new Rapid.Difference(base, head);
+
+      const ids = diff.completeEntityIDs();
+      assert.ok(ids instanceof Set);
+      assert.deepEqual([...ids].sort(), ['n1', 'n2', 'w1']);
+    });
+
+    it('returns a fresh set instance each call', () => {
+      const node = Rapid.osmNode({ id: 'n' });
+      const base = new Rapid.Graph();
+      const head = base.replace(node);
+      const diff = new Rapid.Difference(base, head);
+
+      const ids1 = diff.completeEntityIDs();
+      const ids2 = diff.completeEntityIDs();
+      assert.notEqual(ids1, ids2);
+      assert.deepEqual([...ids1], [...ids2]);
+    });
   });
 });

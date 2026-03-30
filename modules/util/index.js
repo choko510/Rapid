@@ -13,4 +13,5 @@ export { utilSanitizeHTML } from './sanitize.js';
 export { utilSetDimensions } from './dimensions.js';
 export { utilSetTransform } from './util.js';
 export { utilTotalExtent } from './util.js';
+export { utilPatchTransformCompat } from './transform_compat.js';
 export { utilTriggerEvent } from './trigger_event.js';

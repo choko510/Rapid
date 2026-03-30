@@ -532,6 +532,26 @@ describe('FilterSystem', () => {
   });
 
 
+  describe('#clearEntityID', () => {
+    it('clears all cached versions for an entity id', () => {
+      const graph = new Rapid.Graph([
+        Rapid.osmNode({ id: 'n1', tags: { amenity: 'bar' }, version: 1 })
+      ]);
+
+      const n1 = graph.entity('n1');
+      _filterSystem.getMatches(n1, graph, n1.geometry(graph));
+      expect(Object.keys(_filterSystem._cache).some(k => k.startsWith('n1v'))).to.be.true;
+
+      n1.touch();
+      _filterSystem.getMatches(n1, graph, n1.geometry(graph));
+      expect(Object.keys(_filterSystem._cache).filter(k => k.startsWith('n1v')).length >= 2).to.be.true;
+
+      _filterSystem.clearEntityID('n1');
+      expect(Object.keys(_filterSystem._cache).every(k => !k.startsWith('n1v'))).to.be.true;
+    });
+  });
+
+
   describe('hiding', () => {
     it('hides child vertices on a hidden way', () => {
       const a = Rapid.osmNode({id: 'a', version: 1});

@@ -350,7 +350,8 @@ export class PixiFeaturePolygon extends AbstractFeature {
         color: color,
         alpha: alpha,
         texture: texture, // Optional: include only if texture is used
-        matrix: textureMatrix // Optional: include only if texture is used
+        matrix: textureMatrix, // Optional: include only if texture is used
+        textureSpace: 'global'
       };
 
       fill.clear();

@@ -19,3 +19,6 @@ export * from './util/index.js';
 export * from './validations/index.js';
 
 export { Context } from './Context.js';
+
+import { utilPatchTransformCompat } from './util/transform_compat.js';
+utilPatchTransformCompat();

@@ -124,12 +124,17 @@ export class MapSystem extends AbstractSystem {
             gfx.deferredRedraw();
           })
           .on('stagingchange', difference => {
-            // todo - maybe only do this if difference.didChange.geometry?
-            const complete = difference.complete();
-            for (const entity of complete.values()) {
-              if (entity) {      // may be undefined if entity was deleted
-                entity.touch();  // bump .v in place, rendering code will pick it up as dirty
-                filters.clearEntity(entity);  // clear feature filter cache
+            const changed = difference.changes;
+            if (changed.size) {
+              const shouldExpand = difference.didChange.addition || difference.didChange.deletion || difference.didChange.geometry;
+              const dirtyIDs = shouldExpand ? difference.completeEntityIDs() : new Set(changed.keys());
+
+              for (const entityID of dirtyIDs) {
+                const entity = editor.staging.graph.hasEntity(entityID);
+                if (entity) {      // may be undefined if entity was deleted
+                  entity.touch();  // bump .v in place, rendering code will pick it up as dirty
+                }
+                filters.clearEntityID(entityID);  // clear feature filter cache for this entity
               }
             }
             gfx.immediateRedraw();

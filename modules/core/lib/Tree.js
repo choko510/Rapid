@@ -162,10 +162,11 @@ export class Tree {
     }
 
     if (changed.geometry) {
-      for (const entity of diff.modified()) {
+      const seen = new Set();
+      for (const entity of diff.modifiedGeometry()) {
         this._removeEntity(entity.id);
         toUpdate.set(entity.id, entity);
-        this._includeParents(entity, toUpdate);
+        this._includeParents(entity, toUpdate, seen);
       }
     }
 
