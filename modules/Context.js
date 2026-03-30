@@ -179,17 +179,45 @@ export class Context extends EventEmitter {
     // ---------------------------------
     const allSystems = Object.values(this.systems);
     const allServices = Object.values(this.services);
+    const nsi = this.services.nsi;
+    const esri = this.services.esri;
+    const overture = this.services.overture;
+    const deferredServices = [nsi, esri, overture].filter(Boolean);
+    const criticalServices = allServices.filter(s => !deferredServices.includes(s));
 
     return this._initPromise = Promise.resolve()
       .then(() => Promise.all( allSystems.map(s => s.initAsync()) ))
-      .then(() => Promise.all( allServices.map(s => s.initAsync()) ))
+      .then(() => Promise.all( criticalServices.map(s => s.initAsync()) ))
       .then(() => {
         // Setup the osm connection if we have preauth credentials to use
         const osm = this.services.osm;
         return (osm && this._preauth) ? osm.switchAsync(this._preauth) : Promise.resolve();
       })
       .then(() => Promise.all( allSystems.map(s => s.autoStart ? s.startAsync() : Promise.resolve()) ))
-      .then(() => Promise.all( allServices.map(s => s.autoStart ? s.startAsync() : Promise.resolve()) ));
+      .then(() => Promise.all( criticalServices.map(s => s.autoStart ? s.startAsync() : Promise.resolve()) ))
+      .then(() => {
+        // Some large services are not required to render the initial UI.
+        // Start them in the background to keep startup responsive.
+        if (nsi) {
+          nsi.initAsync()
+            .then(() => nsi.autoStart ? nsi.startAsync() : Promise.resolve());
+        }
+
+        if (esri) {
+          esri.initAsync()
+            .then(() => {
+              const rapid = this.systems.rapid;
+              if (rapid) {
+                rapid.syncServiceDatasets(esri.getAvailableDatasets());
+              }
+              return esri.autoStart ? esri.startAsync() : Promise.resolve();
+            });
+        }
+
+        if (overture) {
+          overture.initAsync();
+        }
+      });
   }
 
 

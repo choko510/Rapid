@@ -231,6 +231,26 @@ export class RapidSystem extends AbstractSystem {
 
 
   /**
+   * syncServiceDatasets
+   * Insert or replace service-provided datasets into the catalog.
+   * This keeps user selected enabled/added state for existing datasets.
+   * @param   {Array<RapidDataset>}  datasets
+   */
+  syncServiceDatasets(datasets) {
+    for (const dataset of datasets) {
+      if (!dataset) continue;
+
+      this.catalog.set(dataset.id, dataset);
+      for (const category of dataset.categories) {
+        this.categories.add(category);
+      }
+    }
+
+    this._datasetsChanged();
+  }
+
+
+  /**
    * resetAsync
    * Called after completing an edit session to reset any internal state
    * @return {Promise} Promise resolved when this component has completed resetting

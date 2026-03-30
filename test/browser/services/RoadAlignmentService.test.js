@@ -171,5 +171,35 @@ describe('RoadAlignmentService', () => {
       expect(result.ok).to.be.true;
       expect(result.insertions.length).to.be.greaterThan(0);
     });
+
+    it('avoids backtracking insertions that would create spike artifacts', () => {
+      const graph = new Rapid.Graph([
+        Rapid.osmNode({ id: 'n1', loc: [0.0000, 0.0000] }),
+        Rapid.osmNode({ id: 'n2', loc: [0.0010, 0.0000] }),
+        Rapid.osmWay({ id: 'w1', nodes: ['n1', 'n2'], tags: { highway: 'residential' } })
+      ]);
+      const ways = [graph.entity('w1')];
+
+      // These references are just beyond each endpoint and can attract samples
+      // into reverse-direction insertions if we don't guard against them.
+      const referenceLines = [
+        {
+          coords: [[-0.0002, -0.0003], [-0.0002, 0.0003]],
+          extent: new Rapid.sdk.Extent([-0.0002, -0.0003], [-0.0002, 0.0003]),
+          bbox: { minX: -0.0002, minY: -0.0003, maxX: -0.0002, maxY: 0.0003 }
+        },
+        {
+          coords: [[0.0012, -0.0003], [0.0012, 0.0003]],
+          extent: new Rapid.sdk.Extent([0.0012, -0.0003], [0.0012, 0.0003]),
+          bbox: { minX: 0.0012, minY: -0.0003, maxX: 0.0012, maxY: 0.0003 }
+        }
+      ];
+
+      const result = service.reshapeForWays(ways, graph, referenceLines);
+      expect(result.ok).to.be.true;
+      expect(result.matchedNodeCount).to.be.at.least(2);
+      expect(result.insertions).to.eql([]);
+      expect(result.moveNodeLocs.size).to.be.at.least(1);
+    });
   });
 });

@@ -28,7 +28,11 @@ const ADD_NODE_DEVIATION_METERS = 1.8;
 const REMOVE_NODE_DEVIATION_METERS = 0.9;
 const MIN_INSERT_ENDPOINT_DISTANCE_METERS = 2;
 const MIN_INSERT_SEPARATION_METERS = 3;
+const MIN_INSERT_T_SEPARATION = 0.08;
 const MIN_SHAPE_MATCH_COUNT = 2;
+const MAX_INSERT_DIRECTION_CHANGE_DEGREES = 120;
+const MIN_TURN_CHECK_SEGMENT_METERS = 0.5;
+const MAX_SANITIZE_ITERATIONS = 4;
 
 
 /**
@@ -283,7 +287,7 @@ export class RoadAlignmentService extends AbstractSystem {
       const segmentPlans = this._planInsertionsForWay(wayNodes, lines, SHAPE_SAMPLE_SPACING_METERS);
       for (const plan of segmentPlans) {
         if (insertions.length >= MAX_INSERTIONS) break;
-        insertions.push({ wayID: way.id, index: plan.index, loc: plan.loc });
+        insertions.push({ wayID: way.id, index: plan.index, loc: plan.loc, t: plan.t });
       }
 
       for (const node of wayNodes) {
@@ -322,11 +326,15 @@ export class RoadAlignmentService extends AbstractSystem {
       }
     }
 
+    const sanitized = this._sanitizeShapePlanForWays(selectedWays, graph, moveNodeLocs, insertions, removals);
+    const safeInsertions = sanitized.insertions;
+    const safeRemovals = sanitized.removals;
+
     if (matchedNodeCount < MIN_SHAPE_MATCH_COUNT) {
       return { ok: false, reason: 'not_enough_matches', matchCount: matchedNodeCount };
     }
 
-    if (!moveNodeLocs.size && !insertions.length && !removals.length) {
+    if (!moveNodeLocs.size && !safeInsertions.length && !safeRemovals.length) {
       return { ok: false, reason: 'already_aligned' };
     }
 
@@ -335,8 +343,8 @@ export class RoadAlignmentService extends AbstractSystem {
       reason: null,
       mode: 'shape',
       moveNodeLocs: moveNodeLocs,
-      insertions: insertions,
-      removals: removals,
+      insertions: safeInsertions,
+      removals: safeRemovals,
       matchedNodeCount: matchedNodeCount
     };
   }
@@ -438,6 +446,8 @@ export class RoadAlignmentService extends AbstractSystem {
 
         const target = this._nearestReferencePoint(sample, referenceLines, SHAPE_SNAP_DISTANCE_METERS);
         if (!target) continue;
+        const targetT = this._fractionAlongSegment(a, b, target);
+        if (!Number.isFinite(targetT)) continue;
 
         const deviationMeters = geoSphericalDistance(sample, target);
         if (deviationMeters < ADD_NODE_DEVIATION_METERS) continue;
@@ -445,23 +455,174 @@ export class RoadAlignmentService extends AbstractSystem {
         const distanceToA = geoSphericalDistance(target, a);
         const distanceToB = geoSphericalDistance(target, b);
         if (Math.min(distanceToA, distanceToB) < MIN_INSERT_ENDPOINT_DISTANCE_METERS) continue;
+        if (this._directionChangeDegrees(a, target, b) > MAX_INSERT_DIRECTION_CHANGE_DEGREES) continue;
 
         if (candidates.some(other => geoSphericalDistance(other.loc, target) < MIN_INSERT_SEPARATION_METERS)) {
           continue;
         }
 
-        candidates.push({ index: i + 1, loc: target, score: deviationMeters });
+        candidates.push({ index: i + 1, loc: target, score: deviationMeters, t: targetT });
       }
 
-      candidates
+      const selected = candidates
         .sort((d1, d2) => d2.score - d1.score)
-        .slice(0, MAX_INSERTS_PER_SEGMENT)
+        .slice(0, MAX_INSERTS_PER_SEGMENT);
+
+      let previousT = -Infinity;
+      selected
+        .sort((d1, d2) => d1.t - d2.t)
         .forEach(candidate => {
-          plans.push({ index: candidate.index, loc: candidate.loc, score: candidate.score });
+          if ((candidate.t - previousT) < MIN_INSERT_T_SEPARATION) return;
+          previousT = candidate.t;
+          plans.push({ index: candidate.index, loc: candidate.loc, score: candidate.score, t: candidate.t });
         });
     }
 
     return plans;
+  }
+
+
+  _sanitizeShapePlanForWays(ways, graph, moveNodeLocs, insertions, removals) {
+    const safeInsertions = [];
+    const insertionsByWay = new Map();
+    const removalsSet = new Set(removals);
+
+    for (const insertion of insertions) {
+      if (!insertion?.wayID || !this._isValidCoordinate(insertion.loc)) continue;
+      if (!insertionsByWay.has(insertion.wayID)) {
+        insertionsByWay.set(insertion.wayID, []);
+      }
+      insertionsByWay.get(insertion.wayID).push(insertion);
+    }
+
+    for (const way of ways) {
+      const candidates = (insertionsByWay.get(way.id) ?? [])
+        .slice()
+        .sort((a, b) => (a.index - b.index) || ((a.t ?? 0) - (b.t ?? 0)));
+
+      let accepted = candidates;
+      let iteration = 0;
+      while (iteration < MAX_SANITIZE_ITERATIONS && accepted.length) {
+        iteration++;
+        const simulated = this._simulateWayShape(way, graph, moveNodeLocs, accepted, removalsSet);
+        const unsafeKeys = this._findUnsafeInsertionKeys(simulated);
+        if (!unsafeKeys.size) break;
+
+        const filtered = accepted.filter(insertion => !unsafeKeys.has(this._insertionKey(insertion)));
+        if (filtered.length === accepted.length) break;
+        accepted = filtered;
+      }
+
+      safeInsertions.push(...accepted);
+    }
+
+    return { insertions: safeInsertions, removals: removals };
+  }
+
+
+  _simulateWayShape(way, graph, moveNodeLocs, insertions, removalsSet) {
+    const items = [];
+
+    for (const nodeID of way.nodes ?? []) {
+      const node = graph.hasEntity(nodeID);
+      if (!node?.loc) continue;
+      const loc = moveNodeLocs.get(nodeID) ?? node.loc;
+      items.push({ nodeID: nodeID, loc: loc });
+    }
+
+    const sortedInsertions = insertions
+      .slice()
+      .sort((a, b) => (a.index - b.index) || ((a.t ?? 0) - (b.t ?? 0)));
+
+    let insertedCount = 0;
+    for (const insertion of sortedInsertions) {
+      if (!this._isValidCoordinate(insertion.loc)) continue;
+      const index = Math.max(0, Math.min(items.length, insertion.index + insertedCount));
+      items.splice(index, 0, {
+        nodeID: null,
+        loc: insertion.loc,
+        insertionKey: this._insertionKey(insertion)
+      });
+      insertedCount++;
+    }
+
+    return items.filter(item => {
+      if (!item.nodeID) return true;
+      return !removalsSet.has(item.nodeID);
+    });
+  }
+
+
+  _findUnsafeInsertionKeys(items) {
+    const unsafe = new Set();
+    if (!Array.isArray(items) || items.length < 3) return unsafe;
+
+    for (let i = 1; i < items.length - 1; i++) {
+      const curr = items[i];
+      if (!curr?.insertionKey) continue;
+
+      const prevLoc = items[i - 1]?.loc;
+      const currLoc = curr.loc;
+      const nextLoc = items[i + 1]?.loc;
+      if (!this._isValidCoordinate(prevLoc) || !this._isValidCoordinate(currLoc) || !this._isValidCoordinate(nextLoc)) {
+        continue;
+      }
+
+      const directionChange = this._directionChangeDegrees(prevLoc, currLoc, nextLoc);
+      if (!Number.isFinite(directionChange)) continue;
+      if (directionChange > MAX_INSERT_DIRECTION_CHANGE_DEGREES) {
+        unsafe.add(curr.insertionKey);
+      }
+    }
+
+    return unsafe;
+  }
+
+
+  _insertionKey(insertion) {
+    return `${insertion.wayID}:${insertion.index}:${insertion.loc[0]},${insertion.loc[1]}`;
+  }
+
+
+  _directionChangeDegrees(a, b, c) {
+    if (!this._isValidCoordinate(a) || !this._isValidCoordinate(b) || !this._isValidCoordinate(c)) {
+      return 0;
+    }
+
+    const latAB = (a[1] + b[1]) / 2;
+    const latBC = (b[1] + c[1]) / 2;
+    const abX = geoLonToMeters(b[0] - a[0], latAB);
+    const abY = geoLatToMeters(b[1] - a[1]);
+    const bcX = geoLonToMeters(c[0] - b[0], latBC);
+    const bcY = geoLatToMeters(c[1] - b[1]);
+
+    const lenAB = Math.sqrt(abX * abX + abY * abY);
+    const lenBC = Math.sqrt(bcX * bcX + bcY * bcY);
+    if (lenAB < MIN_TURN_CHECK_SEGMENT_METERS || lenBC < MIN_TURN_CHECK_SEGMENT_METERS) {
+      return 0;
+    }
+
+    const dot = (abX * bcX + abY * bcY) / (lenAB * lenBC);
+    const clamped = Math.max(-1, Math.min(1, dot));
+    return Math.acos(clamped) * 180 / Math.PI;
+  }
+
+
+  _fractionAlongSegment(a, b, p) {
+    if (!this._isValidCoordinate(a) || !this._isValidCoordinate(b) || !this._isValidCoordinate(p)) {
+      return 0;
+    }
+
+    const atLat = (a[1] + b[1] + p[1]) / 3;
+    const abX = geoLonToMeters(b[0] - a[0], atLat);
+    const abY = geoLatToMeters(b[1] - a[1]);
+    const apX = geoLonToMeters(p[0] - a[0], atLat);
+    const apY = geoLatToMeters(p[1] - a[1]);
+    const denominator = (abX * abX) + (abY * abY);
+    if (denominator === 0) return 0;
+
+    const t = ((apX * abX) + (apY * abY)) / denominator;
+    return Math.max(0, Math.min(1, t));
   }
 
 

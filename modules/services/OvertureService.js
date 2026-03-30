@@ -108,6 +108,8 @@ export class OvertureService extends AbstractSystem {
     this._pmtilesUrls = new Map();   // Map<themeName, pmtilesUrl>  e.g. 'buildings' → 'https://…/buildings.pmtiles'
     this._releaseId = '';             // e.g. '2026-01-21.0'
     this._initPromise = null;
+    this._catalogPromise = null;
+    this._nextCatalogRetry = 0;
 
     // For buildings conflation - separate state for each dataset
     this._esriBuildingsGraph = null;
@@ -172,6 +174,28 @@ export class OvertureService extends AbstractSystem {
 
 
   /**
+   * _ensureCatalogAsync
+   * Ensure we have Overture PMTiles URLs loaded (retryable on failure).
+   * @return {Promise}
+   */
+  _ensureCatalogAsync() {
+    if (this._pmtilesUrls.size) return Promise.resolve();
+    if (this._catalogPromise) return this._catalogPromise;
+    if (Date.now() < this._nextCatalogRetry) return Promise.resolve();
+
+    this._catalogPromise = this._loadStacCatalogAsync()
+      .finally(() => {
+        if (!this._pmtilesUrls.size) {
+          this._nextCatalogRetry = Date.now() + 30000;   // avoid retrying on every frame
+          this._catalogPromise = null;   // allow retry on future calls
+        }
+      });
+
+    return this._catalogPromise;
+  }
+
+
+  /**
    * initAsync
    * Called after all core objects have been constructed.
    * @return {Promise} Promise resolved when this component has completed initialization
@@ -180,8 +204,7 @@ export class OvertureService extends AbstractSystem {
     if (this._initPromise) return this._initPromise;
 
     const vtService = this.context.services.vectortile;
-    return this._initPromise = vtService.initAsync()
-      .then(() => this._loadStacCatalogAsync());
+    return this._initPromise = vtService.initAsync();
   }
 
 
@@ -328,19 +351,31 @@ export class OvertureService extends AbstractSystem {
 
     if (datasetID === 'overture-places') {
       const url = this._pmtilesUrls.get('places');
-      if (url) vtService.loadTiles(url);
+      if (!url) {
+        this._ensureCatalogAsync();
+        return;
+      }
+      vtService.loadTiles(url);
     } else if (datasetID.includes('buildings')) {
       const zoom = this.context.viewport.transform.zoom;
       if (zoom < MIN_BUILDING_ZOOM) return;
 
       const url = this._pmtilesUrls.get('buildings');
-      if (url) vtService.loadTiles(url);
+      if (!url) {
+        this._ensureCatalogAsync();
+        return;
+      }
+      vtService.loadTiles(url);
     } else if (datasetID === 'tomtom-roads') {
       const zoom = this.context.viewport.transform.zoom;
       if (zoom < MIN_TRANSPORTATION_ZOOM) return;
 
       const url = this._pmtilesUrls.get('transportation');
-      if (url) vtService.loadTiles(url);
+      if (!url) {
+        this._ensureCatalogAsync();
+        return;
+      }
+      vtService.loadTiles(url);
     }
   }
 
@@ -356,13 +391,20 @@ export class OvertureService extends AbstractSystem {
 
     if (datasetID === 'overture-places') {
       const url = this._pmtilesUrls.get('places');
-      return url ? vtService.getData(url) : [];
+      if (!url) {
+        this._ensureCatalogAsync();
+        return [];
+      }
+      return vtService.getData(url);
     } else if (datasetID === 'esri-buildings') {
       const zoom = this.context.viewport.transform.zoom;
       if (zoom < MIN_BUILDING_ZOOM) return [];
 
       const url = this._pmtilesUrls.get('buildings');
-      if (!url) return [];
+      if (!url) {
+        this._ensureCatalogAsync();
+        return [];
+      }
       const geojsonFeatures = vtService.getData(url);
       return this._conflateBuildings(geojsonFeatures, datasetID, ESRI_SOURCES);
     } else if (datasetID === 'ml-buildings-overture') {
@@ -370,7 +412,10 @@ export class OvertureService extends AbstractSystem {
       if (zoom < MIN_BUILDING_ZOOM) return [];
 
       const url = this._pmtilesUrls.get('buildings');
-      if (!url) return [];
+      if (!url) {
+        this._ensureCatalogAsync();
+        return [];
+      }
       const geojsonFeatures = vtService.getData(url);
       return this._conflateBuildings(geojsonFeatures, datasetID, ML_SOURCES);
     } else if (datasetID === 'tomtom-roads') {
@@ -378,7 +423,10 @@ export class OvertureService extends AbstractSystem {
       if (zoom < MIN_TRANSPORTATION_ZOOM) return [];
 
       const url = this._pmtilesUrls.get('transportation');
-      if (!url) return [];
+      if (!url) {
+        this._ensureCatalogAsync();
+        return [];
+      }
       const geojsonFeatures = vtService.getData(url);
       return this._conflateTransportation(geojsonFeatures, datasetID);
     } else {

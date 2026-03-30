@@ -45,6 +45,7 @@ export class NsiService extends AbstractSystem {
     this.status = 'loading';  // 'loading', 'ok', 'failed'
 
     this._nsi = {};
+    this._initPromise = null;
   }
 
 
@@ -54,8 +55,11 @@ export class NsiService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed initialization
    */
   initAsync() {
+    if (this._initPromise) return this._initPromise;
+
+    this.status = 'loading';
     const presets = this.context.systems.presets;
-    return presets.initAsync()
+    return this._initPromise = presets.initAsync()
       .then(() => this._loadNsiPresetsAsync())
       .then(() => this._loadNsiDataAsync())
       .then(() => this.status = 'ok')
