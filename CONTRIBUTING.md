@@ -44,7 +44,8 @@ This section suggests a toolset and method to start contributing to Rapid. Howev
 5. Make sure you are using [the latest `node`](https://nodejs.org/en/download) by running `node --version`. If not, then running `nvm install node` will set it up for you.
 6. Install all required dependencies with `pnpm install`
 7. Then run `pnpm run all` to set up Rapid.
-8. Finally, run `pnpm run start` to start the server on port 8080.
+8. Install Python dependencies for the development server with `python -m pip install -r scripts/requirements.txt`.
+9. Finally, run `pnpm run start` to start the server on port 8080.
 
 Congrats! 🎉 You should now be able to use rapid by navigating to [http://127.0.0.1:8080/](http://127.0.0.1:8080/) on Chrome.
 

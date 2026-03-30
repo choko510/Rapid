@@ -50,7 +50,7 @@ describe('RoadAlignmentService', () => {
         ]
       };
 
-      fetchMock.route(/localhost:8000\/tile\/\d+\/\d+\/\d+\.geojson/, {
+      fetchMock.route(/localhost:8080\/tile\/\d+\/\d+\/\d+\.geojson/, {
         body: JSON.stringify(payload),
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -71,7 +71,7 @@ describe('RoadAlignmentService', () => {
     });
 
     it('treats 404 tiles as empty but successful', done => {
-      fetchMock.route(/localhost:8000\/tile\/\d+\/\d+\/\d+\.geojson/, 404);
+      fetchMock.route(/localhost:8080\/tile\/\d+\/\d+\/\d+\.geojson/, 404);
 
       const extent = new Rapid.sdk.Extent([135, 34], [135.001, 34.001]);
       service.loadTilesForExtent(extent);

@@ -7,6 +7,8 @@ transifex.auth
 .idea/
 .tx/tmp/
 .vscode/
+__pycache__/
+*.pyc
 coverage/
 node_modules/
 

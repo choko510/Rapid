@@ -10,6 +10,7 @@ const MAX_Z = 24;
 const MIN_K = geoZoomToScale(MIN_Z);
 const MAX_K = geoZoomToScale(MAX_Z);
 const ROTATION_THRESHOLD = 0.01;
+const LASSO_PREF_KEY = 'prefs.lasso.enabled';
 
 /**
  * `MapInteractionBehavior` listens to pointer events and converts those into zoom/pan map interactions
@@ -225,9 +226,12 @@ export class MapInteractionBehavior extends AbstractBehavior {
 
     const context = this.context;
     const eventManager = context.systems.gfx.events;
+    const storage = context.systems.storage;
+    const lassoBehavior = context.behaviors.lasso;
+    const lassoMode = lassoBehavior?.enabled && storage?.getItem(LASSO_PREF_KEY) === 'true';
 
     // If shift is pressed it's a lasso, not a map drag
-    if (eventManager.modifierKeys.has('Shift')) return;
+    if (eventManager.modifierKeys.has('Shift') || lassoMode) return;
 
     const down = this._getEventData(e);
     const isDraggableTarget = (down.target?.data instanceof osmNode && down.target?.layerID === 'osm');

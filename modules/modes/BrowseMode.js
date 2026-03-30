@@ -1,4 +1,5 @@
 import { AbstractMode } from './AbstractMode.js';
+import { operationCreateWaterFromReference } from '../operations/create_water_from_reference.js';
 import { operationPaste } from '../operations/paste.js';
 
 const DEBUG = false;
@@ -37,7 +38,10 @@ export class BrowseMode extends AbstractMode {
     const context = this.context;
     this._active = true;
 
-    this.operations = [ operationPaste(context) ];
+    this.operations = [
+      operationCreateWaterFromReference(context),
+      operationPaste(context)
+    ];
     context.enableBehaviors(['hover', 'select', 'drag', 'paste', 'lasso', 'mapInteraction']);
 
     context.behaviors.hover
@@ -115,4 +119,3 @@ export class BrowseMode extends AbstractMode {
     }
   }
 }
-

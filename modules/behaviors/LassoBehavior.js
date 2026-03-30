@@ -3,6 +3,8 @@ import { utilArrayIntersection } from '@rapid-sdk/util';
 
 import { AbstractBehavior } from './AbstractBehavior.js';
 
+const LASSO_PREF_KEY = 'prefs.lasso.enabled';
+
 
 /**
  * `LassoBehavior` listens to pointer events and tries to
@@ -68,6 +70,16 @@ export class LassoBehavior extends AbstractBehavior {
 
 
   /**
+   * isLassoModeActive
+   * @return {boolean} `true` if lasso mode was enabled from the toolbar, `false` if not
+   */
+  isLassoModeActive() {
+    const storage = this.context.systems.storage;
+    return this.enabled && storage?.getItem(LASSO_PREF_KEY) === 'true';
+  }
+
+
+  /**
    * _pointerdown
    * Handler for pointerdown events.
    * @param  `e`  A Pixi FederatedPointerEvent
@@ -82,7 +94,7 @@ export class LassoBehavior extends AbstractBehavior {
     if (!eventManager.pointerOverRenderer) return;
 
     const modifiers = eventManager.modifierKeys;
-    const drawLasso = modifiers.has('Shift');
+    const drawLasso = modifiers.has('Shift') || this.isLassoModeActive();
 
     if (drawLasso) {
       this._lassoing = true;

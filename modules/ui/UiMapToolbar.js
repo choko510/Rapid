@@ -1,7 +1,7 @@
 import { selection, select } from 'd3-selection';
 
 import {
-  UiDownloadTool, UiDrawModesTool, UiRapidTool, UiSaveTool, UiUndoRedoTool
+  UiDownloadTool, UiDrawModesTool, UiLassoTool, UiRapidTool, UiSaveTool, UiUndoRedoTool
 } from './tools/index.js';
 
 
@@ -30,6 +30,7 @@ export class UiMapToolbar {
 
     // Create child components
     this.DrawModes = new UiDrawModesTool(context);
+    this.Lasso = new UiLassoTool(context);
     this.Rapid = new UiRapidTool(context);
     this.UndoRedo = new UiUndoRedoTool(context);
     this.Save = new UiSaveTool(context);
@@ -69,6 +70,7 @@ export class UiMapToolbar {
     const tools = [
       'spacer',
       this.DrawModes,
+      this.Lasso,
       this.Rapid,
       'spacer',
       this.UndoRedo,

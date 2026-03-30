@@ -18,6 +18,7 @@ en:
     recent: Recent
     favorites: Favorites
     add_feature: Add Feature
+    lasso_selection: Lasso Select
     rapid_features: Assist
   title:
     format:
@@ -380,6 +381,16 @@ en:
       already_aligned:
         one: This road is already aligned closely enough (no further shape edits needed).
         other: These roads are already aligned closely enough (no further shape edits needed).
+    create_water_from_reference:
+      title: Create Water from Reference
+      description: Create a pond/water area from reference data at this location.
+      annotation: Created a water area from reference data.
+      no_anchor_point: No click location is available.
+      reference_loading: Reference water data is still loading.
+      reference_fetch_failed: Reference water data could not be fetched.
+      no_reference_data: No water polygons were found in reference data.
+      no_containing_water: No reference water polygon contains this location.
+      invalid_reference_geometry: Reference water geometry could not be converted safely.
     reflect:
       title:
         long: Flip Long
