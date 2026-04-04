@@ -174,6 +174,17 @@ export class PixiLayerRapid extends AbstractLayer {
   }
 
 
+  _getFeatureTags(entity) {
+    return entity?.geojson?.properties ?? entity?.tags ?? entity?.properties ?? {};
+  }
+
+
+  _getFeatureLabel(entity, l10n) {
+    const tags = this._getFeatureTags(entity);
+    return tags['@name'] || l10n.displayName(tags) || '';
+  }
+
+
   /**
    * render
    * Render any data we have, and schedule fetching more of it to cover the view
@@ -339,23 +350,37 @@ export class PixiLayerRapid extends AbstractLayer {
         service.loadTiles(datasetID);
       }
 
-      const features = service.getData(datasetID);
-      for (const feature of features) {
-        if (!feature?.geometry) continue;
+      const entities = service.getData(datasetID);
+      for (const entity of entities) {
+        if (isAcceptedOrIgnored(entity)) continue;
 
-        const type = feature.geometry.type;
+        if (entity?.type && typeof entity.geometry === 'function') {
+          const geom = entity.geometry(dsGraph);
+          if (geom === 'point' && !!entity.__fbid__) {
+            data.points.push(entity);
+          } else if (geom === 'line') {
+            data.lines.push(entity);
+          } else if (geom === 'area') {
+            data.polygons.push(entity);
+          }
+          continue;
+        }
+
+        if (!entity?.geometry) continue;
+
+        const type = entity.geometry.type;
         if (type === 'Point' || type === 'MultiPoint') {
-          feature.overture = true;  // mark as geojson-style feature for point label/render branch
-          feature.__datasetid__ = datasetID;
-          data.points.push(feature);
+          entity.overture = true;  // mark as geojson-style feature for point label/render branch
+          entity.__datasetid__ = datasetID;
+          data.points.push(entity);
         } else if (type === 'LineString' || type === 'MultiLineString') {
-          feature.overture = true;
-          feature.__datasetid__ = datasetID;
-          data.lines.push(feature);
+          entity.overture = true;
+          entity.__datasetid__ = datasetID;
+          data.lines.push(entity);
         } else if (type === 'Polygon' || type === 'MultiPolygon') {
-          feature.overture = true;
-          feature.__datasetid__ = datasetID;
-          data.polygons.push(feature);
+          entity.overture = true;
+          entity.__datasetid__ = datasetID;
+          data.polygons.push(entity);
         }
       }
     }
@@ -449,11 +474,7 @@ export class PixiLayerRapid extends AbstractLayer {
             // fill: { width: 2, color: color, alpha: 1, pattern: 'stripe' }
           };
           feature.style = style;
-          if (entity.geojson) {
-            feature.label = entity.geojson.properties['@name'];
-          } else {
-            feature.label = l10n.displayName(entity.tags);
-          }
+          feature.label = this._getFeatureLabel(entity, l10n);
           feature.update(viewport, zoom);
         }
 
@@ -506,11 +527,7 @@ export class PixiLayerRapid extends AbstractLayer {
         };
         style.lineMarkerName = (entity.overture || !entity.isOneWay || !entity.isOneWay()) ? '' : 'oneway';
         feature.style = style;
-        if (entity.geojson) {
-          feature.label = entity.geojson.properties['@name'];
-        } else {
-          feature.label = l10n.displayName(entity.tags);
-        }
+        feature.label = this._getFeatureLabel(entity, l10n);
         feature.update(viewport, zoom);
       }
 
@@ -557,17 +574,13 @@ export class PixiLayerRapid extends AbstractLayer {
 
       if (feature.dirty) {
         feature.style = pointStyle;
+        feature.label = this._getFeatureLabel(entity, l10n);
 
-        if (entity.geojson){
-          feature.label = entity.geojson.properties['@name'];
-        } else {
-          feature.label = l10n.displayName(entity.tags);
-
-          // experiment: label addresses
-          const housenumber = entity.tags['addr:housenumber'];
-          if (!feature.label && housenumber) {
-            feature.label = housenumber;
-          }
+        // experiment: label addresses
+        const pointTags = this._getFeatureTags(entity);
+        const housenumber = pointTags['addr:housenumber'];
+        if (!feature.label && housenumber) {
+          feature.label = housenumber;
         }
 
         feature.update(viewport, zoom);
@@ -594,9 +607,10 @@ export class PixiLayerRapid extends AbstractLayer {
 
       if (feature.dirty) {
         feature.style = vertexStyle;
-        feature.label = l10n.displayName(entity.tags);
+        feature.label = this._getFeatureLabel(entity, l10n);
         // experiment: label addresses
-        const housenumber = entity.tags['addr:housenumber'];
+        const vertexTags = this._getFeatureTags(entity);
+        const housenumber = vertexTags['addr:housenumber'];
         if (!feature.label && housenumber) {
           feature.label = housenumber;
         }

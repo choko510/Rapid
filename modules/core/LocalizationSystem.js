@@ -573,6 +573,10 @@ export class LocalizationSystem extends AbstractSystem {
    * @return {string}  A name string suitable for display
    */
   displayName(tags, hideNetwork) {
+    if (!tags || typeof tags !== 'object') {
+      tags = {};
+    }
+
     const code = this._currLanguageCode.toLowerCase();
 
     const route = tags.route;

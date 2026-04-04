@@ -1,5 +1,7 @@
+import { Tiler } from '@rapid-sdk/math';
 import { AbstractSystem } from '../core/AbstractSystem.js';
-import { RapidDataset } from '../core/lib/index.js';
+import { Graph, RapidDataset, Tree } from '../core/lib/index.js';
+import { osmEntity, osmNode, osmWay } from '../osm/index.js';
 import { geojsonFeatures } from '../util/util.js';
 import { utilFetchResponse } from '../util/index.js';
 
@@ -26,6 +28,7 @@ export class ExternalDatasetService extends AbstractSystem {
     super(context);
     this.id = 'external';
 
+    this._tiler = new Tiler().margin(1);
     this._datasets = new Map();    // Map(datasetID -> record)
     this._nextFeatureID = 1;
   }
@@ -66,12 +69,26 @@ export class ExternalDatasetService extends AbstractSystem {
       if (record.controller) {
         record.controller.abort();
       }
+      for (const controller of record.inflight.values()) {
+        controller.abort();
+      }
+
       record.controller = null;
       record.loadPromise = null;
+      record.inflight.clear();
+      record.loadedTiles.clear();
+      record.tileFeatures.clear();
+      record.lastv = null;
 
       if (record.source.type === 'geojson') {
         record.features = [];
         record.loaded = false;
+      }
+
+      if (record.acceptAsOSM) {
+        record.graph = new Graph();
+        record.tree = new Tree(record.graph);
+        record.convertedFeatureIDs.clear();
       }
     }
 
@@ -141,19 +158,34 @@ export class ExternalDatasetService extends AbstractSystem {
 
     for (const entry of datasets) {
       const dataset = this._buildRapidDataset(entry);
+      const acceptAsOSM = (entry.source.type === 'geojson') && entry.categories.has('buildings');
+      const graph = acceptAsOSM ? new Graph() : null;
+      const tree = acceptAsOSM ? new Tree(graph) : null;
 
       const existing = this._datasets.get(dataset.id);
       if (existing?.controller) {
         existing.controller.abort();
       }
+      for (const controller of existing?.inflight?.values() ?? []) {
+        controller.abort();
+      }
 
       this._datasets.set(dataset.id, {
         dataset: dataset,
         source: entry.source,
+        acceptAsOSM: acceptAsOSM,
         features: [],
+        isTiledGeoJSON: this._isTiledGeoJSONSource(entry.source.url),
         loaded: false,
         controller: null,
-        loadPromise: null
+        loadPromise: null,
+        inflight: new Map(),
+        loadedTiles: new Set(),
+        tileFeatures: new Map(),
+        lastv: null,
+        graph: graph,
+        tree: tree,
+        convertedFeatureIDs: new Set()
       });
 
       imported.set(dataset.id, dataset);
@@ -177,6 +209,12 @@ export class ExternalDatasetService extends AbstractSystem {
     if (!record) return [];
 
     if (record.source.type === 'geojson') {
+      if (record.acceptAsOSM) {
+        return this._getBuildingWayData(record);
+      }
+      if (record.isTiledGeoJSON) {
+        return this._getTiledGeoJSONData(record);
+      }
       return record.features;
     }
 
@@ -202,6 +240,11 @@ export class ExternalDatasetService extends AbstractSystem {
     if (!record) return;
 
     if (record.source.type === 'geojson') {
+      if (record.isTiledGeoJSON) {
+        this._loadTiledGeoJSONTiles(record);
+        return;
+      }
+
       if (record.loaded || record.loadPromise) return;
 
       const controller = new AbortController();
@@ -227,11 +270,13 @@ export class ExternalDatasetService extends AbstractSystem {
 
   /**
    * graph
-   * Return the graph for a given dataset (not applicable for external datasets).
-   * @return  {null}
+   * Return the graph for a given dataset.
+   * @param   {string}  datasetID - datasetID to get graph for
+   * @return  {Graph|null}
    */
-  graph() {
-    return null;
+  graph(datasetID) {
+    const record = this._datasets.get(datasetID);
+    return record?.graph ?? null;
   }
 
 
@@ -347,12 +392,265 @@ export class ExternalDatasetService extends AbstractSystem {
       throw new Error(`Dataset "${record.dataset.id}" source did not return GeoJSON`);
     }
 
-    record.features = this._normalizeFeatures(record.dataset.id, geojson);
+    const features = this._normalizeFeatures(record.dataset.id, geojson);
+    if (record.acceptAsOSM) {
+      this._mergeBuildingFeatures(record, features);
+    } else {
+      record.features = features;
+    }
     record.loaded = true;
 
     const gfx = this.context.systems.gfx;
     gfx?.deferredRedraw();
     this.emit('loadedData');
+  }
+
+
+  _setGeoJSONTileData(record, tileID, data) {
+    const geojson = this._asFeatureCollection(data);
+    if (!geojson) {
+      throw new Error(`Dataset "${record.dataset.id}" source did not return GeoJSON`);
+    }
+
+    const features = this._normalizeFeatures(record.dataset.id, geojson);
+    if (record.acceptAsOSM) {
+      this._mergeBuildingFeatures(record, features);
+    } else {
+      record.tileFeatures.set(tileID, features);
+    }
+    record.loadedTiles.add(tileID);
+
+    const gfx = this.context.systems.gfx;
+    gfx?.deferredRedraw();
+    this.emit('loadedData');
+  }
+
+
+  _getTiledGeoJSONData(record) {
+    if (record.acceptAsOSM) {
+      return this._getBuildingWayData(record);
+    }
+
+    const viewport = this.context.viewport;
+    if (!viewport) return [];
+
+    const tiles = this._tiler.getTiles(viewport).tiles;
+    const results = [];
+
+    for (const tile of tiles) {
+      const tileFeatures = record.tileFeatures.get(tile.id);
+      if (tileFeatures?.length) {
+        results.push(...tileFeatures);
+      }
+    }
+
+    return results;
+  }
+
+
+  _getBuildingWayData(record) {
+    const graph = record.graph;
+    const tree = record.tree;
+    if (!graph || !tree) return [];
+
+    const viewport = this.context.viewport;
+    const extent = viewport?.visibleExtent?.() ?? { bbox: () => ({ minX: -180, minY: -90, maxX: 180, maxY: 90 }) };
+
+    return tree.intersects(extent, graph)
+      .filter(entity => entity.type === 'way');
+  }
+
+
+  _mergeBuildingFeatures(record, features) {
+    const graph = record.graph;
+    const tree = record.tree;
+    if (!graph || !tree) return;
+
+    const datasetID = record.dataset.id;
+    const convertedFeatureIDs = record.convertedFeatureIDs;
+    const newEntities = [];
+
+    for (const feature of features) {
+      const featureID = feature?.id;
+      if (!featureID || convertedFeatureIDs.has(featureID)) continue;
+      convertedFeatureIDs.add(featureID);
+
+      const entities = this._geojsonToBuildingEntities(feature, featureID, datasetID);
+      if (entities?.length) {
+        newEntities.push(...entities);
+      }
+    }
+
+    if (!newEntities.length) return;
+    graph.rebase(newEntities, [graph], true);
+    tree.rebase(newEntities, true);
+  }
+
+
+  _geojsonToBuildingEntities(feature, featureID, datasetID) {
+    const geometry = feature?.geometry;
+    const polygonCoords = (geometry?.type === 'Polygon') ? [geometry.coordinates]
+      : (geometry?.type === 'MultiPolygon') ? geometry.coordinates
+      : [];
+    if (!polygonCoords.length) return null;
+
+    const props = (feature.properties && typeof feature.properties === 'object') ? feature.properties : {};
+    const tags = this._getBuildingTags(props);
+    const entities = [];
+
+    for (let i = 0; i < polygonCoords.length; i++) {
+      const wayFeatureID = polygonCoords.length > 1 ? `${featureID}-p${i}` : featureID;
+      const outerRing = polygonCoords[i]?.[0];
+      if (!Array.isArray(outerRing) || outerRing.length < 4) continue;
+
+      const coords = [];
+      for (const loc of outerRing) {
+        if (!Array.isArray(loc) || loc.length < 2) continue;
+        const lon = Number(loc[0]);
+        const lat = Number(loc[1]);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+        coords.push([lon, lat]);
+      }
+      if (coords.length < 4) continue;
+
+      const first = coords[0];
+      const last = coords[coords.length - 1];
+      const closed = (first[0] === last[0]) && (first[1] === last[1]);
+      if (!closed) {
+        coords.push([first[0], first[1]]);
+      }
+      if (coords.length < 4) continue;
+
+      const nodeIDs = [];
+
+      for (let j = 0; j < coords.length - 1; j++) {
+        const nodeID = osmEntity.id('node');
+        const node = new osmNode({
+          id: nodeID,
+          loc: coords[j],
+          tags: {}
+        });
+        node.__fbid__ = `${datasetID}-${wayFeatureID}-n${j}`;
+        node.__service__ = 'external';
+        node.__datasetid__ = datasetID;
+        entities.push(node);
+        nodeIDs.push(nodeID);
+      }
+
+      if (nodeIDs.length < 3) continue;
+      nodeIDs.push(nodeIDs[0]);
+
+      const way = new osmWay({
+        id: osmEntity.id('way'),
+        nodes: nodeIDs,
+        tags: Object.assign({}, tags)
+      });
+
+      way.__fbid__ = `${datasetID}-${wayFeatureID}`;
+      way.__service__ = 'external';
+      way.__datasetid__ = datasetID;
+      entities.push(way);
+    }
+
+    return entities;
+  }
+
+
+  _getBuildingTags(properties) {
+    const tags = {};
+
+    if (typeof properties.building === 'string' && properties.building.trim()) {
+      tags.building = properties.building.trim();
+    } else if (properties.building === true) {
+      tags.building = 'yes';
+    } else {
+      tags.building = 'yes';
+    }
+
+    if (typeof properties.source === 'string' && properties.source.trim()) {
+      tags.source = properties.source.trim();
+    }
+
+    const name = (typeof properties.name === 'string' && properties.name.trim())
+      ? properties.name.trim()
+      : (typeof properties['@name'] === 'string' && properties['@name'].trim())
+        ? properties['@name'].trim()
+        : '';
+    if (name) {
+      tags.name = name;
+    }
+
+    if (properties.height !== undefined && properties.height !== null) {
+      tags.height = String(properties.height);
+    }
+
+    if (properties['building:levels'] !== undefined && properties['building:levels'] !== null) {
+      tags['building:levels'] = String(properties['building:levels']);
+    }
+
+    return tags;
+  }
+
+
+  _loadTiledGeoJSONTiles(record) {
+    const viewport = this.context.viewport;
+    if (!viewport) return;
+    if (record.lastv === viewport.v) return;
+    record.lastv = viewport.v;
+
+    const tiles = this._tiler.getTiles(viewport).tiles;
+    const needed = new Set(tiles.map(tile => tile.id));
+
+    for (const [tileID, controller] of record.inflight) {
+      if (!needed.has(tileID)) {
+        controller.abort();
+        record.inflight.delete(tileID);
+      }
+    }
+
+    for (const tile of tiles) {
+      if (record.loadedTiles.has(tile.id) || record.inflight.has(tile.id)) continue;
+
+      const [x, y, z] = tile.xyz;
+      const url = this._expandTileTemplate(record.source.url, x, y, z);
+      const controller = new AbortController();
+      record.inflight.set(tile.id, controller);
+
+      fetch(url, { signal: controller.signal })
+        .then(utilFetchResponse)
+        .then(data => this._setGeoJSONTileData(record, tile.id, data))
+        .catch(err => {
+          if (err.name === 'AbortError') return;
+          console.error(err);  // eslint-disable-line no-console
+        })
+        .finally(() => {
+          record.inflight.delete(tile.id);
+        });
+    }
+  }
+
+
+  _isTiledGeoJSONSource(url) {
+    const sourceURL = this._cleanString(url);
+    const hasX = /\{x\}/i.test(sourceURL);
+    const hasY = /\{y\}/i.test(sourceURL) || /\{-y\}/i.test(sourceURL) || /\{ty\}/i.test(sourceURL);
+    return hasX && hasY;
+  }
+
+
+  _expandTileTemplate(template, x, y, z) {
+    const tmsY = Math.pow(2, z) - y - 1;
+
+    return template
+      .replace(/\{switch:([^}]+)\}/gi, (s, r) => {
+        const subdomains = r.split(',');
+        return subdomains[(x + y) % subdomains.length];
+      })
+      .replace(/\{z(oom)?\}/gi, z)
+      .replace(/\{-y\}/gi, tmsY)
+      .replace(/\{ty\}/gi, tmsY)
+      .replace(/\{x\}/gi, x)
+      .replace(/\{y\}/gi, y);
   }
 
 

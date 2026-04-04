@@ -299,6 +299,8 @@ Each dataset object must include:
 
 * `geojson`:
   * URL should return GeoJSON (`FeatureCollection`, `Feature`, or Geometry object)
+  * URL templates are also supported (`{z}`, `{x}`, `{y}`, `{-y}`/`{ty}`, `{zoom}`, `{switch:a,b,c}`)
+  * Template sources are fetched tile-by-tile for the current map view as you pan/zoom
 * `vectortile`:
   * URL template (`.../{z}/{x}/{y}.mvt`) or `.pmtiles` URL is supported
 

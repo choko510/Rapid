@@ -65,6 +65,10 @@ RAPID_BUILDING_DATASET_LABEL = "GSI Building Footprints"
 RAPID_BUILDING_ITEM_URL = "https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/"
 RAPID_BUILDING_LICENSE_URL = "https://maps.gsi.go.jp/development/ichiran.html"
 RAPID_BUILDING_COLOR = "#da26d3"
+RAPID_BUILDING_DEFAULT_Z = 16
+RAPID_BUILDING_DEFAULT_LAT = 35.681236
+RAPID_BUILDING_DEFAULT_LON = 139.767125
+RAPID_BUILDING_SOURCE_MAX_Z = 16
 
 DEFAULT_LAYERS: Tuple[str, ...] = ("road",)
 LAYER_ALIASES = {
@@ -87,7 +91,10 @@ LAYER_ALIASES = {
 }
 SUPPORTED_LAYER_NAMES = tuple(sorted(set(LAYER_ALIASES.values())))
 
-REQUEST_TIMEOUT = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=5.0)
+REQUEST_TIMEOUT = httpx.Timeout(connect=10.0, read=15.0, write=5.0, pool=10.0)
+
+MAX_RETRIES = 3
+RETRY_BACKOFF_BASE = 0.5  # 0.5s, 1.0s, 2.0s
 
 _USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -649,10 +656,11 @@ async def _get_tile_lock(key: Tuple[int, int, int]) -> asyncio.Lock:
 
 
 async def _fetch_tile_pbf_cached(z: int, x: int, y: int) -> bytes:
-    """非同期タイルフェッチ + LRU キャッシュ + dedup lock
+    """非同期タイルフェッチ + LRU キャッシュ + dedup lock + リトライ
 
     同一タイルへの同時リクエストは 1 回のフェッチだけ実行し、
     他のリクエストはそのフェッチの完了を待つ。
+    タイムアウトやネットワークエラー時は指数バックオフでリトライする。
     """
     key = (z, x, y)
 
@@ -670,17 +678,56 @@ async def _fetch_tile_pbf_cached(z: int, x: int, y: int) -> bytes:
             return _tile_cache[key]
 
         url = PBF_URL_TEMPLATE.format(z=z, x=x, y=y)
-        try:
-            resp = await HTTP_CLIENT.get(url)
-            resp.raise_for_status()
-        except httpx.HTTPError as err:
-            raise TileFetchError(f"tile fetch failed: {err}") from err
+        last_error: Exception | None = None
 
-        if not resp.content:
-            raise TileFetchError("empty PBF payload")
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = await HTTP_CLIENT.get(url)
+            except httpx.RequestError as err:
+                last_error = err
+                if attempt < MAX_RETRIES - 1:
+                    wait = RETRY_BACKOFF_BASE * (2 ** attempt)
+                    logging.warning(
+                        "tile fetch attempt %d/%d failed (network: %s), retrying in %.1fs - URL: %s",
+                        attempt + 1, MAX_RETRIES, type(err).__name__, wait, url,
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                raise TileFetchError(
+                    f"tile fetch failed after {MAX_RETRIES} retries "
+                    f"(network error): {type(err).__name__}: {err} - URL: {url}"
+                ) from err
 
-        _tile_cache_put(key, resp.content)
-        return resp.content
+            if resp.status_code == 404:
+                _tile_cache_put(key, b"")
+                return b""
+
+            if resp.status_code >= 500 and attempt < MAX_RETRIES - 1:
+                # サーバーエラーはリトライ対象
+                wait = RETRY_BACKOFF_BASE * (2 ** attempt)
+                logging.warning(
+                    "tile fetch attempt %d/%d got HTTP %d, retrying in %.1fs - URL: %s",
+                    attempt + 1, MAX_RETRIES, resp.status_code, wait, url,
+                )
+                await asyncio.sleep(wait)
+                continue
+
+            if resp.status_code >= 400:
+                raise TileFetchError(
+                    f"tile fetch failed: HTTP {resp.status_code} - URL: {url}"
+                )
+
+            if not resp.content:
+                _tile_cache_put(key, b"")
+                return b""
+
+            _tile_cache_put(key, resp.content)
+            return resp.content
+
+        # ここに到達するのは全リトライが 5xx で失敗した場合のみ
+        raise TileFetchError(
+            f"tile fetch failed after {MAX_RETRIES} retries: HTTP 5xx - URL: {url}"
+        )
 
 
 async def fetch_and_process(
@@ -716,14 +763,18 @@ def _resolve_tile_request(
     y: int | None,
     lat: float | None,
     lon: float | None,
+    allow_default: bool = False,
 ) -> Tuple[int, int, int]:
-    if (x is not None or y is not None) and (lat is not None or lon is not None):
+    has_tile = x is not None or y is not None
+    has_latlon = lat is not None or lon is not None
+
+    if has_tile and has_latlon:
         raise HTTPException(
             status_code=400,
             detail="Specify either x/y tile coordinates or lat/lon coordinates, not both",
         )
 
-    if x is not None or y is not None:
+    if has_tile:
         if x is None or y is None:
             raise HTTPException(
                 status_code=400,
@@ -731,14 +782,28 @@ def _resolve_tile_request(
             )
         return z, x, y
 
-    if lat is None or lon is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Provide either x/y tile coordinates or lat/lon coordinates",
-        )
+    if has_latlon:
+        if lat is None or lon is None:
+            raise HTTPException(
+                status_code=400,
+                detail="lat and lon must both be provided when using lat/lon coordinates",
+            )
 
-    tile_x, tile_y = latlon_to_tile(lat, lon, z)
-    return z, tile_x, tile_y
+        tile_x, tile_y = latlon_to_tile(lat, lon, z)
+        return z, tile_x, tile_y
+
+    if allow_default:
+        tile_x, tile_y = latlon_to_tile(
+            RAPID_BUILDING_DEFAULT_LAT,
+            RAPID_BUILDING_DEFAULT_LON,
+            z,
+        )
+        return z, tile_x, tile_y
+
+    raise HTTPException(
+        status_code=400,
+        detail="Provide either x/y tile coordinates or lat/lon coordinates",
+    )
 
 
 def _to_rapid_building_feature_collection(feature_collection: Dict[str, Any], z: int, x: int, y: int) -> Dict[str, Any]:
@@ -783,13 +848,20 @@ def _to_rapid_building_feature_collection(feature_collection: Dict[str, Any], z:
     return {"type": "FeatureCollection", "features": rapid_features}
 
 
-def _build_rapid_building_manifest(source_url: str, z: int, x: int, y: int) -> Dict[str, Any]:
-    dataset_id = f"{RAPID_BUILDING_DATASET_ID_PREFIX}-z{z}-x{x}-y{y}"
+def _to_rapid_building_source_tile(z: int, x: int, y: int) -> Tuple[int, int, int]:
+    if z <= RAPID_BUILDING_SOURCE_MAX_Z:
+        return z, x, y
+
+    shift = z - RAPID_BUILDING_SOURCE_MAX_Z
+    return RAPID_BUILDING_SOURCE_MAX_Z, (x >> shift), (y >> shift)
+
+
+def _build_rapid_building_manifest(source_url: str) -> Dict[str, Any]:
     return {
         "version": 1,
         "datasets": [
             {
-                "id": dataset_id,
+                "id": RAPID_BUILDING_DATASET_ID_PREFIX,
                 "label": RAPID_BUILDING_DATASET_LABEL,
                 "description": "Building footprints extracted from the GSI experimental vector tile.",
                 "categories": ["buildings"],
@@ -803,6 +875,11 @@ def _build_rapid_building_manifest(source_url: str, z: int, x: int, y: int) -> D
             }
         ],
     }
+
+
+def _build_rapid_building_tile_template_url(request: Request) -> str:
+    base_url = str(request.base_url.replace(scheme="https")).rstrip("/")
+    return f"{base_url}/rapid/buildings/{{z}}/{{x}}/{{y}}.geojson"
 
 
 # =====================================================================
@@ -846,33 +923,49 @@ async def get_geojson_from_latlon(
 
 @app.get("/rapid/buildings.geojson")
 async def get_rapid_buildings_geojson(
-    z: int = 16,
+    z: int = RAPID_BUILDING_DEFAULT_Z,
     x: int | None = None,
     y: int | None = None,
     lat: float | None = None,
     lon: float | None = None,
 ):
-    z, x, y = _resolve_tile_request(z, x, y, lat, lon)
-    feature_collection = await fetch_and_process(z, x, y, RAPID_BUILDING_LAYER)
-    return _to_rapid_building_feature_collection(feature_collection, z, x, y)
+    z, x, y = _resolve_tile_request(z, x, y, lat, lon, allow_default=True)
+    source_z, source_x, source_y = _to_rapid_building_source_tile(z, x, y)
+    feature_collection = await fetch_and_process(source_z, source_x, source_y, RAPID_BUILDING_LAYER)
+    return _to_rapid_building_feature_collection(feature_collection, source_z, source_x, source_y)
+
+
+@app.get("/rapid/buildings/{z}/{x}/{y}.geojson")
+async def get_rapid_buildings_geojson_tile(
+    z: int,
+    x: int,
+    y: int,
+):
+    source_z, source_x, source_y = _to_rapid_building_source_tile(z, x, y)
+    feature_collection = await fetch_and_process(source_z, source_x, source_y, RAPID_BUILDING_LAYER)
+    return _to_rapid_building_feature_collection(feature_collection, source_z, source_x, source_y)
 
 
 @app.get("/rapid/buildings.manifest.json")
 async def get_rapid_buildings_manifest(
     request: Request,
-    z: int = 16,
+    z: int = RAPID_BUILDING_DEFAULT_Z,
     x: int | None = None,
     y: int | None = None,
     lat: float | None = None,
     lon: float | None = None,
 ):
-    z, x, y = _resolve_tile_request(z, x, y, lat, lon)
+    has_explicit_target = x is not None or y is not None or lat is not None or lon is not None
 
-    base_url = str(request.url_for("get_rapid_buildings_geojson"))
-    query = urlencode({"z": z, "x": x, "y": y})
-    source_url = f"{base_url}?{query}"
+    if has_explicit_target:
+        z, x, y = _resolve_tile_request(z, x, y, lat, lon, allow_default=True)
+        base_url = str(request.url_for("get_rapid_buildings_geojson").replace(scheme="https"))
+        query = urlencode({"z": z, "x": x, "y": y})
+        source_url = f"{base_url}?{query}"
+    else:
+        source_url = _build_rapid_building_tile_template_url(request)
 
-    return _build_rapid_building_manifest(source_url, z, x, y)
+    return _build_rapid_building_manifest(source_url)
 
 
 app.mount("/", StaticFiles(directory=".", html=True, follow_symlink=True), name="static")
