@@ -13,7 +13,8 @@ of Rapid (e.g. `https://mapwith.ai/rapid`), the following parameters are availab
   or a custom tile URL. A custom URL is specified in the format `custom:<url>`,
   where the URL can contain the standard tile URL placeholders `{x}`, `{y}` and
   `{z}`/`{zoom}`, `{ty}` for flipped TMS-style Y coordinates, and `{switch:a,b,c}` for
-  DNS multiplexing.<br/>
+  DNS multiplexing. If the requested source ID is not available, Rapid falls back to
+  the configured fallback source (OpenStreetMap (Standard) by default).<br/>
   _Example:_ `background=custom:https://{switch:a,b,c}.tile.openstreetmap.org/{zoom}/{x}/{y}.png`
 * __`comment`__ - Prefills the changeset comment. Pass a url encoded string.<br/>
   _Example:_ `comment=CAR%20crisis%2C%20refugee%20areas%20in%20Cameroon`

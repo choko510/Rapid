@@ -229,11 +229,14 @@ export class ImagerySystem extends AbstractSystem {
     const oldBackground = prevParams.get('background');
     if (!newBackground || newBackground !== oldBackground) {
       let foundSource;
-      if (typeof newBackground === 'string') {
+      const hasBackgroundParam = (typeof newBackground === 'string' && newBackground.length > 0);
+      if (hasBackgroundParam) {
         foundSource = this.getSourceByID(newBackground);
       }
       if (foundSource) {
         this.setSourceByID(newBackground);
+      } else if (hasBackgroundParam) {
+        this.baseLayerSource(this.chooseFallbackSource());
       } else {
         this.baseLayerSource(this.chooseDefaultSource());
       }
@@ -429,6 +432,31 @@ export class ImagerySystem extends AbstractSystem {
       this.getSourceByID('Bing') ||
       first ||    // maybe this is a custom Rapid that doesn't include Bing?
       this.getSourceByID('none');
+  }
+
+
+  /**
+   * chooseFallbackSource
+   * If an explicitly requested background cannot be found, prefer user-selected fallback,
+   * then OSM Standard.
+   */
+  chooseFallbackSource() {
+    const storage = this.context.systems.storage;
+    const fallbackID = storage.getItem('background-fallback-id');
+    const configured = (fallbackID && this.getSourceByID(fallbackID)) || null;
+    if (configured && (configured.id !== 'custom' || configured.template)) {
+      return configured;
+    }
+
+    const mapnik = this.getSourceByID('MAPNIK');
+    if (mapnik) return mapnik;
+
+    const fallback = this.chooseDefaultSource();
+    if (fallback?.id === 'custom' && !fallback.template) {
+      return this.getSourceByID('none') || fallback;
+    }
+
+    return fallback;
   }
 
 

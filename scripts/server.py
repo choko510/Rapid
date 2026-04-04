@@ -1,28 +1,48 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 import os
 import struct
-from functools import lru_cache
+from collections import OrderedDict
+from concurrent.futures import ProcessPoolExecutor
+from contextlib import asynccontextmanager
 from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Tuple
+from urllib.parse import urlencode
 
-import requests
+import httpx
+import orjson
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from requests.adapters import HTTPAdapter
 import uvicorn
 
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+
+# =====================================================================
+# ORJSONResponse – orjson による高速 JSON シリアライズ
+# =====================================================================
+
+class ORJSONResponse(Response):
+    """FastAPI 用の orjson ベースレスポンスクラス。
+
+    標準 json モジュールの 3〜10 倍高速にシリアライズできる。
+    """
+
+    media_type = "application/json"
+
+    def render(self, content: Any) -> bytes:
+        return orjson.dumps(content, option=orjson.OPT_SERIALIZE_NUMPY)
 
 
 # =====================================================================
@@ -39,6 +59,12 @@ ROAD_PROPERTIES = {
     "highway": "road",
 }
 BASE_PROPERTIES = {"source": "Extracted dynamically from GSI map"}
+RAPID_BUILDING_LAYER: Tuple[str, ...] = ("building",)
+RAPID_BUILDING_DATASET_ID_PREFIX = "gsi-buildings"
+RAPID_BUILDING_DATASET_LABEL = "GSI Building Footprints"
+RAPID_BUILDING_ITEM_URL = "https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/"
+RAPID_BUILDING_LICENSE_URL = "https://maps.gsi.go.jp/development/ichiran.html"
+RAPID_BUILDING_COLOR = "#da26d3"
 
 DEFAULT_LAYERS: Tuple[str, ...] = ("road",)
 LAYER_ALIASES = {
@@ -61,21 +87,69 @@ LAYER_ALIASES = {
 }
 SUPPORTED_LAYER_NAMES = tuple(sorted(set(LAYER_ALIASES.values())))
 
-REQUEST_TIMEOUT = (3.0, 10.0)
+REQUEST_TIMEOUT = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=5.0)
 
-HTTP_SESSION = requests.Session()
-HTTP_SESSION.headers.update(
-    {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/123.0.0.0 Safari/537.36"
-        )
-    }
+_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/123.0.0.0 Safari/537.36"
 )
-HTTP_SESSION.mount(
-    "https://",
-    HTTPAdapter(pool_connections=64, pool_maxsize=64, max_retries=0),
+
+
+# =====================================================================
+# ProcessPoolExecutor for CPU-bound tile decoding
+# =====================================================================
+
+_executor = ProcessPoolExecutor(max_workers=os.cpu_count())
+
+
+# =====================================================================
+# Async tile cache with dedup lock
+# =====================================================================
+
+_TILE_CACHE_MAXSIZE = 1024
+_tile_cache: OrderedDict[Tuple[int, int, int], bytes] = OrderedDict()
+_tile_locks: Dict[Tuple[int, int, int], asyncio.Lock] = {}
+_tile_locks_guard = asyncio.Lock() if False else None  # lazy init
+
+
+def _tile_cache_put(key: Tuple[int, int, int], value: bytes) -> None:
+    """LRU キャッシュにエントリを追加（maxsize を超えたら古いものから削除）"""
+    _tile_cache[key] = value
+    _tile_cache.move_to_end(key)
+    while len(_tile_cache) > _TILE_CACHE_MAXSIZE:
+        _tile_cache.popitem(last=False)
+
+
+# =====================================================================
+# Lifespan – httpx.AsyncClient & executor lifecycle
+# =====================================================================
+
+HTTP_CLIENT: httpx.AsyncClient | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global HTTP_CLIENT, _tile_locks_guard
+    _tile_locks_guard = asyncio.Lock()
+    HTTP_CLIENT = httpx.AsyncClient(
+        headers={"User-Agent": _USER_AGENT},
+        limits=httpx.Limits(
+            max_connections=64,
+            max_keepalive_connections=64,
+        ),
+        timeout=REQUEST_TIMEOUT,
+        follow_redirects=True,
+        http2=False,
+    )
+    yield
+    await HTTP_CLIENT.aclose()
+    _executor.shutdown(wait=False)
+
+
+app = FastAPI(
+    lifespan=lifespan,
+    default_response_class=ORJSONResponse,
 )
 
 app.add_middleware(
@@ -555,43 +629,188 @@ def _decode_selected_layers(
     return {"type": "FeatureCollection", "features": features}
 
 
+# =====================================================================
+# Async tile fetching with dedup lock
+# =====================================================================
+
 class TileFetchError(RuntimeError):
     pass
 
 
-@lru_cache(maxsize=1024)
-def _fetch_tile_pbf_cached(z: int, x: int, y: int) -> bytes:
-    url = PBF_URL_TEMPLATE.format(z=z, x=x, y=y)
-
-    try:
-        resp = HTTP_SESSION.get(url, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-    except requests.RequestException as err:
-        raise TileFetchError(f"tile fetch failed: {err}") from err
-
-    if not resp.content:
-        raise TileFetchError("empty PBF payload")
-
-    return resp.content
+async def _get_tile_lock(key: Tuple[int, int, int]) -> asyncio.Lock:
+    """タイルキーに対応する asyncio.Lock を取得（なければ作成）"""
+    global _tile_locks_guard
+    if _tile_locks_guard is None:
+        _tile_locks_guard = asyncio.Lock()
+    async with _tile_locks_guard:
+        if key not in _tile_locks:
+            _tile_locks[key] = asyncio.Lock()
+        return _tile_locks[key]
 
 
-def fetch_and_process(
+async def _fetch_tile_pbf_cached(z: int, x: int, y: int) -> bytes:
+    """非同期タイルフェッチ + LRU キャッシュ + dedup lock
+
+    同一タイルへの同時リクエストは 1 回のフェッチだけ実行し、
+    他のリクエストはそのフェッチの完了を待つ。
+    """
+    key = (z, x, y)
+
+    # キャッシュヒット（ロック不要で高速パス）
+    if key in _tile_cache:
+        _tile_cache.move_to_end(key)
+        return _tile_cache[key]
+
+    # dedup lock を取得
+    lock = await _get_tile_lock(key)
+    async with lock:
+        # double-check: 別のリクエストがフェッチ済みかもしれない
+        if key in _tile_cache:
+            _tile_cache.move_to_end(key)
+            return _tile_cache[key]
+
+        url = PBF_URL_TEMPLATE.format(z=z, x=x, y=y)
+        try:
+            resp = await HTTP_CLIENT.get(url)
+            resp.raise_for_status()
+        except httpx.HTTPError as err:
+            raise TileFetchError(f"tile fetch failed: {err}") from err
+
+        if not resp.content:
+            raise TileFetchError("empty PBF payload")
+
+        _tile_cache_put(key, resp.content)
+        return resp.content
+
+
+async def fetch_and_process(
     z: int,
     x: int,
     y: int,
     target_layers: Tuple[str, ...],
     include_all_roads: bool = False,
 ) -> Dict[str, Any]:
+    """非同期タイルフェッチ + ProcessPoolExecutor でデコードを並列化"""
     try:
-        pbf_bytes = _fetch_tile_pbf_cached(z, x, y)
-        return _decode_selected_layers(pbf_bytes, z, x, y, target_layers, include_all_roads)
+        pbf_bytes = await _fetch_tile_pbf_cached(z, x, y)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            _executor,
+            _decode_selected_layers,
+            pbf_bytes,
+            z,
+            x,
+            y,
+            target_layers,
+            include_all_roads,
+        )
+        return result
     except (TileFetchError, ValueError) as err:
         logging.error("tile processing failed: %s", err)
         return _empty_feature_collection()
 
 
+def _resolve_tile_request(
+    z: int,
+    x: int | None,
+    y: int | None,
+    lat: float | None,
+    lon: float | None,
+) -> Tuple[int, int, int]:
+    if (x is not None or y is not None) and (lat is not None or lon is not None):
+        raise HTTPException(
+            status_code=400,
+            detail="Specify either x/y tile coordinates or lat/lon coordinates, not both",
+        )
+
+    if x is not None or y is not None:
+        if x is None or y is None:
+            raise HTTPException(
+                status_code=400,
+                detail="x and y must both be provided when using tile coordinates",
+            )
+        return z, x, y
+
+    if lat is None or lon is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either x/y tile coordinates or lat/lon coordinates",
+        )
+
+    tile_x, tile_y = latlon_to_tile(lat, lon, z)
+    return z, tile_x, tile_y
+
+
+def _to_rapid_building_feature_collection(feature_collection: Dict[str, Any], z: int, x: int, y: int) -> Dict[str, Any]:
+    rapid_features: List[Dict[str, Any]] = []
+
+    for index, feature in enumerate(feature_collection.get("features", []), start=1):
+        if not isinstance(feature, dict):
+            continue
+
+        geometry = feature.get("geometry")
+        if not isinstance(geometry, dict):
+            continue
+
+        geometry_type = geometry.get("type")
+        if geometry_type not in ("Polygon", "MultiPolygon"):
+            continue
+
+        raw_props = feature.get("properties")
+        source_props = raw_props if isinstance(raw_props, dict) else {}
+
+        mvt_id = source_props.get("mvt_id")
+        feature_id = f"{z}-{x}-{y}-{mvt_id}" if mvt_id is not None else f"{z}-{x}-{y}-{index}"
+
+        properties: Dict[str, Any] = {
+            "building": "yes",
+            "source": source_props.get("source", BASE_PROPERTIES["source"]),
+        }
+
+        name = source_props.get("name")
+        if isinstance(name, str) and name.strip():
+            properties["@name"] = name
+
+        rapid_features.append(
+            {
+                "type": "Feature",
+                "id": str(feature_id),
+                "properties": properties,
+                "geometry": geometry,
+            }
+        )
+
+    return {"type": "FeatureCollection", "features": rapid_features}
+
+
+def _build_rapid_building_manifest(source_url: str, z: int, x: int, y: int) -> Dict[str, Any]:
+    dataset_id = f"{RAPID_BUILDING_DATASET_ID_PREFIX}-z{z}-x{x}-y{y}"
+    return {
+        "version": 1,
+        "datasets": [
+            {
+                "id": dataset_id,
+                "label": RAPID_BUILDING_DATASET_LABEL,
+                "description": "Building footprints extracted from the GSI experimental vector tile.",
+                "categories": ["buildings"],
+                "source": {
+                    "type": "geojson",
+                    "url": source_url,
+                },
+                "itemUrl": RAPID_BUILDING_ITEM_URL,
+                "licenseUrl": RAPID_BUILDING_LICENSE_URL,
+                "color": RAPID_BUILDING_COLOR,
+            }
+        ],
+    }
+
+
+# =====================================================================
+# FastAPI endpoints (all async)
+# =====================================================================
+
 @app.get("/tile/{z}/{x}/{y}.geojson")
-def get_geojson_from_xyz(
+async def get_geojson_from_xyz(
     z: int,
     x: int,
     y: int,
@@ -602,11 +821,11 @@ def get_geojson_from_xyz(
         target_layers = _parse_layers_argument(layers)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
-    return fetch_and_process(z, x, y, target_layers, include_all_roads)
+    return await fetch_and_process(z, x, y, target_layers, include_all_roads)
 
 
 @app.get("/geojson")
-def get_geojson_from_latlon(
+async def get_geojson_from_latlon(
     lat: float,
     lon: float,
     z: int = 16,
@@ -622,7 +841,38 @@ def get_geojson_from_latlon(
         raise HTTPException(status_code=400, detail=str(err)) from err
 
     x, y = latlon_to_tile(lat, lon, z)
-    return fetch_and_process(z, x, y, target_layers, include_all_roads)
+    return await fetch_and_process(z, x, y, target_layers, include_all_roads)
+
+
+@app.get("/rapid/buildings.geojson")
+async def get_rapid_buildings_geojson(
+    z: int = 16,
+    x: int | None = None,
+    y: int | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+):
+    z, x, y = _resolve_tile_request(z, x, y, lat, lon)
+    feature_collection = await fetch_and_process(z, x, y, RAPID_BUILDING_LAYER)
+    return _to_rapid_building_feature_collection(feature_collection, z, x, y)
+
+
+@app.get("/rapid/buildings.manifest.json")
+async def get_rapid_buildings_manifest(
+    request: Request,
+    z: int = 16,
+    x: int | None = None,
+    y: int | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
+):
+    z, x, y = _resolve_tile_request(z, x, y, lat, lon)
+
+    base_url = str(request.url_for("get_rapid_buildings_geojson"))
+    query = urlencode({"z": z, "x": x, "y": y})
+    source_url = f"{base_url}?{query}"
+
+    return _build_rapid_building_manifest(source_url, z, x, y)
 
 
 app.mount("/", StaticFiles(directory=".", html=True, follow_symlink=True), name="static")

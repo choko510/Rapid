@@ -35,6 +35,20 @@ describe('actionSimplify', () => {
   });
 
 
+  it('does not remove mildly bent nodes by default', () => {
+    const graph = new Rapid.Graph([
+      Rapid.osmNode({ id: 'a', loc: [0, 0] }),
+      Rapid.osmNode({ id: 'b', loc: [1, 0.07] }),
+      Rapid.osmNode({ id: 'c', loc: [2, 0] }),
+      Rapid.osmWay({ id: '-', nodes: ['a', 'b', 'c'] })
+    ]);
+
+    const result = Rapid.actionSimplify('-', viewport)(graph);
+    assert.deepEqual(result.entity('-').nodes, ['a', 'b', 'c']);
+    assert.ok(result.hasEntity('b'));
+  });
+
+
   it('does not remove non-collinear nodes', () => {
     const graph = new Rapid.Graph([
       Rapid.osmNode({ id: 'a', loc: [0, 0] }),

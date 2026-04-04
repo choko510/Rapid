@@ -3,7 +3,7 @@ import { actionDeleteNode } from './delete_node.js';
 
 
 export function actionSimplify(wayID, viewport, degThresh) {
-    var threshold = degThresh || 10;  // degrees within straight to simplify
+    var threshold = degThresh || 6;   // degrees within straight to simplify
     var upperThreshold = Math.cos(threshold * Math.PI / 180);
 
 

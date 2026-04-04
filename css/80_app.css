@@ -3142,6 +3142,17 @@ div.full-screen > button:focus {
   cursor: pointer;
 }
 
+.layer-list .background-fallback-select {
+  color: #333;
+  height: 20px;
+  margin: 5px 10px 5px 0;
+  cursor: pointer;
+  max-width: 190px;
+}
+.ideditor[dir='rtl'] .layer-list .background-fallback-select {
+  margin: 5px 0 5px 10px;
+}
+
 .layer-list .list-item-maproulette > label > span {
   flex: 1 1 auto;
 }

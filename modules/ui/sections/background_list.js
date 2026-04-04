@@ -60,6 +60,15 @@ export function uiSectionBackgroundList(context) {
     return !d.overlay;
   }
 
+  function isUsableFallbackSource(source) {
+    if (!isNotOverlay(source)) return false;
+    return (source.id !== 'custom' || !!source.template);
+  }
+
+  function fallbackBackgroundID() {
+    return imagery.chooseFallbackSource()?.id;
+  }
+
 
   /* renderIfVisible
    * This calls render on the Disclosure commponent.
@@ -180,6 +189,25 @@ export function uiSectionBackgroundList(context) {
       .append('span')
       .text(l10n.t('background.location_panel.description'));
 
+    const fallbackItemEnter = extrasListEnter
+      .append('li')
+      .attr('class', 'background-fallback-item');
+
+    fallbackItemEnter
+      .append('label')
+      .attr('class', 'background-fallback-label')
+      .text(l10n.t('background.fallback.label'));
+
+    fallbackItemEnter
+      .append('select')
+      .attr('class', 'background-fallback-select')
+      .on('change', d3_event => {
+        const sourceID = d3_event.currentTarget?.value;
+        if (!sourceID) return;
+        storage.setItem('background-fallback-id', sourceID);
+        renderIfVisible();
+      });
+
 
     // "Info / Report a Problem" link
     selection.selectAll('.imagery-faq')
@@ -215,6 +243,41 @@ export function uiSectionBackgroundList(context) {
       .classed('active', LocationCard.visible)
       .selectAll('input')
       .property('checked', LocationCard.visible);
+
+    let fallbackSources = imagery
+      .visibleSources()
+      .filter(isUsableFallbackSource);
+
+    const selectedFallback = imagery.chooseFallbackSource();
+    if (selectedFallback && isUsableFallbackSource(selectedFallback)) {
+      const hasSelected = fallbackSources.some(d => d.id === selectedFallback.id);
+      if (!hasSelected) {
+        fallbackSources.push(selectedFallback);
+      }
+    }
+
+    fallbackSources = fallbackSources.sort(sortSources);
+
+    const fallbackSelect = extrasList.selectAll('.background-fallback-select');
+    const fallbackOptions = fallbackSelect.selectAll('option')
+      .data(fallbackSources, d => d.id);
+
+    fallbackOptions.exit()
+      .remove();
+
+    const fallbackOptionsEnter = fallbackOptions.enter()
+      .append('option')
+      .attr('value', d => d.id);
+
+    fallbackOptions
+      .merge(fallbackOptionsEnter)
+      .text(d => d.name)
+      .order();
+
+    const fallbackID = fallbackBackgroundID();
+    if (fallbackID) {
+      fallbackSelect.property('value', fallbackID);
+    }
   }
 
 
