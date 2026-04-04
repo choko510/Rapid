@@ -189,11 +189,37 @@ en:
       too_large:
         one: This can't be straightened because not enough of it is currently visible.
         other: These can't be straightened because not enough of them are currently visible.
+    simplify:
+      title: Simplify
+      description:
+        one: Remove unnecessary nodes from this feature.
+        other: Remove unnecessary nodes from these features.
+      annotation:
+        one: Simplified a feature.
+        other: "Simplified {n} features."
+      multiple_blockers:
+        one: This can't be simplified for multiple reasons.
+        other: These can't be simplified for multiple reasons.
+      nothing_to_simplify:
+        one: This can't be simplified further.
+        other: These can't be simplified further.
+      connected_to_hidden:
+        one: This can't be simplified because it is connected to a hidden feature.
+        other: These can't be simplified because some are connected to hidden features.
+      not_downloaded:
+        one: This can't be simplified because parts of it have not yet been downloaded.
+        other: These can't be simplified because parts of them have not yet been downloaded.
+      too_large:
+        one: This can't be simplified because not enough of it is currently visible.
+        other: These can't be simplified because not enough of them are currently visible.
     delete:
       title: Delete
       description:
         one: Delete this feature permanently.
         other: Delete these features permanently.
+      confirm_too_large:
+        one: Only part of this area is currently visible. Are you sure you want to permanently delete it?
+        other: Only part of these areas is currently visible. Are you sure you want to permanently delete them?
       annotation:
         point: Deleted a point.
         vertex: Deleted a node from a way.
@@ -391,6 +417,18 @@ en:
       no_reference_data: No water polygons were found in reference data.
       no_containing_water: No reference water polygon contains this location.
       invalid_reference_geometry: Reference water geometry could not be converted safely.
+    dock_pond_to_forest:
+      title: Dock Pond to Forest
+      description: Exclude this pond from the containing forest and dock nearby nodes.
+      annotation: Docked a pond to its containing forest.
+      no_single_pond: Select exactly one pond area.
+      selection_missing: The selected pond is no longer available.
+      selected_not_pond: This feature is not a pond area.
+      invalid_pond_geometry: The selected pond geometry could not be processed safely.
+      no_containing_forest: No containing forest area was found.
+      merge_not_eligible: This pond and forest cannot be combined into a valid forest multipolygon.
+      merge_incomplete_relation: This operation requires downloading the full forest relation first.
+      docking_conflict: Nearby pond/forest nodes cannot be docked without damaging relations.
     reflect:
       title:
         long: Flip Long
@@ -1794,6 +1832,7 @@ en:
       intro: "*Operations* are special commands you can use to edit features. {mouse_right_icon} Right-click or {onefinger_tap_and_hold_icon} long-press any feature to view the available operations."
       intro_2: "Each operation has its own keyboard shortcut. Most operations can be applied to multiple features at once."
       straighten: "{straighten_icon} **{straighten}** removes bends from lines. It can also align groups of points into neat rows."
+      simplify: "{simplify_icon} **{simplify}** removes unnecessary nodes from areas and lines while preserving their shape."
       orthogonalize: "{orthogonalize_icon} **{orthogonalize}** snaps the corners of areas and lines to 90°. You can square individual corners or entire features."
       circularize: "{circularize_icon} **{circularize}** turns areas and closed lines into circles."
       move: "{move_icon} **{move}** lets you drag features around the map."

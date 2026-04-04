@@ -21,6 +21,23 @@ export function operationDelete(context, selectedIDs) {
   const coords = nodes.map(node => node.loc);
   const extent = utilTotalExtent(entities, graph);
 
+  function isAreaSelection(graph) {
+    return selectedIDs.every(entityID => {
+      const entity = graph.hasEntity(entityID);
+      return entity && entity.geometry(graph) === 'area';
+    });
+  }
+
+  function isTooLargeSelection() {
+    const allowLargeEdits = storage.getItem('rapid-internal-feature.allowLargeEdits') === 'true';
+    return !allowLargeEdits && extent.percentContainedIn(viewport.visibleExtent()) < 0.8;
+  }
+
+  function shouldConfirmLargeAreaDelete() {
+    const graph = editor.staging.graph;
+    return !isNew && isTooLargeSelection() && isAreaSelection(graph);
+  }
+
 
   let operation = function() {
     const graph = editor.staging.graph;
@@ -54,6 +71,11 @@ export function operationDelete(context, selectedIDs) {
       }
     }
 
+    if (shouldConfirmLargeAreaDelete() &&
+      !window.confirm(l10n.t('operations.delete.confirm_too_large', { n: selectedIDs.length }))) {
+      return;
+    }
+
     const annotation = operation.annotation();  // watch out! calculate this _before_ we delete the stuff.
     editor.perform(action);
     editor.commit({ annotation: annotation, selectedIDs: selectedIDs });
@@ -77,7 +99,7 @@ export function operationDelete(context, selectedIDs) {
   operation.disabled = function() {
     const graph = editor.staging.graph;
 
-    if (!isNew && tooLarge()) {
+    if (!isNew && isTooLargeSelection() && !isAreaSelection(graph)) {
       return 'too_large';
     } else if (!isNew && notDownloaded()) {
       return 'not_downloaded';
@@ -92,12 +114,6 @@ export function operationDelete(context, selectedIDs) {
     }
 
     return false;
-
-    // If the selection is not 80% contained in view
-    function tooLarge() {
-      const allowLargeEdits = storage.getItem('rapid-internal-feature.allowLargeEdits') === 'true';
-      return !allowLargeEdits && extent.percentContainedIn(viewport.visibleExtent()) < 0.8;
-    }
 
     // If fhe selection spans tiles that haven't been downloaded yet
     function notDownloaded() {

@@ -1,5 +1,6 @@
 /* eslint-disable no-console */
 import chalk from 'chalk';
+import crypto from 'node:crypto';
 import { globSync } from 'glob';
 import fs from 'node:fs';
 import stringify from 'json-stringify-pretty-compact';
@@ -24,6 +25,32 @@ const fieldsFile = 'node_modules/@openstreetmap/id-tagging-schema/dist/fields.mi
 const presetsFile = 'node_modules/@openstreetmap/id-tagging-schema/dist/presets.min.json';
 const qaDataFile = 'data/qa_data.json';
 const territoriesFile = 'node_modules/cldr-core/supplemental/territoryInfo.json';
+const taggingEnFile = 'node_modules/@openstreetmap/id-tagging-schema/dist/translations/en.json';
+const ociEnFile = 'node_modules/osm-community-index/i18n/en.yaml';
+const eliEnFile = 'node_modules/editor-layer-index/i18n/en.yaml';
+const cacheFile = 'dist/data/.buildcache';
+const generatedSourceFiles = [
+  'data/languages.json',
+  'data/territory_languages.json',
+  'data/l10n/core.en.json',
+  'data/l10n/community.en.json',
+  'data/l10n/imagery.en.json',
+  'data/l10n/tagging.en.json'
+];
+const signatureSourceFiles = [
+  'package.json',
+  'scripts/build_data.js',
+  'scripts/cldr.js',
+  'scripts/write_file_with_meta.js',
+  'data/core.yaml',
+  categoriesFile,
+  fieldsFile,
+  presetsFile,
+  territoriesFile,
+  taggingEnFile,
+  ociEnFile,
+  eliEnFile
+];
 
 const categoriesJSON = JSON5.parse(fs.readFileSync(categoriesFile, 'utf8'));
 const fieldsJSON = JSON5.parse(fs.readFileSync(fieldsFile, 'utf8'));
@@ -51,6 +78,7 @@ if (process.argv[1].indexOf('build_data.js') > -1) {
 
 function buildDataAsync() {
   if (_buildPromise) return _buildPromise;
+  let signature;
 
   const START = '🏗   ' + chalk.yellow('Building data...');
   const END = '👍  ' + chalk.green('data built');
@@ -61,6 +89,13 @@ function buildDataAsync() {
 
   return _buildPromise = Promise.resolve(true)
     .then(() => {
+      signature = getBuildSignature();
+
+      if (isDataBuildCached(signature)) {
+        console.log(chalk.gray('↷   data build cache hit'));
+        return;
+      }
+
       // Create symlinks if necessary..  { 'target': 'source' }
       const symlinks = {
         img: 'dist/img'
@@ -80,6 +115,7 @@ function buildDataAsync() {
         'data/l10n/*.en.json',
         'data/modules',
         'dist/data/**/*.json',
+        'dist/data/**/*.json5',
         'dist/data/modules',
         'svg/fontawesome/*.svg'
       ]);
@@ -129,8 +165,11 @@ function buildDataAsync() {
       }
 
       for (const file of globSync('dist/data/**/*.json')) {
+        if (file.endsWith('.min.json')) continue;
         minifySync(file);
       }
+
+      writeDataBuildCache(signature);
     })
     .then(() => {
       console.timeEnd(END);
@@ -143,6 +182,75 @@ function buildDataAsync() {
       _buildPromise = null;
       process.exit(1);
     });
+}
+
+
+function getBuildSignature() {
+  const files = new Set(signatureSourceFiles);
+  const dataFiles = globSync('data/**/*.json', {
+    ignore: [
+      'data/languages.json',
+      'data/territory_languages.json',
+      'data/l10n/*.en.json'
+    ]
+  });
+
+  for (const file of dataFiles) {
+    files.add(file.replace(/\\/g, '/'));
+  }
+
+  const rows = [];
+  for (const file of Array.from(files).sort(localeCompare)) {
+    try {
+      const stat = fs.statSync(file);
+      rows.push(`${file}:${stat.size}:${Math.round(stat.mtimeMs)}`);
+    } catch {
+      rows.push(`${file}:missing`);
+    }
+  }
+
+  return crypto.createHash('sha256').update(rows.join('\n')).digest('hex');
+}
+
+
+function isDataBuildCached(signature) {
+  let cachedSignature;
+  try {
+    cachedSignature = JSON5.parse(fs.readFileSync(cacheFile, 'utf8')).signature;
+  } catch {
+    return false;
+  }
+
+  if (cachedSignature !== signature) return false;
+
+  const expectedDistFiles = [];
+  for (const sourceFile of generatedSourceFiles.concat(globSync('data/**/*.json', {
+    ignore: [
+      'data/languages.json',
+      'data/territory_languages.json',
+      'data/l10n/*.en.json'
+    ]
+  }))) {
+    const destinationFile = sourceFile.replace(/\\/g, '/').replace('data/', 'dist/data/');
+    expectedDistFiles.push(destinationFile, destinationFile.replace('.json', '.min.json'));
+  }
+
+  for (const file of expectedDistFiles) {
+    if (!shell.test('-f', file)) return false;
+  }
+
+  for (const file of generatedSourceFiles) {
+    if (!shell.test('-f', file)) return false;
+  }
+
+  if (!shell.test('-d', 'img') && !shell.test('-L', 'img')) return false;
+
+  return globSync('svg/fontawesome/*.svg').length > 0;
+}
+
+
+function writeDataBuildCache(signature) {
+  fs.writeFileSync(cacheFile, JSON.stringify({ signature }, null, 2) + '\n');
 }
 
 

@@ -68,6 +68,7 @@ export function helpHtml(context, stringID, replacements) {
       reflect_short_icon: icon('#rapid-operation-reflect-short', 'operation'),
       reverse_icon: icon('#rapid-operation-reverse', 'operation'),
       rotate_icon: icon('#rapid-operation-rotate', 'operation'),
+      simplify_icon: icon('#rapid-operation-simplify', 'operation'),
       split_icon: icon('#rapid-operation-split', 'operation'),
       straighten_icon: icon('#rapid-operation-straighten', 'operation'),
 
@@ -130,6 +131,7 @@ export function helpHtml(context, stringID, replacements) {
       reflect_short: l10n.t('operations.reflect.title.short'),
       reverse: l10n.t('operations.reverse.title'),
       rotate: l10n.t('operations.rotate.title'),
+      simplify: l10n.t('operations.simplify.title'),
       split: l10n.t('operations.split.title'),
       straighten: l10n.t('operations.straighten.title'),
 

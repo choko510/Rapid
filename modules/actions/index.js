@@ -33,6 +33,7 @@ export { actionRevert } from './revert.js';
 export { actionRotate } from './rotate.js';
 export { actionScale } from './scale.js';
 export { actionSplit } from './split.js';
+export { actionSimplify } from './simplify.js';
 export { actionStraightenNodes } from './straighten_nodes.js';
 export { actionStraightenWay } from './straighten_way.js';
 export { actionSyncCrossingTags } from './sync_crossing_tags.js';

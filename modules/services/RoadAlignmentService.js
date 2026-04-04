@@ -4,7 +4,7 @@ import { AbstractSystem } from '../core/AbstractSystem.js';
 import { FetchError, utilFetchResponse } from '../util/index.js';
 
 
-const DEFAULT_TILE_TEMPLATE = 'http://localhost:8080/tile/{z}/{x}/{y}.geojson';
+const DEFAULT_TILE_TEMPLATE = 'https://osm.choko.cc/tile/{z}/{x}/{y}.geojson';
 const TILE_ZOOM = 16;
 const TILE_MARGIN = 1;
 const MAX_LATITUDE = 85.05112878;
