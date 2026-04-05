@@ -6,7 +6,7 @@ import math
 import os
 import struct
 from collections import OrderedDict
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Any
 from typing import Dict
@@ -16,6 +16,7 @@ from typing import Tuple
 from urllib.parse import urlencode
 
 import httpx
+import numpy as np
 import orjson
 from fastapi import FastAPI
 from fastapi import HTTPException
@@ -104,10 +105,10 @@ _USER_AGENT = (
 
 
 # =====================================================================
-# ProcessPoolExecutor for CPU-bound tile decoding
+# ThreadPoolExecutor for tile decoding (pickle-free, lower overhead)
 # =====================================================================
 
-_executor = ProcessPoolExecutor(max_workers=os.cpu_count())
+_executor = ThreadPoolExecutor(max_workers=min(os.cpu_count() * 2, 16))
 
 
 # =====================================================================
@@ -196,11 +197,16 @@ def _tilecoord_to_lonlat(px: float, py: float, z: int, x: int, y: int, extent: i
 
 
 def _coords_to_geojson(coords: Iterable[Tuple[int, int]], z: int, x: int, y: int, extent: int) -> List[List[float]]:
-    result: List[List[float]] = []
-    for px, py in coords:
-        lon, lat = _tilecoord_to_lonlat(px, py, z, x, y, extent)
-        result.append([lon, lat])
-    return result
+    """NumPy ベクトル化座標変換。全座標を一括変換し Python ループを排除。"""
+    if not coords:
+        return []
+    arr = np.array(coords, dtype=np.float64)
+    n = 2.0 ** z
+    ne = n * extent
+    lon = (x * extent + arr[:, 0]) / ne * 360.0 - 180.0
+    lat_arg = np.pi * (1.0 - 2.0 * (y * extent + arr[:, 1]) / ne)
+    lat = np.degrees(np.arctan(np.sinh(lat_arg)))
+    return np.column_stack((lon, lat)).tolist()
 
 
 def _parse_layers_argument(layers: str | None) -> Tuple[str, ...]:
@@ -235,11 +241,13 @@ def _empty_feature_collection() -> Dict[str, Any]:
 # MVT parsing helpers
 # =====================================================================
 
-def _read_varint(data: bytes, idx: int) -> Tuple[int, int]:
+def _read_varint(data, idx: int) -> Tuple[int, int]:
+    """memoryview / bytes 両対応の varint 読み取り。"""
     result = 0
     shift = 0
+    dlen = len(data)
     while True:
-        if idx >= len(data):
+        if idx >= dlen:
             raise ValueError("Unexpected end of data while reading varint")
         byte = data[idx]
         idx += 1
@@ -251,7 +259,8 @@ def _read_varint(data: bytes, idx: int) -> Tuple[int, int]:
             raise ValueError("Varint is too long")
 
 
-def _read_length_delimited(data: bytes, idx: int) -> Tuple[bytes, int]:
+def _read_length_delimited(data, idx: int) -> Tuple[memoryview | bytes, int]:
+    """memoryview 対応。スライスはゼロコピー。"""
     length, idx = _read_varint(data, idx)
     chunk = data[idx:idx + length]
     if len(chunk) != length:
@@ -263,23 +272,25 @@ def _zigzag_decode(n: int) -> int:
     return (n >> 1) ^ (-(n & 1))
 
 
-def _parse_value(msg: bytes) -> Any:
+def _parse_value(msg) -> Any:
+    """memoryview 対応 Value パーサー。"""
     idx = 0
     value: Any = None
+    msg_len = len(msg)
 
-    while idx < len(msg):
+    while idx < msg_len:
         key, idx = _read_varint(msg, idx)
         field = key >> 3
         wt = key & 7
 
         if field == 1 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
-            value = raw.decode("utf-8", errors="replace")
+            value = bytes(raw).decode("utf-8", errors="replace")
         elif field == 2 and wt == 5:
-            value = struct.unpack("<f", msg[idx:idx + 4])[0]
+            value = struct.unpack_from("<f", msg, idx)[0]
             idx += 4
         elif field == 3 and wt == 1:
-            value = struct.unpack("<d", msg[idx:idx + 8])[0]
+            value = struct.unpack_from("<d", msg, idx)[0]
             idx += 8
         elif field == 4 and wt == 0:
             value, idx = _read_varint(msg, idx)
@@ -306,31 +317,38 @@ def _parse_value(msg: bytes) -> Any:
     return value
 
 
-def _parse_feature(msg: bytes) -> Dict[str, Any]:
+def _parse_feature(msg) -> Dict[str, Any]:
+    """memoryview 対応 Feature パーサー。"""
     idx = 0
-    feature = {"id": None, "tags": [], "type": None, "geometry": []}
+    msg_len = len(msg)
+    tags: List[int] = []
+    geometry: List[int] = []
+    feat_id = None
+    feat_type = None
 
-    while idx < len(msg):
+    while idx < msg_len:
         key, idx = _read_varint(msg, idx)
         field = key >> 3
         wt = key & 7
 
         if field == 1 and wt == 0:
-            feature["id"], idx = _read_varint(msg, idx)
+            feat_id, idx = _read_varint(msg, idx)
         elif field == 2 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
             j = 0
-            while j < len(raw):
+            raw_len = len(raw)
+            while j < raw_len:
                 v, j = _read_varint(raw, j)
-                feature["tags"].append(v)
+                tags.append(v)
         elif field == 3 and wt == 0:
-            feature["type"], idx = _read_varint(msg, idx)
+            feat_type, idx = _read_varint(msg, idx)
         elif field == 4 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
             j = 0
-            while j < len(raw):
+            raw_len = len(raw)
+            while j < raw_len:
                 v, j = _read_varint(raw, j)
-                feature["geometry"].append(v)
+                geometry.append(v)
         else:
             if wt == 0:
                 _, idx = _read_varint(msg, idx)
@@ -343,41 +361,41 @@ def _parse_feature(msg: bytes) -> Dict[str, Any]:
             else:
                 raise ValueError(f"Unsupported wire type in Feature: {wt}")
 
-    return feature
+    return {"id": feat_id, "tags": tags, "type": feat_type, "geometry": geometry}
 
 
-def _parse_layer(msg: bytes) -> Dict[str, Any]:
+def _parse_layer(msg) -> Dict[str, Any]:
+    """memoryview 対応 Layer パーサー。"""
     idx = 0
-    layer = {
-        "name": None,
-        "version": None,
-        "extent": MVT_EXTENT,
-        "keys": [],
-        "values": [],
-        "features": [],
-    }
+    msg_len = len(msg)
+    name = None
+    version = None
+    extent = MVT_EXTENT
+    keys: List[str] = []
+    values: List[Any] = []
+    features: List[Dict[str, Any]] = []
 
-    while idx < len(msg):
+    while idx < msg_len:
         key, idx = _read_varint(msg, idx)
         field = key >> 3
         wt = key & 7
 
         if field == 1 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
-            layer["name"] = raw.decode("utf-8", errors="replace")
+            name = bytes(raw).decode("utf-8", errors="replace")
         elif field == 2 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
-            layer["features"].append(_parse_feature(raw))
+            features.append(_parse_feature(raw))
         elif field == 3 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
-            layer["keys"].append(raw.decode("utf-8", errors="replace"))
+            keys.append(bytes(raw).decode("utf-8", errors="replace"))
         elif field == 4 and wt == 2:
             raw, idx = _read_length_delimited(msg, idx)
-            layer["values"].append(_parse_value(raw))
+            values.append(_parse_value(raw))
         elif field == 5 and wt == 0:
-            layer["extent"], idx = _read_varint(msg, idx)
+            extent, idx = _read_varint(msg, idx)
         elif field == 15 and wt == 0:
-            layer["version"], idx = _read_varint(msg, idx)
+            version, idx = _read_varint(msg, idx)
         else:
             if wt == 0:
                 _, idx = _read_varint(msg, idx)
@@ -390,30 +408,40 @@ def _parse_layer(msg: bytes) -> Dict[str, Any]:
             else:
                 raise ValueError(f"Unsupported wire type in Layer: {wt}")
 
-    return layer
+    return {
+        "name": name,
+        "version": version,
+        "extent": extent,
+        "keys": keys,
+        "values": values,
+        "features": features,
+    }
 
 
 def _parse_tile(data: bytes) -> List[Dict[str, Any]]:
+    """memoryview を使ったゼロコピータイルパーサー。"""
+    mv = memoryview(data)
     idx = 0
     layers = []
+    mv_len = len(mv)
 
-    while idx < len(data):
-        key, idx = _read_varint(data, idx)
+    while idx < mv_len:
+        key, idx = _read_varint(mv, idx)
         field = key >> 3
         wt = key & 7
 
         if field == 3 and wt == 2:
-            raw, idx = _read_length_delimited(data, idx)
+            raw, idx = _read_length_delimited(mv, idx)
             layers.append(_parse_layer(raw))
         else:
             if wt == 0:
-                _, idx = _read_varint(data, idx)
+                _, idx = _read_varint(mv, idx)
             elif wt == 1:
                 idx += 8
             elif wt == 5:
                 idx += 4
             elif wt == 2:
-                _, idx = _read_length_delimited(data, idx)
+                _, idx = _read_length_delimited(mv, idx)
             else:
                 raise ValueError(f"Unsupported wire type in Tile: {wt}")
 

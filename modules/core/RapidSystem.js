@@ -17,6 +17,7 @@ const RAPID_COLORS = [
   '#d3d3d3',  // lightgray
   '#faf0e6'   // linen
 ];
+const EXTERNAL_MANIFEST_URLS_STORAGE_KEY = 'rapid-external-manifest-urls';
 
 
 // Convert a single value, an Array of values, or a Set of values.
@@ -130,7 +131,7 @@ export class RapidSystem extends AbstractSystem {
     const prerequisites = Promise.all(services.map(service => service.startAsync()));
 
     return this._startPromise = prerequisites
-      .then(() => {
+      .then(async () => {
         // Gather all available datasets and categories into the dataset catalog..
         for (const service of services) {
           const datasets = service.getAvailableDatasets();
@@ -148,6 +149,8 @@ export class RapidSystem extends AbstractSystem {
           this._enabledDatasetIDs = new Set(['ml-buildings-overture']);  // checked
           this._datasetsChanged();
         }
+
+        await this._restoreExternalManifestURLs();
 
         this._started = true;
       });
@@ -186,6 +189,9 @@ export class RapidSystem extends AbstractSystem {
 
     const result = await external.importFromURL(url);
     this._upsertExternalDatasets(result.datasets);
+    if (result.datasets?.length) {
+      this._rememberExternalManifestURL(url);
+    }
     return result;
   }
 
@@ -227,6 +233,85 @@ export class RapidSystem extends AbstractSystem {
     }
 
     this._datasetsChanged();
+  }
+
+
+  _getStoredExternalManifestURLs() {
+    const storage = this.context.systems.storage;
+    const raw = storage?.getItem(EXTERNAL_MANIFEST_URLS_STORAGE_KEY);
+    if (!raw) return [];
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+
+    if (!Array.isArray(parsed)) return [];
+
+    const deduped = new Set();
+    for (const item of parsed) {
+      if (typeof item !== 'string') continue;
+      const url = item.trim();
+      if (!url) continue;
+      deduped.add(url);
+    }
+
+    return Array.from(deduped);
+  }
+
+
+  _setStoredExternalManifestURLs(urls) {
+    const storage = this.context.systems.storage;
+    if (!storage) return;
+
+    const deduped = Array.from(new Set(
+      (urls ?? [])
+        .filter(url => typeof url === 'string')
+        .map(url => url.trim())
+        .filter(Boolean)
+    ));
+
+    storage.setItem(EXTERNAL_MANIFEST_URLS_STORAGE_KEY, JSON.stringify(deduped));
+  }
+
+
+  _rememberExternalManifestURL(url) {
+    if (typeof url !== 'string') return;
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    const stored = this._getStoredExternalManifestURLs();
+    if (stored.includes(trimmed)) return;
+    stored.push(trimmed);
+    this._setStoredExternalManifestURLs(stored);
+  }
+
+
+  async _restoreExternalManifestURLs() {
+    const external = this.context.services.external;
+    if (!external) return;
+
+    const urls = this._getStoredExternalManifestURLs();
+    if (!urls.length) return;
+
+    const restoredDatasets = [];
+
+    for (const url of urls) {
+      try {
+        const result = await external.importFromURL(url);
+        if (result?.datasets?.length) {
+          restoredDatasets.push(...result.datasets);
+        }
+      } catch (err) {
+        console.error(err);  // eslint-disable-line no-console
+      }
+    }
+
+    if (restoredDatasets.length) {
+      this._upsertExternalDatasets(restoredDatasets);
+    }
   }
 
 

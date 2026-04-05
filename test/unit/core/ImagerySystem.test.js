@@ -46,16 +46,18 @@ class MockContext {
   }
 }
 
-function makeSource(id, template = 'https://tiles.example.com/{zoom}/{x}/{y}.png') {
+function makeSource(id, template = 'https://tiles.example.com/{zoom}/{x}/{y}.png', extra = {}) {
   return {
     id: id,
     key: id,
     template: template,
-    offset: [0, 0]
+    offset: [0, 0],
+    ...extra
   };
 }
 
-function setupImagerySystem(sources) {
+function setupImagerySystem(sources, options = {}) {
+  const visibleSourceIDs = options.visibleSourceIDs ?? [];
   const context = new MockContext();
   const imagery = new ImagerySystem(context);
 
@@ -63,7 +65,7 @@ function setupImagerySystem(sources) {
     features: new Map(),
     sources: new Map(sources.map(source => [source.id.toLowerCase(), source])),
     query: {
-      bbox: () => []
+      bbox: () => visibleSourceIDs.map(id => ({ id }))
     }
   };
 
@@ -116,5 +118,38 @@ describe('ImagerySystem', () => {
     imagery._hashchange(currParams, prevParams);
 
     assert.equal(imagery.baseLayerSource().id, 'Bing');
+  });
+
+  it('uses MAPNIK when configured fallback is currently unavailable', () => {
+    const mapnik = makeSource('MAPNIK', 'https://tile.openstreetmap.org/{zoom}/{x}/{y}.png');
+    const localOnly = makeSource('LocalOnly', undefined, {
+      polygon: [[[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]]]
+    });
+    const none = makeSource('none', '');
+
+    const { context, imagery } = setupImagerySystem([mapnik, localOnly, none], { visibleSourceIDs: [] });
+    context.systems.storage.setItem('background-fallback-id', 'LocalOnly');
+
+    const currParams = new Map([['background', 'MissingMainMap']]);
+    const prevParams = new Map();
+    imagery._hashchange(currParams, prevParams);
+
+    assert.equal(imagery.baseLayerSource().id, 'MAPNIK');
+  });
+
+  it('switches to available fallback when current source becomes unavailable', () => {
+    const mapnik = makeSource('MAPNIK', 'https://tile.openstreetmap.org/{zoom}/{x}/{y}.png');
+    const localOnly = makeSource('LocalOnly', undefined, {
+      polygon: [[[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]]]
+    });
+    const none = makeSource('none', '');
+
+    const { context, imagery } = setupImagerySystem([mapnik, localOnly, none], { visibleSourceIDs: [] });
+    context.systems.storage.setItem('background-fallback-id', 'MAPNIK');
+    imagery.baseLayerSource(localOnly);
+
+    imagery._mapdraw();
+
+    assert.equal(imagery.baseLayerSource().id, 'MAPNIK');
   });
 });

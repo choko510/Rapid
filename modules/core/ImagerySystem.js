@@ -48,6 +48,7 @@ export class ImagerySystem extends AbstractSystem {
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     this._hashchange = this._hashchange.bind(this);
+    this._mapdraw = this._mapdraw.bind(this);
     this._imageryChanged = this._imageryChanged.bind(this);
   }
 
@@ -85,6 +86,7 @@ export class ImagerySystem extends AbstractSystem {
       .then(() => {
         // Setup event handlers..
         urlhash.on('hashchange', this._hashchange);
+        map.on('draw', this._mapdraw);
         gfx.scene.on('layerchange', this._imageryChanged);
       })
       .then(() => assets.loadAssetAsync('imagery'))
@@ -236,7 +238,7 @@ export class ImagerySystem extends AbstractSystem {
       if (foundSource) {
         this.setSourceByID(newBackground);
       } else if (hasBackgroundParam) {
-        this.baseLayerSource(this.chooseFallbackSource());
+        this.baseLayerSource(this.chooseFallbackSource({ requireAvailable: true }));
       } else {
         this.baseLayerSource(this.chooseDefaultSource());
       }
@@ -305,6 +307,21 @@ export class ImagerySystem extends AbstractSystem {
 
 
   /**
+   * _mapdraw
+   * If the current base layer is unavailable at this map view, switch to a fallback.
+   */
+  _mapdraw() {
+    const baseLayer = this._baseLayer;
+    if (!baseLayer || this.sourceIsAvailable(baseLayer)) return;
+
+    const fallback = this.chooseFallbackSource({ requireAvailable: true, excludeSourceID: baseLayer.id });
+    if (fallback && fallback.id !== baseLayer.id) {
+      this.baseLayerSource(fallback);
+    }
+  }
+
+
+  /**
    * imageryUsed
    * Called by the EditSystem to gather the sources being used to make an edit.
    * We return the English name of any active imagery layers, it will be included in the user's changeset.
@@ -350,27 +367,64 @@ export class ImagerySystem extends AbstractSystem {
 
     const currSource = this._baseLayer;
     const sources = [...this._imageryIndex.sources.values()];
+    this._refreshBlockedSources(sources);
 
-    // Recheck blocked sources only if we detect new blocklists pulled from the OSM API.
-    const osm = context.services.osm;
+    return sources.filter(source => {
+      if (currSource === source) return true;  // always include the current imagery
+      return this._sourceIsAvailableAtView(source, visible, zoom);
+    });
+  }
+
+
+  /**
+   * sourceIsAvailable
+   * Returns whether the given source is currently available in this viewport.
+   * @param  {ImagerySource?} source
+   * @return {boolean}
+   */
+  sourceIsAvailable(source) {
+    if (!this._imageryIndex || !source) return false;
+
+    const viewport = this.context.viewport;
+    const extent = viewport.visibleExtent();
+    const zoom = viewport.transform.zoom;
+    const visible = new Set();
+    (this._imageryIndex.query?.bbox(extent.rectangle(), true) || [])
+      .forEach(d => visible.add(d.id));
+
+    this._refreshBlockedSources([...this._imageryIndex.sources.values()]);
+    return this._sourceIsAvailableAtView(source, visible, zoom);
+  }
+
+
+  /**
+   * _sourceIsAvailableAtView
+   * Shared availability check for a source at the current map view.
+   */
+  _sourceIsAvailableAtView(source, visibleSourceIDs, zoom) {
+    if (source.isBlocked) return false;      // even bundled sources may be blocked - iD#7905
+    if (!source.polygon) return true;        // always include imagery with worldwide coverage
+    if (zoom && zoom < 6) return false;      // optionally exclude local imagery at low zooms
+    return visibleSourceIDs.has(source.id);  // include imagery visible in given extent
+  }
+
+
+  /**
+   * _refreshBlockedSources
+   * Recompute source block status if blocklists changed.
+   */
+  _refreshBlockedSources(sources) {
+    const osm = this.context.services.osm;
     const blocklists = osm?.imageryBlocklists ?? [];
     const blocklistChanged = (blocklists.length !== this._checkedBlocklists.length) ||
       blocklists.some((regex, index) => String(regex) !== this._checkedBlocklists[index]);
 
-    if (blocklistChanged) {
-      for (const source of sources) {
-        source.isBlocked = blocklists.some(regex => regex.test(source.template));
-      }
-      this._checkedBlocklists = blocklists.map(regex => String(regex));
-    }
+    if (!blocklistChanged) return;
 
-    return sources.filter(source => {
-      if (currSource === source) return true;  // always include the current imagery
-      if (source.isBlocked) return false;      // even bundled sources may be blocked - iD#7905
-      if (!source.polygon) return true;        // always include imagery with worldwide coverage
-      if (zoom && zoom < 6) return false;      // optionally exclude local imagery at low zooms
-      return visible.has(source.id);           // include imagery visible in given extent
-    });
+    for (const source of sources) {
+      source.isBlocked = blocklists.some(regex => regex.test(source.template));
+    }
+    this._checkedBlocklists = blocklists.map(regex => String(regex));
   }
 
 
@@ -440,23 +494,36 @@ export class ImagerySystem extends AbstractSystem {
    * If an explicitly requested background cannot be found, prefer user-selected fallback,
    * then OSM Standard.
    */
-  chooseFallbackSource() {
+  chooseFallbackSource(options = {}) {
+    const {
+      requireAvailable = false,
+      excludeSourceID = null
+    } = options;
+
+    const canUseSource = source => {
+      if (!source) return false;
+      if (excludeSourceID && source.id === excludeSourceID) return false;
+      if (source.id === 'custom' && !source.template) return false;
+      return !requireAvailable || this.sourceIsAvailable(source);
+    };
+
     const storage = this.context.systems.storage;
     const fallbackID = storage.getItem('background-fallback-id');
     const configured = (fallbackID && this.getSourceByID(fallbackID)) || null;
-    if (configured && (configured.id !== 'custom' || configured.template)) {
+    if (canUseSource(configured)) {
       return configured;
     }
 
     const mapnik = this.getSourceByID('MAPNIK');
-    if (mapnik) return mapnik;
+    if (canUseSource(mapnik)) return mapnik;
 
-    const fallback = this.chooseDefaultSource();
+    let fallback = this.chooseDefaultSource();
     if (fallback?.id === 'custom' && !fallback.template) {
-      return this.getSourceByID('none') || fallback;
+      fallback = this.getSourceByID('none') || fallback;
     }
+    if (canUseSource(fallback)) return fallback;
 
-    return fallback;
+    return this.getSourceByID('none');
   }
 
 
