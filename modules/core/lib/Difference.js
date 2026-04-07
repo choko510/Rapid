@@ -18,8 +18,9 @@ export class Difference {
    * @constructor
    * @param  base   Base Graph
    * @param  head   Head Graph
+   * @param  entityIDs?  Optional iterable of entityIDs to evaluate instead of all edited IDs
    */
-  constructor(base, head) {
+  constructor(base, head, entityIDs) {
     this._base = base;
     this._head = head;
     this._changes = new Map();   // Map(entityID -> Object)
@@ -37,7 +38,9 @@ export class Difference {
     if (base === head) return;   // same Graph, no difference
 
     // Gather affected ids
-    const ids = new Set([...head.local.entities.keys(), ...base.local.entities.keys()]);
+    const ids = entityIDs
+      ? new Set(entityIDs)
+      : new Set([...head.local.entities.keys(), ...base.local.entities.keys()]);
 
     // Check each id to determine whether it has changed from base -> head..
     for (const id of ids) {

@@ -1,4 +1,4 @@
-import { Tiler } from '@rapid-sdk/math';
+import { geoSphericalDistance, Tiler } from '@rapid-sdk/math';
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { Graph, RapidDataset, Tree } from '../core/lib/index.js';
 import { osmEntity, osmNode, osmWay } from '../osm/index.js';
@@ -11,6 +11,9 @@ const SUPPORTED_GEOMETRIES = new Set([
   'LineString', 'MultiLineString',
   'Polygon', 'MultiPolygon'
 ]);
+const BUILDING_NODE_PROXIMITY_METERS = 2;
+const BUILDING_NODE_MATCH_RATIO_THRESHOLD = 0.9;
+const METERS_PER_DEGREE_LAT = 111320;
 
 
 /**
@@ -456,8 +459,111 @@ export class ExternalDatasetService extends AbstractSystem {
     const viewport = this.context.viewport;
     const extent = viewport?.visibleExtent?.() ?? { bbox: () => ({ minX: -180, minY: -90, maxX: 180, maxY: 90 }) };
 
-    return tree.intersects(extent, graph)
+    const ways = tree.intersects(extent, graph)
       .filter(entity => entity.type === 'way');
+
+    return this._filterBuildingSuggestionsNearOSM(ways, graph, extent);
+  }
+
+
+  _filterBuildingSuggestionsNearOSM(ways, externalGraph, extent) {
+    if (!ways.length) return ways;
+
+    const osmNodeLocs = this._getNearbyOSMBuildingNodeLocs(extent);
+    if (!osmNodeLocs.length) return ways;
+
+    return ways.filter(way => !this._isMostlyNearExistingBuildingNodes(way, externalGraph, osmNodeLocs));
+  }
+
+
+  _getNearbyOSMBuildingNodeLocs(extent) {
+    const editor = this.context.systems.editor;
+    const osmGraph = editor?.staging?.graph;
+    if (!editor || !osmGraph || typeof editor.intersects !== 'function') return [];
+
+    const osmEntities = editor.intersects(extent) ?? [];
+    if (!Array.isArray(osmEntities) || !osmEntities.length) return [];
+
+    const locs = [];
+    const seenNodeIDs = new Set();
+
+    for (const entity of osmEntities) {
+      if (entity?.type !== 'way') continue;
+      if (!entity.tags?.building || entity.tags.building === 'no') continue;
+      if (typeof entity.isClosed === 'function' && !entity.isClosed()) continue;
+
+      const nodeIDs = Array.isArray(entity.nodes) ? entity.nodes : [];
+      for (const nodeID of nodeIDs) {
+        if (!nodeID || seenNodeIDs.has(nodeID)) continue;
+        seenNodeIDs.add(nodeID);
+
+        const node = osmGraph.hasEntity?.(nodeID);
+        if (node?.type !== 'node' || !Array.isArray(node.loc)) continue;
+
+        const lon = Number(node.loc[0]);
+        const lat = Number(node.loc[1]);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+        locs.push([lon, lat]);
+      }
+    }
+
+    return locs;
+  }
+
+
+  _isMostlyNearExistingBuildingNodes(way, externalGraph, osmNodeLocs) {
+    const nodeIDs = Array.isArray(way?.nodes) ? way.nodes : [];
+    if (!nodeIDs.length) return false;
+
+    const proposalNodeLocs = [];
+    for (let i = 0; i < nodeIDs.length; i++) {
+      const nodeID = nodeIDs[i];
+      if (!nodeID) continue;
+
+      // Skip closing node duplicate if present
+      if (i === nodeIDs.length - 1 && nodeID === nodeIDs[0]) continue;
+
+      const node = externalGraph.hasEntity?.(nodeID);
+      if (node?.type !== 'node' || !Array.isArray(node.loc)) continue;
+
+      const lon = Number(node.loc[0]);
+      const lat = Number(node.loc[1]);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+      proposalNodeLocs.push([lon, lat]);
+    }
+
+    if (!proposalNodeLocs.length) return false;
+
+    let nearCount = 0;
+    for (const loc of proposalNodeLocs) {
+      if (this._hasNearbyNode(loc, osmNodeLocs, BUILDING_NODE_PROXIMITY_METERS)) {
+        nearCount++;
+      }
+    }
+
+    return (nearCount / proposalNodeLocs.length) >= BUILDING_NODE_MATCH_RATIO_THRESHOLD;
+  }
+
+
+  _hasNearbyNode(loc, candidates, thresholdMeters) {
+    const lat = loc[1];
+    const latTol = thresholdMeters / METERS_PER_DEGREE_LAT;
+    const cosLat = Math.cos(lat * Math.PI / 180);
+    const lonTol = latTol / Math.max(Math.abs(cosLat), 0.2);
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+
+      const dLon = Math.abs(candidate[0] - loc[0]);
+      const dLat = Math.abs(candidate[1] - loc[1]);
+      if (dLon > lonTol || dLat > latTol) continue;
+
+      if (geoSphericalDistance(loc, candidate) <= thresholdMeters) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 

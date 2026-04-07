@@ -147,7 +147,8 @@ export class Tree {
     if (graph === this._current) return;
 
     // gather changes needed
-    const diff = new Difference(this._current, graph);
+    const changeHint = graph.changeHint(this._current);
+    const diff = new Difference(this._current, graph, changeHint);
     this._current = graph;
 
     const changed = diff.didChange;

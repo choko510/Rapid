@@ -8,12 +8,13 @@ import { osmNode } from '../osm/node.js';
 // https://github.com/openstreetmap/josm/blob/mirror/src/org/openstreetmap/josm/command/MoveCommand.java
 // https://github.com/openstreetmap/potlatch2/blob/master/net/systemeD/halcyon/connection/actions/MoveNodeAction.as
 export function actionMove(moveIDs, tryDelta, viewport, cache) {
+    const moveIDSet = new Set(moveIDs);
     var _delta = tryDelta;
 
     function setupCache(graph) {
         function canMove(nodeID) {
             // Allow movement of any node that is in the selectedIDs list..
-            if (moveIDs.indexOf(nodeID) !== -1) return true;
+            if (moveIDSet.has(nodeID)) return true;
 
             // Allow movement of a vertex where 2 ways meet..
             var parents = graph.parentWays(graph.entity(nodeID));
@@ -56,15 +57,15 @@ export function actionMove(moveIDs, tryDelta, viewport, cache) {
 
             for (var i = 0; i < ids.length; i++) {
                 var id = ids[i];
+                var moved = graph.entity(id);
 
                 // consider only intersections with 1 moved and 1 unmoved way.
-                var childNodes = graph.childNodes(graph.entity(id));
+                var childNodes = graph.childNodes(moved);
                 for (var j = 0; j < childNodes.length; j++) {
                     var node = childNodes[j];
                     var parents = graph.parentWays(node);
                     if (parents.length !== 2) continue;
 
-                    var moved = graph.entity(id);
                     var unmoved = null;
                     for (var k = 0; k < parents.length; k++) {
                         var way = parents[k];
@@ -327,7 +328,7 @@ export function actionMove(moveIDs, tryDelta, viewport, cache) {
             var unmovedPath = unmovedNodes.map(function(n) { return viewport.project(n.loc); });
             var hits = geomPathIntersections(movedPath, unmovedPath);
 
-            for (var j = 0; i < hits.length; i++) {
+            for (var j = 0; j < hits.length; j++) {
                 if (vecEqual(hits[j], end)) continue;
                 var edge = geoChooseEdge(unmovedNodes, end, viewport);
                 _delta = vecSubtract(viewport.project(edge.loc), start);

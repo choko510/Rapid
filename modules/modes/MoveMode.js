@@ -21,10 +21,14 @@ export class MoveMode extends AbstractMode {
     this._entityIDs = [];
     this._startLoc = null;
     this._movementCache = null;  // used by the move action
+    this._moveFrame = null;
+    this._movePending = false;
 
     // Make sure the event handlers have `this` bound correctly
+    this._applyPointerMove = this._applyPointerMove.bind(this);
     this._cancel = this._cancel.bind(this);
     this._finish = this._finish.bind(this);
+    this._flushPointerMove = this._flushPointerMove.bind(this);
     this._keydown = this._keydown.bind(this);
     this._pointermove = this._pointermove.bind(this);
   }
@@ -74,6 +78,8 @@ export class MoveMode extends AbstractMode {
 
     this._startLoc = map.mouseLoc();
     this._movementCache = {};
+    this._movePending = false;
+    this._moveFrame = null;
 
     eventManager
       .on('click', this._finish)
@@ -94,6 +100,11 @@ export class MoveMode extends AbstractMode {
 
     this._startLoc = null;
     this._movementCache = null;
+    this._movePending = false;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
 
     const context = this.context;
     const editor = context.systems.editor;
@@ -151,6 +162,23 @@ export class MoveMode extends AbstractMode {
    * @param  `e`  A Pixi FederatedPointerEvent
    */
   _pointermove() {
+    this._movePending = true;
+    if (this._moveFrame !== null) return;
+
+    this._moveFrame = window.requestAnimationFrame(() => {
+      this._moveFrame = null;
+      if (!this._active || !this._movePending) return;
+      this._movePending = false;
+      this._applyPointerMove();
+    });
+  }
+
+
+  /**
+   * _applyPointerMove
+   * Apply a pending pointer move to the selected features.
+   */
+  _applyPointerMove() {
     const context = this.context;
     const editor = context.systems.editor;
     const locations = context.systems.locations;
@@ -179,10 +207,28 @@ export class MoveMode extends AbstractMode {
 
 
   /**
+   * _flushPointerMove
+   * Immediately apply a pending pointer move.
+   */
+  _flushPointerMove() {
+    if (!this._movePending) return;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
+
+    this._movePending = false;
+    this._applyPointerMove();
+  }
+
+
+  /**
    * _finish
    * Return to select mode - `exit()` will finalize the work in progress.
    */
   _finish() {
+    this._flushPointerMove();
+    if (!this._active) return;
     this.context.enter('select-osm', { selection: { osm: this._entityIDs }} );
   }
 

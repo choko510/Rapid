@@ -1303,6 +1303,8 @@ export class EditSystem extends AbstractSystem {
    */
   _perform(actions, t = 1) {
     let graph = this._staging.graph;
+    graph.prepareChangeHint(this._lastStagingGraph);
+
     for (const fn of actions) {
       if (typeof fn === 'function') {
         graph = fn(graph, t);
@@ -1342,14 +1344,16 @@ export class EditSystem extends AbstractSystem {
     // won't actually change - for example an Action that exits early or "performs" a no-op.
     // We still want to generate an empty Difference and emit 'stagingchange' in these situations.
     if (this._lastStagingGraph !== stagingGraph || this._hasWorkInProgress) {
-      stagingDifference = new Difference(this._lastStagingGraph, stagingGraph);
+      const changeHint = stagingGraph.changeHint(this._lastStagingGraph);
+      stagingDifference = new Difference(this._lastStagingGraph, stagingGraph, changeHint);
       this._lastStagingGraph = stagingGraph;
       this.emit('stagingchange', stagingDifference);
     }
 
     if (this._lastStableGraph !== stableGraph) {
       this._fullDifference = new Difference(baseGraph, stableGraph);
-      const stableDifference = new Difference(this._lastStableGraph, stableGraph);
+      const stableChangeHint = stableGraph.changeHint(this._lastStableGraph);
+      const stableDifference = new Difference(this._lastStableGraph, stableGraph, stableChangeHint);
       this._lastStableGraph = stableGraph;
       this.emit('stablechange', stableDifference);
       this.deferredBackup();

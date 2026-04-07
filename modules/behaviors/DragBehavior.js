@@ -36,13 +36,17 @@ export class DragBehavior extends AbstractBehavior {
     this.dragTarget = null;   // details of the feature being dragged
     this.lastDown = null;
     this.lastMove = null;
+    this._moveFrame = null;
+    this._movePending = false;
 
     // Make sure the event handlers have `this` bound correctly
     this._doMove = this._doMove.bind(this);
+    this._flushMove = this._flushMove.bind(this);
     this._pointercancel = this._pointercancel.bind(this);
     this._pointerdown = this._pointerdown.bind(this);
     this._pointermove = this._pointermove.bind(this);
     this._pointerup = this._pointerup.bind(this);
+    this._scheduleMove = this._scheduleMove.bind(this);
   }
 
 
@@ -57,11 +61,13 @@ export class DragBehavior extends AbstractBehavior {
     this.lastDown = null;
     this.lastMove = null;
     this.dragTarget = null;
+    this._moveFrame = null;
+    this._movePending = false;
 
     const eventManager = this.context.systems.gfx.events;
-    eventManager.on('modifierchange', this._doMove);
-    eventManager.on('pointerover', this._doMove);
-    eventManager.on('pointerout', this._doMove);
+    eventManager.on('modifierchange', this._scheduleMove);
+    eventManager.on('pointerover', this._scheduleMove);
+    eventManager.on('pointerout', this._scheduleMove);
     eventManager.on('pointerdown', this._pointerdown);
     eventManager.on('pointermove', this._pointermove);
     eventManager.on('pointerup', this._pointerup);
@@ -90,11 +96,16 @@ export class DragBehavior extends AbstractBehavior {
     this.lastDown = null;
     this.lastMove = null;
     this.dragTarget = null;
+    this._movePending = false;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
 
     const eventManager = this.context.systems.gfx.events;
-    eventManager.off('modifierchange', this._doMove);
-    eventManager.off('pointerover', this._doMove);
-    eventManager.off('pointerout', this._doMove);
+    eventManager.off('modifierchange', this._scheduleMove);
+    eventManager.off('pointerover', this._scheduleMove);
+    eventManager.off('pointerout', this._scheduleMove);
     eventManager.off('pointerdown', this._pointerdown);
     eventManager.off('pointermove', this._pointermove);
     eventManager.off('pointerup', this._pointerup);
@@ -163,7 +174,7 @@ export class DragBehavior extends AbstractBehavior {
     // (Don't send a `move` event in the same time as `start` because
     // dragging a midpoint will convert the target to a node.)  todo: check?
     if (this.dragTarget) {   // already dragging
-      this._doMove();
+      this._scheduleMove();
 
     } else if (down.target) {  // start dragging if we've moved enough
       const dist = vecLength(down.coord.screen, move.coord.screen);
@@ -227,6 +238,8 @@ export class DragBehavior extends AbstractBehavior {
    * @param  `e`  A Pixi FederatedPointerEvent
    */
   _pointerup(e) {
+    this._flushMove();
+
     const down = this.lastDown;
     const up = this._getEventData(e);
     if (!down || down.id !== up.id) return;   // not down, or different pointer
@@ -261,6 +274,12 @@ export class DragBehavior extends AbstractBehavior {
    * @param  `e`  A Pixi FederatedPointerEvent
    */
   _pointercancel(e) {
+    this._movePending = false;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
+
     const cancel = this._getEventData(e);
 
     // Here we can throw away the down data to prepare for another `pointerdown`.
@@ -308,5 +327,38 @@ export class DragBehavior extends AbstractBehavior {
     }
 
     this.emit('move', eventData);
+  }
+
+
+  /**
+   * _scheduleMove
+   * Coalesce high-frequency move triggers and emit at most once per animation frame.
+   */
+  _scheduleMove() {
+    this._movePending = true;
+    if (this._moveFrame !== null) return;
+
+    this._moveFrame = window.requestAnimationFrame(() => {
+      this._moveFrame = null;
+      if (!this._movePending) return;
+      this._movePending = false;
+      this._doMove();
+    });
+  }
+
+
+  /**
+   * _flushMove
+   * Immediately emit a pending move so drag end uses the latest pointer state.
+   */
+  _flushMove() {
+    if (!this._movePending) return;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
+
+    this._movePending = false;
+    this._doMove();
   }
 }

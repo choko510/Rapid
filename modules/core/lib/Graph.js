@@ -41,6 +41,11 @@ export class Graph {
     this._transients = new Map();     // Map(entityID -> Map(k -> v))
     this._childNodes = new Map();
     this._frozen = !mutable;
+
+    // Optional hint for consumers that need to diff this graph against `_changeBase`.
+    // This is populated by tracked `update()` chains on frozen graphs.
+    this._changeBase = null;
+    this._changeIDs = null;
   }
 
 
@@ -254,6 +259,46 @@ export class Graph {
 
 
   /**
+   * changeHint
+   * Returns a hint of changed entity IDs if this graph was derived from
+   * `baseGraph` in a tracked update chain.
+   * @param   baseGraph  A potential base graph for this graph
+   * @return  Set of changed entityIDs, or `null` if no direct hint is available
+   */
+  changeHint(baseGraph) {
+    if (this._changeBase !== baseGraph) return null;
+    if (!this._changeIDs?.size) return null;
+    return new Set(this._changeIDs);
+  }
+
+
+  /**
+   * clearChangeHint
+   * Clears any stored change hint.
+   */
+  clearChangeHint() {
+    this._changeBase = null;
+    this._changeIDs = null;
+  }
+
+
+  /**
+   * prepareChangeHint
+   * Ensure this graph tracks changed IDs against the given base graph.
+   * If already tracking against that base, keep accumulated IDs.
+   * @param  baseGraph
+   */
+  prepareChangeHint(baseGraph) {
+    if (this._changeBase !== baseGraph) {
+      this._changeBase = baseGraph;
+      this._changeIDs = new Set();
+    } else if (!this._changeIDs) {
+      this._changeIDs = new Set();
+    }
+  }
+
+
+  /**
    * rebase
    * Rebase merges new Entities into the base graph.
    * Unlike other Graph methods that return a new Graph, rebase mutates in place.
@@ -414,6 +459,17 @@ export class Graph {
 
 
   /**
+   * _recordChange
+   * Internal function, tracks a changed entity ID when we're in a tracked update.
+   * @param  entityID
+   */
+  _recordChange(entityID) {
+    if (!this._changeIDs) return;
+    this._changeIDs.add(entityID);
+  }
+
+
+  /**
    * replace
    * Replace an Entity in this Graph
    * @param   entity  The Entity to replace
@@ -427,6 +483,7 @@ export class Graph {
     return this.update(function() {
       this._updateCalculated(current, replacement);
       this._local.entities.set(entityID, replacement);
+      this._recordChange(entityID);
     });
   }
 
@@ -445,6 +502,7 @@ export class Graph {
     return this.update(function() {
       this._updateCalculated(current, undefined);
       this._local.entities.set(entityID, undefined);
+      this._recordChange(entityID);
     });
   }
 
@@ -463,6 +521,7 @@ export class Graph {
     return this.update(function() {
       this._updateCalculated(current, original);
       this._local.entities.delete(entityID);
+      this._recordChange(entityID);
     });
   }
 
@@ -475,6 +534,11 @@ export class Graph {
    */
   update(...args) {
     const graph = this._frozen ? new Graph(this, true) : this;
+
+    if (this._frozen) {
+      graph._changeBase = this._changeBase ?? this;
+      graph._changeIDs = new Set(this._changeIDs ?? []);
+    }
 
     for (const fn of args) {
       fn.call(graph, graph);
@@ -500,8 +564,10 @@ export class Graph {
     for (const [entityID, entity] of Object.entries(entities)) {
       const current = this.hasEntity(entityID);
       const replacement = entity || undefined;
+      if (current === replacement) continue;
       this._updateCalculated(current, replacement);
       this._local.entities.set(entityID, replacement);
+      this._recordChange(entityID);
     }
 
     return this;

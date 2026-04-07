@@ -41,16 +41,20 @@ export class DrawBehavior extends AbstractBehavior {
     this.lastMove = null;
     this.lastSpace = null;
     this.lastClick = null;
+    this._moveFrame = null;
+    this._movePending = false;
 
     // Make sure the event handlers have `this` bound correctly
     this._doClick = this._doClick.bind(this);
     this._doMove = this._doMove.bind(this);
+    this._flushMove = this._flushMove.bind(this);
     this._keydown = this._keydown.bind(this);
     this._keyup = this._keyup.bind(this);
     this._pointercancel = this._pointercancel.bind(this);
     this._pointerdown = this._pointerdown.bind(this);
     this._pointermove = this._pointermove.bind(this);
     this._pointerup = this._pointerup.bind(this);
+    this._scheduleMove = this._scheduleMove.bind(this);
   }
 
 
@@ -66,15 +70,17 @@ export class DrawBehavior extends AbstractBehavior {
     this.lastMove = null;
     this.lastSpace = null;
     this.lastClick = null;
+    this._moveFrame = null;
+    this._movePending = false;
 
     this._spaceClickDisabled = false;
 
     const eventManager = this.context.systems.gfx.events;
     eventManager.on('keydown', this._keydown);
     eventManager.on('keyup', this._keyup);
-    eventManager.on('modifierchange', this._doMove);
-    eventManager.on('pointerover', this._doMove);
-    eventManager.on('pointerout', this._doMove);
+    eventManager.on('modifierchange', this._scheduleMove);
+    eventManager.on('pointerover', this._scheduleMove);
+    eventManager.on('pointerout', this._scheduleMove);
     eventManager.on('pointerdown', this._pointerdown);
     eventManager.on('pointermove', this._pointermove);
     eventManager.on('pointerup', this._pointerup);
@@ -94,15 +100,17 @@ export class DrawBehavior extends AbstractBehavior {
     this.lastMove = null;
     this.lastSpace = null;
     this.lastClick = null;
+    this._flushMove();
+    this._movePending = false;
 
     this._spaceClickDisabled = false;
 
     const eventManager = this.context.systems.gfx.events;
     eventManager.off('keydown', this._keydown);
     eventManager.off('keyup', this._keyup);
-    eventManager.off('modifierchange', this._doMove);
-    eventManager.off('pointerover', this._doMove);
-    eventManager.off('pointerout', this._doMove);
+    eventManager.off('modifierchange', this._scheduleMove);
+    eventManager.off('pointerover', this._scheduleMove);
+    eventManager.off('pointerout', this._scheduleMove);
     eventManager.off('pointerdown', this._pointerdown);
     eventManager.off('pointermove', this._pointermove);
     eventManager.off('pointerup', this._pointerup);
@@ -190,7 +198,7 @@ export class DrawBehavior extends AbstractBehavior {
       }
     }
 
-    this._doMove();
+    this._scheduleMove();
   }
 
 
@@ -200,6 +208,8 @@ export class DrawBehavior extends AbstractBehavior {
    * @param  `e`  A Pixi InteractionEvent
    */
   _pointerup(e) {
+    this._flushMove();
+
     const down = this.lastDown;
     const up = this._getEventData(e);
     if (!down || down.id !== up.id) return;  // not down, or different pointer
@@ -223,6 +233,11 @@ export class DrawBehavior extends AbstractBehavior {
    */
   _pointercancel() {
     this.lastDown = null;  // prepare for the next `pointerdown`
+    this._movePending = false;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
   }
 
 
@@ -244,6 +259,39 @@ export class DrawBehavior extends AbstractBehavior {
     this.lastSpace = this.lastMove;
     this.lastClick = this.lastMove;   // We will accept this as a click
     this._doClick();
+  }
+
+
+  /**
+   * _scheduleMove
+   * Coalesce high-frequency move triggers and emit at most once per animation frame.
+   */
+  _scheduleMove() {
+    this._movePending = true;
+    if (this._moveFrame !== null) return;
+
+    this._moveFrame = window.requestAnimationFrame(() => {
+      this._moveFrame = null;
+      if (!this._movePending) return;
+      this._movePending = false;
+      this._doMove();
+    });
+  }
+
+
+  /**
+   * _flushMove
+   * Immediately emits a pending move (if any), used before click/end processing.
+   */
+  _flushMove() {
+    if (!this._movePending) return;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
+
+    this._movePending = false;
+    this._doMove();
   }
 
 

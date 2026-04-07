@@ -8,7 +8,7 @@ import { uiFlash } from './flash.js';
 import { uiTooltip } from './tooltip.js';
 import { utilKeybinding } from '../util/keybinding.js';
 
-const ACCEPT_FEATURES_LIMIT = 50;
+const ACCEPT_FEATURES_LIMIT = Number.POSITIVE_INFINITY;
 
 
 /**

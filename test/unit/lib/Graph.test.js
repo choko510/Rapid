@@ -510,6 +510,43 @@ describe('Graph', () => {
     });
   });
 
+  describe('#changeHint', () => {
+    it('returns changed IDs for a graph derived from the given base graph', () => {
+      const n1 = Rapid.osmNode({ id: 'n' });
+      const n2 = n1.move([1, 2]);
+      const base = new Rapid.Graph([n1]);
+      const head = base.replace(n2);
+
+      assert.deepEqual(head.changeHint(base), new Set(['n']));
+    });
+
+    it('returns null if no hint exists for the given base graph', () => {
+      const n1 = Rapid.osmNode({ id: 'n' });
+      const n2 = n1.move([1, 2]);
+      const base = new Rapid.Graph([n1]);
+      const head = base.replace(n2);
+      const unrelated = new Rapid.Graph([n1]);
+
+      assert.equal(head.changeHint(unrelated), null);
+    });
+
+    it('accumulates changed IDs while prepared with the same base graph', () => {
+      const n1 = Rapid.osmNode({ id: 'n1' });
+      const n2 = Rapid.osmNode({ id: 'n2' });
+      const n1m = n1.move([1, 1]);
+      const n2m = n2.move([2, 2]);
+      const base = new Rapid.Graph([n1, n2]);
+      let head = new Rapid.Graph(base);
+
+      head.prepareChangeHint(base);
+      head = head.replace(n1m);
+      head.prepareChangeHint(base);
+      head = head.replace(n2m);
+
+      assert.deepEqual(head.changeHint(base), new Set(['n1', 'n2']));
+    });
+  });
+
   describe('#parentWays', () => {
     it('returns an array of ways that contain the given node id', () => {
       const n1 = Rapid.osmNode({ id: 'n1' });

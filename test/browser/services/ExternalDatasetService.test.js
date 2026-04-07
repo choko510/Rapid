@@ -17,16 +17,46 @@ describe('ExternalDatasetService', () => {
     setData(url, data) { this._data.set(url, data); }
   }
 
+  class MockEditSystem {
+    constructor(entities = []) {
+      this.setEntities(entities);
+    }
+    setEntities(entities = []) {
+      this._entities = entities;
+      this.staging = { graph: new Rapid.Graph(entities) };
+    }
+    intersects() {
+      return this._entities;
+    }
+  }
+
   class MockContext {
     constructor() {
       this.systems = {
-        gfx: new MockGfxSystem()
+        gfx: new MockGfxSystem(),
+        editor: new MockEditSystem()
       };
       this.services = {
         vectortile: new MockVectorTileService()
       };
       this.viewport = { v: 0 };
     }
+  }
+
+  function makeOSMBuildingEntities(prefix, coords) {
+    const nodes = coords.map((loc, i) => Rapid.osmNode({
+      id: `${prefix}-n${i}`,
+      loc: loc,
+      tags: {}
+    }));
+    const nodeIDs = nodes.map(node => node.id);
+    nodeIDs.push(nodeIDs[0]);
+    const way = Rapid.osmWay({
+      id: `${prefix}-w`,
+      nodes: nodeIDs,
+      tags: { building: 'yes' }
+    });
+    return [...nodes, way];
   }
 
   beforeEach(() => {
@@ -164,6 +194,91 @@ describe('ExternalDatasetService', () => {
     });
 
     service.loadTiles('external-buildings');
+  });
+
+
+  it('filters building suggestions when 90%+ nodes are near existing OSM building nodes', done => {
+    const datasetID = 'external-buildings-near';
+    fetchMock.route('https://example.com/buildings-near.geojson', {
+      body: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          id: 'b-near',
+          properties: { building: 'yes' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[0.000001, 0.000001], [0.000001, 1.000001], [1.000001, 1.000001], [1.000001, 0.000001], [0.000001, 0.000001]]]
+          }
+        }]
+      },
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    service.context.systems.editor.setEntities(
+      makeOSMBuildingEntities('osm-near', [[0, 0], [0, 1], [1, 1], [1, 0]])
+    );
+
+    service.importManifest({
+      datasets: [{
+        id: datasetID,
+        label: 'External Buildings Near',
+        categories: ['buildings'],
+        source: { type: 'geojson', url: 'https://example.com/buildings-near.geojson' }
+      }]
+    });
+
+    service.on('loadedData', () => {
+      const data = service.getData(datasetID);
+      expect(data.length).to.eql(0);
+      done();
+    });
+
+    service.loadTiles(datasetID);
+  });
+
+
+  it('keeps building suggestions when nearby node ratio is below 90%', done => {
+    const datasetID = 'external-buildings-far';
+    fetchMock.route('https://example.com/buildings-far.geojson', {
+      body: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          id: 'b-far',
+          properties: { building: 'yes' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]]
+          }
+        }]
+      },
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    // 3/4 nodes are near; one corner is far away, so this should not be filtered.
+    service.context.systems.editor.setEntities(
+      makeOSMBuildingEntities('osm-far', [[0, 0], [0, 1], [1, 1], [2, 0]])
+    );
+
+    service.importManifest({
+      datasets: [{
+        id: datasetID,
+        label: 'External Buildings Far',
+        categories: ['buildings'],
+        source: { type: 'geojson', url: 'https://example.com/buildings-far.geojson' }
+      }]
+    });
+
+    service.on('loadedData', () => {
+      const data = service.getData(datasetID);
+      expect(data.length).to.eql(1);
+      done();
+    });
+
+    service.loadTiles(datasetID);
   });
 
 

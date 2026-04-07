@@ -22,6 +22,21 @@ describe('Difference', () => {
       assert.ok(diff.changes instanceof Map);
       assert.equal(diff.changes.size, 0);
     });
+
+    it('can limit comparison to the supplied entityIDs', () => {
+      const n1 = Rapid.osmNode({ id: 'n1' });
+      const n2 = Rapid.osmNode({ id: 'n2' });
+      const n1moved = n1.move([1, 1]);
+      const n2moved = n2.move([2, 2]);
+      const base = new Rapid.Graph([n1, n2]);
+      const head = base.replace(n1moved).replace(n2moved);
+
+      const diff = new Rapid.Difference(base, head, ['n2']);
+      assert.ok(diff instanceof Rapid.Difference);
+      assert.ok(diff.changes instanceof Map);
+      assert.equal(diff.changes.size, 1);
+      assert.deepEqual(diff.changes.get('n2'), { base: n2, head: n2moved });
+    });
   });
 
   describe('#changes', () => {

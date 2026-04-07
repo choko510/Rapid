@@ -23,10 +23,14 @@ export class RotateMode extends AbstractMode {
     this._entityIDs = [];
     this._lastPoint = null;
     this._pivotLoc = null;
+    this._moveFrame = null;
+    this._movePending = false;
 
     // Make sure the event handlers have `this` bound correctly
+    this._applyPointerMove = this._applyPointerMove.bind(this);
     this._cancel = this._cancel.bind(this);
     this._finish = this._finish.bind(this);
+    this._flushPointerMove = this._flushPointerMove.bind(this);
     this._keydown = this._keydown.bind(this);
     this._pointermove = this._pointermove.bind(this);
   }
@@ -73,6 +77,8 @@ export class RotateMode extends AbstractMode {
 
     this._lastPoint = null;
     this._pivotLoc = this._calcPivotLoc();
+    this._movePending = false;
+    this._moveFrame = null;
 
     eventManager
       .on('click', this._finish)
@@ -99,6 +105,11 @@ export class RotateMode extends AbstractMode {
 
     this._lastPoint = null;
     this._pivotLoc = null;
+    this._movePending = false;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
 
     filters.forceVisible([]);
 
@@ -150,6 +161,23 @@ export class RotateMode extends AbstractMode {
    * @param  `e`  A Pixi FederatedPointerEvent
    */
   _pointermove() {
+    this._movePending = true;
+    if (this._moveFrame !== null) return;
+
+    this._moveFrame = window.requestAnimationFrame(() => {
+      this._moveFrame = null;
+      if (!this._active || !this._movePending) return;
+      this._movePending = false;
+      this._applyPointerMove();
+    });
+  }
+
+
+  /**
+   * _applyPointerMove
+   * Apply a pending pointer move to the selected features.
+   */
+  _applyPointerMove() {
     const context = this.context;
     const editor = context.systems.editor;
     const eventManager = context.systems.gfx.events;
@@ -208,6 +236,22 @@ export class RotateMode extends AbstractMode {
 
 
   /**
+   * _flushPointerMove
+   * Immediately apply a pending pointer move.
+   */
+  _flushPointerMove() {
+    if (!this._movePending) return;
+    if (this._moveFrame !== null) {
+      window.cancelAnimationFrame(this._moveFrame);
+      this._moveFrame = null;
+    }
+
+    this._movePending = false;
+    this._applyPointerMove();
+  }
+
+
+  /**
    * _calcPivotLoc
    * Calculate the [lon,lat] location that the features should pivot around
    * @return  Array [lon,lat]
@@ -245,6 +289,7 @@ export class RotateMode extends AbstractMode {
    * Return to select mode - `exit()` will finalize the work in progress.
    */
   _finish() {
+    this._flushPointerMove();
     this.context.enter('select-osm', { selection: { osm: this._entityIDs }} );
   }
 
@@ -262,4 +307,3 @@ export class RotateMode extends AbstractMode {
   }
 
 }
-
