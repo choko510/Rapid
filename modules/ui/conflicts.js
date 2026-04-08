@@ -5,7 +5,7 @@ import { Extent, numWrap } from '@rapid-sdk/math';
 import { JXON } from '../util/jxon.js';
 import { osmChangeset } from '../osm/index.js';
 import { uiIcon } from './icon.js';
-import { utilDetect, utilKeybinding, utilRebind, utilSanitizeHTML } from '../util/index.js';
+import { utilKeybinding, utilRebind, utilSanitizeHTML } from '../util/index.js';
 
 
 export function uiConflicts(context) {
@@ -73,7 +73,6 @@ export function uiConflicts(context) {
 
 
     // Download changes link
-    const detected = utilDetect();
     let changeset = new osmChangeset();
     delete changeset.id;  // Export without changeset_id
 
@@ -85,7 +84,6 @@ export function uiConflicts(context) {
       .append('a')
       .attr('class', 'download-changes');
 
-    // All except IE11 and Edge
     linkEnter
       .attr('href', window.URL.createObjectURL(blob)) // download the data as a file
       .attr('download', fileName);

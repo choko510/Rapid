@@ -5,14 +5,12 @@ import { actionDiscardTags } from '../../actions/discard_tags.js';
 import { osmChangeset } from '../../osm/index.js';
 import { uiIcon } from '../icon.js';
 import { uiSection } from '../section.js';
-import { utilDetect } from '../../util/index.js';
 
 
 export function uiSectionChanges(context) {
   const assets = context.systems.assets;
   const editor = context.systems.editor;
   const l10n = context.systems.l10n;
-  let detected = utilDetect();
 
   let _discardTags = {};
   assets.loadAssetAsync('tagging_discarded')
@@ -110,7 +108,6 @@ export function uiSectionChanges(context) {
       .append('a')
       .attr('class', 'download-changes');
 
-    // All except IE11 and Edge
     linkEnter
       .attr('href', window.URL.createObjectURL(blob)) // download the data as a file
       .attr('download', fileName);

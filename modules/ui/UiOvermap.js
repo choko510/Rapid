@@ -70,15 +70,6 @@ export class UiOvermap {
       .append('div')
       .attr('class', 'over-map');
 
-    // HACK: Mobile Safari 14 likes to select anything selectable when long-
-    // pressing, even if it's not targeted. This conflicts with long-pressing
-    // to show the edit menu. We add a selectable offscreen element as the first
-    // child to trick Safari into not showing the selection UI.
-    $$overmap
-      .append('div')
-      .attr('class', 'select-trap')
-      .text('t');
-
     // update
     $overmap = $overmap.merge($$overmap);
 

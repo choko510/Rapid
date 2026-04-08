@@ -43,6 +43,11 @@ describe('utilDetect', () => {
     assert.strictEqual(detected.version, '58.0');
   });
 
+  it('does not include a legacy support flag', () => {
+    const detected = Rapid.utilDetect(true);
+    assert.strictEqual(detected.support, undefined);
+  });
+
   it('should detect the os and platform', () => {
     const ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3';
     global.navigator.userAgent = ua;

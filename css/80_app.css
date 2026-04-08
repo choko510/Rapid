@@ -2923,12 +2923,6 @@ img.tag-reference-wiki-image {
   pointer-events: auto;
   z-index: 5;
 }
-/* offscreen this without hiding it */
-.over-map .select-trap {
-  position: absolute;
-  right: -1000%;
-  opacity: 0;
-}
 
 /* Map Controls
 ------------------------------------------------------- */

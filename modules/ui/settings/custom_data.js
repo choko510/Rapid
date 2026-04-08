@@ -68,7 +68,7 @@ ${file_tip}
       .attr('class', 'field-file')
       .attr('type', 'file')
       .attr('accept', accept.join())
-      .property('files', _currFileList)  // works for all except IE11
+      .property('files', _currFileList)
       .on('change', d3_event => {
         const files = d3_event.target.files;
         if (files?.length) {

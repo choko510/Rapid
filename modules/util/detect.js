@@ -1,14 +1,12 @@
-
 let _cached;
 
 /**
  * `utilDetect` detects things from the user's browser.
  * It returns an object with the following:
  * {
- *   support: true,                   // Is Rapid supported?  (basically - not Internet Explorer)
- *   browser: "Chrome",               // e.g. 'Edge','msie','Opera','Chrome','Safari','Firefox'
+ *   browser: "Chrome",               // e.g. 'Edge','Opera','Chrome','Safari','Firefox'
  *   version: "133.0",                // reported browser version
- *   languages: ['en-US'],            // Array sourced from `navigator.languages`
+ *   locales: ['en-US'],              // Array sourced from `navigator.languages`
  *   host: "http://127.0.0.1:8080/",
  *   os: "mac",
  *   platform: "Macintosh",
@@ -23,50 +21,32 @@ export function utilDetect(refresh) {
   _cached = {};
 
   const ua = navigator.userAgent;
-  let m = null;
+  let m = ua.match(/(edg|opr|opera|chrome|safari|firefox)\/?\s*(\.?\d+(\.\d+)*)/i);
 
   /* Browser */
-  m = ua.match(/(edg)\/?\s*(\.?\d+(\.\d+)*)/i);   // Edge
   if (m !== null) {
-    _cached.browser = 'Edge';
-    _cached.version = m[2];
-  }
-  if (!_cached.browser) {
-    m = ua.match(/Trident\/.*rv:([0-9]{1,}[\.0-9]{0,})/i);   // IE11
-    if (m !== null) {
-      _cached.browser = 'msie';
-      _cached.version = m[1];
-    }
-  }
-  if (!_cached.browser) {
-    m = ua.match(/(opr)\/?\s*(\.?\d+(\.\d+)*)/i);   // Opera 15+
-    if (m !== null) {
+    const name = m[1].toLowerCase();
+    if (name === 'edg') {
+      _cached.browser = 'Edge';
+    } else if (name === 'opr') {
       _cached.browser = 'Opera';
-      _cached.version = m[2];
+    } else {
+      _cached.browser = name.charAt(0).toUpperCase() + name.slice(1);
     }
-  }
-  if (!_cached.browser) {
-    m = ua.match(/(opera|chrome|safari|firefox|msie)\/?\s*(\.?\d+(\.\d+)*)/i);
-    if (m !== null) {
-      _cached.browser = m[1];
-      _cached.version = m[2];
+
+    _cached.version = m[2];
+
+    if (_cached.browser === 'Safari') {
       m = ua.match(/version\/([\.\d]+)/i);
       if (m !== null) _cached.version = m[1];
     }
-  }
-  if (!_cached.browser) {
+  } else {
     _cached.browser = navigator.appName;
     _cached.version = navigator.appVersion;
   }
 
   // Keep major.minor version only..
-  _cached.version = _cached.version.split(/\W/).slice(0,2).join('.');
-
-  if (_cached.browser.toLowerCase() === 'msie') {
-    _cached.support = false;
-  } else {
-    _cached.support = true;
-  }
+  _cached.version = _cached.version.split(/\W/).slice(0, 2).join('.');
 
   /* Platform */
   if (/Win/.test(ua)) {
@@ -84,7 +64,8 @@ export function utilDetect(refresh) {
   }
 
   /* Locale */
-  _cached.locales = navigator.languages.slice();  // shallow copy
+  const locales = Array.isArray(navigator.languages) ? navigator.languages : [navigator.language];
+  _cached.locales = locales.filter(Boolean).slice();
 
   /* Host */
   let loc, origin, pathname;
@@ -98,10 +79,7 @@ export function utilDetect(refresh) {
     pathname = loc.pathname;
   }
 
-  if (!origin) {  // for unpatched IE11
-    origin = loc.protocol + '//' + loc.hostname + (loc.port ? ':' + loc.port: '');
-  }
-
+  origin = origin || (loc.protocol + '//' + loc.host);
   _cached.host = origin + pathname;
 
   _cached.prefersColorScheme = window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

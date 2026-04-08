@@ -91,9 +91,8 @@ export function uiPresetList(context) {
     search = search.merge(searchEnter);
     _input = search.selectAll('.preset-search-input');
 
-    if (_autofocus) {
-      // Safari 14 doesn't always like to focus immediately, so schedule it with setTimeout
-      setTimeout(() => _input.node().focus(), 0);
+    if (_autofocus && _input.size()) {
+      _input.node().focus();
     }
 
 

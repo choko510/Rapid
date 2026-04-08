@@ -15,6 +15,12 @@ Rapid also includes data integrity checks to ensure that new map edits are consi
 * Learn more at [rapideditor.org](https://rapideditor.org).
 
 
+## Browser support
+
+Rapid supports the latest stable versions of Chrome, Edge, Firefox, and Safari.
+Older browser versions are not supported.
+
+
 ## Participate!
 
 * Read the project [Code of Conduct](CODE_OF_CONDUCT.md) and [Contributing Guide](CONTRIBUTING.md) to learn about how to contribute.
