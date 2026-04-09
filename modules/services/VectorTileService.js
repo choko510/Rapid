@@ -165,11 +165,11 @@ export class VectorTileService extends AbstractSystem {
 
         // Determine the tiles needed to cover the view..
         const tiles = this._tiler.getTiles(viewport).tiles;
+        const neededTileIDs = new Set(tiles.map(tile => tile.id));
 
         // Abort inflight requests that are no longer needed..
         for (const [tileID, controller] of source.inflight) {
-          const needed = tiles.find(tile => tile.id === tileID);
-          if (!needed) {
+          if (!neededTileIDs.has(tileID)) {
             controller.abort();
           }
         }

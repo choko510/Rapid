@@ -186,7 +186,7 @@ export function actionMove(moveIDs, tryDelta, viewport, cache) {
         if (way.isClosed() && insertAt === 0) insertAt = len;
 
         way = way.addNode(orig.id, insertAt);
-        return graph.replace(orig).replace(way);
+        return graph.replaceMany([orig, way]);
     }
 
 
@@ -346,11 +346,17 @@ export function actionMove(moveIDs, tryDelta, viewport, cache) {
             limitDelta(graph);
         }
 
+        var replacements = [];
         for (var i = 0; i < cache.nodes.length; i++) {
-            var node = graph.entity(cache.nodes[i]);
-            var start = viewport.project(node.loc);
+            var nodeID = cache.nodes[i];
+            var node = graph.entity(nodeID);
+            var start = viewport.project(cache.startLoc[nodeID]);
             var end = vecAdd(start, _delta);
-            graph = graph.replace(node.move(viewport.unproject(end)));
+            replacements.push(node.move(viewport.unproject(end)));
+        }
+
+        if (replacements.length) {
+            graph = graph.replaceMany(replacements);
         }
 
         if (cache.intersections.length) {

@@ -489,6 +489,44 @@ export class Graph {
 
 
   /**
+   * replaceMany
+   * Replace multiple Entities in this Graph
+   * @param   replacements  Iterable of Entities to replace
+   * @return  A new Graph
+   */
+  replaceMany(replacements) {
+    if (!replacements) return this;
+
+    const list = Array.isArray(replacements) ? replacements : Array.from(replacements);
+    if (!list.length) return this;
+
+    let hasChanges = false;
+    for (const replacement of list) {
+      if (!replacement) continue;
+      if (this.hasEntity(replacement.id) !== replacement) {
+        hasChanges = true;
+        break;
+      }
+    }
+    if (!hasChanges) return this;   // no changes
+
+    return this.update(function() {
+      for (const replacement of list) {
+        if (!replacement) continue;
+
+        const entityID = replacement.id;
+        const current = this.hasEntity(entityID);
+        if (current === replacement) continue;
+
+        this._updateCalculated(current, replacement);
+        this._local.entities.set(entityID, replacement);
+        this._recordChange(entityID);
+      }
+    });
+  }
+
+
+  /**
    * remove
    * Remove an Entity from this Graph
    * @param   entity  The Entity to remove

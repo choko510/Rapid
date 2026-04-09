@@ -127,6 +127,7 @@ export class PixiTextures {
 //        }
 
         this.loaded = true;
+        gfx.immediateRedraw();
       })
       .catch(e => console.error(e));  // eslint-disable-line no-console
   }

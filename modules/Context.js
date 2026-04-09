@@ -11,6 +11,19 @@ import { systems } from './core/index.js';
 import { utilKeybinding } from './util/keybinding.js';
 
 const MINZOOM = 15;
+const IDLE_TIMEOUT = 8000;
+const DEFERRED_SYSTEM_IDS = new Set(['map3d', 'presets', 'uploader', 'validator']);
+const DEFERRED_SERVICE_IDS = new Set([
+  'esri',
+  'nominatim',
+  'nsi',
+  'osmwikibase',
+  'overture',
+  'roadAlignment',
+  'taginfo',
+  'wikidata',
+  'wikipedia'
+]);
 
 
 /**
@@ -179,44 +192,96 @@ export class Context extends EventEmitter {
     // ---------------------------------
     const allSystems = Object.values(this.systems);
     const allServices = Object.values(this.services);
-    const nsi = this.services.nsi;
-    const esri = this.services.esri;
-    const overture = this.services.overture;
-    const deferredServices = [nsi, esri, overture].filter(Boolean);
-    const criticalServices = allServices.filter(s => !deferredServices.includes(s));
+    const criticalSystems = allSystems.filter(s => !DEFERRED_SYSTEM_IDS.has(s.id));
+    const deferredSystems = allSystems.filter(s => DEFERRED_SYSTEM_IDS.has(s.id));
+    const deferredServices = allServices.filter(s => DEFERRED_SERVICE_IDS.has(s.id));
+    const criticalServices = allServices.filter(s => !DEFERRED_SERVICE_IDS.has(s.id));
+
+    const scheduleIdleTask = (task, options = {}) => {
+      const { timeout = IDLE_TIMEOUT, delay = 0 } = options;
+      return new Promise((resolve, reject) => {
+        const run = () => Promise.resolve()
+          .then(task)
+          .then(resolve, reject);
+
+        const schedule = () => {
+          if (typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(run, { timeout });
+          } else {
+            window.setTimeout(run, 0);
+          }
+        };
+
+        if (delay > 0) {
+          window.setTimeout(schedule, delay);
+        } else {
+          schedule();
+        }
+      });
+    };
+
+    const systemSchedule = systemID => {
+      if (systemID === 'presets') return { timeout: 12000, delay: 2500 };
+      if (systemID === 'map3d') return { timeout: 10000, delay: 2000 };
+      return { timeout: IDLE_TIMEOUT, delay: 1500 };
+    };
+
+    const startDeferredSystems = async () => {
+      for (const system of deferredSystems) {
+        try {
+          const schedule = systemSchedule(system.id);
+          await scheduleIdleTask(() => system.initAsync(), schedule);
+          if (system.autoStart) {
+            await scheduleIdleTask(() => system.startAsync(), { timeout: schedule.timeout });
+          }
+        } catch (err) {
+          console.error(err);  // eslint-disable-line no-console
+        }
+      }
+    };
+
+    const serviceSchedule = serviceID => {
+      if (serviceID === 'taginfo') return { timeout: 12000, delay: 5000 };
+      if (serviceID === 'esri' || serviceID === 'nsi' || serviceID === 'overture') {
+        return { timeout: 10000, delay: 3000 };
+      }
+      return { timeout: IDLE_TIMEOUT, delay: 2500 };
+    };
+
+    const startDeferredServices = async () => {
+      const rapid = this.systems.rapid;
+
+      for (const service of deferredServices) {
+        try {
+          const schedule = serviceSchedule(service.id);
+          await scheduleIdleTask(() => service.initAsync(), schedule);
+
+          if (service.id === 'esri' && rapid) {
+            rapid.syncServiceDatasets(service.getAvailableDatasets());
+          }
+
+          if (service.autoStart && !service.started) {
+            await scheduleIdleTask(() => service.startAsync(), { timeout: schedule.timeout });
+          }
+        } catch (err) {
+          console.error(err);  // eslint-disable-line no-console
+        }
+      }
+    };
 
     return this._initPromise = Promise.resolve()
-      .then(() => Promise.all( allSystems.map(s => s.initAsync()) ))
+      .then(() => Promise.all( criticalSystems.map(s => s.initAsync()) ))
       .then(() => Promise.all( criticalServices.map(s => s.initAsync()) ))
       .then(() => {
         // Setup the osm connection if we have preauth credentials to use
         const osm = this.services.osm;
         return (osm && this._preauth) ? osm.switchAsync(this._preauth) : Promise.resolve();
       })
-      .then(() => Promise.all( allSystems.map(s => s.autoStart ? s.startAsync() : Promise.resolve()) ))
+      .then(() => Promise.all( criticalSystems.map(s => s.autoStart ? s.startAsync() : Promise.resolve()) ))
       .then(() => Promise.all( criticalServices.map(s => s.autoStart ? s.startAsync() : Promise.resolve()) ))
       .then(() => {
-        // Some large services are not required to render the initial UI.
-        // Start them in the background to keep startup responsive.
-        if (nsi) {
-          nsi.initAsync()
-            .then(() => nsi.autoStart ? nsi.startAsync() : Promise.resolve());
-        }
-
-        if (esri) {
-          esri.initAsync()
-            .then(() => {
-              const rapid = this.systems.rapid;
-              if (rapid) {
-                rapid.syncServiceDatasets(esri.getAvailableDatasets());
-              }
-              return esri.autoStart ? esri.startAsync() : Promise.resolve();
-            });
-        }
-
-        if (overture) {
-          overture.initAsync();
-        }
+        void startDeferredSystems();
+        void startDeferredServices();
       });
   }
 

@@ -1,7 +1,8 @@
 import { EventEmitter } from 'pixi.js';
-import { vecRotate } from '@rapid-sdk/math';
 
 import { utilDetect } from '../util/detect.js';
+
+const MODIFIER_KEYS = ['Alt', 'Control', 'Meta', 'Shift'];
 
 
 /**
@@ -47,7 +48,10 @@ export class PixiEvents extends EventEmitter {
       map: [0,0]      // [0,0] is the origin of the viewport (rotation removed)
     };
 
-    this._wheelDefault = utilDetect().os === 'mac' ? 'auto' : 'zoom';
+    const os = utilDetect().os;
+    this._isMac = os === 'mac';
+    this._wheelDefault = this._isMac ? 'auto' : 'zoom';
+    this._wheelDelta = [0, 0];
 
     // Make sure the event handlers have `this` bound correctly
     this._click = this._click.bind(this);
@@ -209,15 +213,9 @@ export class PixiEvents extends EventEmitter {
    */
   _observeModifierKeys(e) {
     const modifiers = this.modifierKeys;
-    const toCheck = [
-      'Alt',      // ALT key, on Mac: ⌥ (option)
-      'Control',  // CTRL key, on Mac: ⌃ (control)
-      'Meta',     // META, on Mac: ⌘ (command), on Windows (Win), on Linux (Super)
-      'Shift'     // Shift key, ⇧
-    ];
 
     let didChange = false;
-    for (const key of toCheck) {
+    for (const key of MODIFIER_KEYS) {
       const keyIsDown = e.getModifierState(key);
       const keyWasDown = modifiers.has(key);
 
@@ -242,15 +240,25 @@ export class PixiEvents extends EventEmitter {
    * @param  `e`  A Pixi FederatedPointerEvent
    */
   _observeCoordinate(x, y) {
-    this.coord = {
-      screen: [x, y],  // [0,0] is top,left of the screen
-      map: [x, y]      // [0,0] is the origin of the viewport (rotation removed)
-    };
+    const coord = this.coord;
+    const screen = coord.screen;
+    const map = coord.map;
+    screen[0] = x;
+    screen[1] = y;
+    map[0] = x;
+    map[1] = y;
 
     const viewport = this.context.viewport;
     const r = viewport.transform.r;
     if (r) {
-      this.coord.map = vecRotate(this.coord.screen, -r, viewport.center());  // remove rotation
+      const [cx, cy] = viewport.center();
+      const dx = x - cx;
+      const dy = y - cy;
+      const cos = Math.cos(-r);
+      const sin = Math.sin(-r);
+
+      map[0] = cx + ((dx * cos) - (dy * sin));
+      map[1] = cy + ((dx * sin) + (dy * cos));
     }
   }
 
@@ -263,7 +271,7 @@ export class PixiEvents extends EventEmitter {
    * @param  `e`  A Pixi FederatedPointerEvent
    */
   _checkButtons(e) {
-    if (e.ctrlKey && utilDetect().os === 'mac') {
+    if (e.ctrlKey && this._isMac) {
       if (e.button === 0) {   // left button
         e.button = 2;         // right button
       }
@@ -392,7 +400,9 @@ export class PixiEvents extends EventEmitter {
     const storage = context.systems.storage;
 
     this._observeCoordinate(e.offsetX, e.offsetY);
-    let [dX, dY] = this._normalizeWheelDelta(e);
+    const wheelDelta = this._normalizeWheelDelta(e);
+    let dX = wheelDelta[0];
+    let dY = wheelDelta[1];
 
     // There is some code in here to try to detect when the user is 2-finger scrolling
     // on a trackpad, and if so allow this gesture to 'pan' the map instead of zooming it.
@@ -476,19 +486,23 @@ export class PixiEvents extends EventEmitter {
    * @returns `Array` of normalized `[deltaX, deltaY]` in pixels
    */
   _normalizeWheelDelta(e) {
-    let [dX, dY] = [e.deltaX, e.deltaY];  // raw delta values
+    let dX = e.deltaX;  // raw delta values
+    let dY = e.deltaY;
 
     if (dY === 0 && e.shiftKey) {         // Some browsers treat skiftKey as horizontal scroll
-      [dX, dY] = [e.deltaY, e.deltaX];    // swap dx/dy values to undo it.
+      dX = e.deltaY;    // swap dx/dy values to undo it.
+      dY = e.deltaX;
     }
 
-    let [sX, sY] = [Math.sign(dX), Math.sign(dY)];    // signs
-    let [mX, mY] = [Math.abs(dX), Math.abs(dY)];      // magnitudes
+    const sX = Math.sign(dX);   // signs
+    const sY = Math.sign(dY);
+    let mX = Math.abs(dX);      // magnitudes
+    let mY = Math.abs(dY);
 
     // Fractional numbers are generated from wheel events on many mouse types, but notably by
     // 2-finger pinch/unpinch gestues on a trackpad. Because we want to handle these specially,
     // we'll try to keep the round numbers round and the fractional numbers fractional.
-    const isRoundX = (typeof mY === 'number' && isFinite(mX) && Math.floor(mX) === mX);
+    const isRoundX = (typeof mX === 'number' && isFinite(mX) && Math.floor(mX) === mX);
     const isRoundY = (typeof mY === 'number' && isFinite(mY) && Math.floor(mY) === mY);
     const fuzzX = isRoundX ? 0 : 0.001;
     const fuzzY = isRoundY ? 0 : 0.001;
@@ -517,7 +531,8 @@ export class PixiEvents extends EventEmitter {
     const pY = sY * (Math.min(MAX, mY) + fuzzY);
 
     // console.log(`deltaMode = ${e.deltaMode}, inX = ${e.deltaX}, inY = ${e.deltaY}, outX = ${pX}, outY = ${pY}`);
-    return [pX, pY];
+    this._wheelDelta[0] = pX;
+    this._wheelDelta[1] = pY;
+    return this._wheelDelta;
   }
 }
-

@@ -4,6 +4,8 @@ import throttle from 'lodash-es/throttle.js';
 
 const MAXLENGTH = 180;
 const TICKHEIGHT = 8;
+const IMPERIAL_BUCKETS = [5280000, 528000, 52800, 5280, 500, 50, 5, 1];
+const METRIC_BUCKETS = [5000000, 500000, 50000, 5000, 500, 50, 5, 1];
 
 
 /**
@@ -27,6 +29,11 @@ export class UiScale {
     // D3 selections
     this.$parent = null;
     this.$wrap = null;
+    this.$scale = null;
+    this.$scalePath = null;
+    this.$scaleText = null;
+    this._lastScaleWidth = null;
+    this._lastScaleText = null;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     // (This is also necessary when using `d3-selection.call`)
@@ -72,7 +79,15 @@ export class UiScale {
       .attr('class', 'scale-text');
 
     // update
+    const didEnter = !$$wrap.empty();
     this.$wrap = $wrap = $wrap.merge($$wrap);
+    this.$scale = $wrap.select('.scale');
+    this.$scalePath = $wrap.select('.scale-path');
+    this.$scaleText = $wrap.select('.scale-text');
+    if (didEnter) {
+      this._lastScaleWidth = null;
+      this._lastScaleText = null;
+    }
 
     this.updateScale();
   }
@@ -83,7 +98,7 @@ export class UiScale {
    * Updates the length and text of the scale bar.
    */
   updateScale() {
-    if (!this.$wrap) return;   // called too early?
+    if (!this.$wrap || !this.$scale || !this.$scalePath || !this.$scaleText) return;   // called too early?
 
     const context = this.context;
     const l10n = context.systems.l10n;
@@ -97,12 +112,7 @@ export class UiScale {
     const conversion = (this._isImperial ? 3.28084 : 1);
     const dist = geoLonToMeters(loc2[0] - loc1[0], lat) * conversion;
 
-    let buckets;
-    if (this._isImperial) {
-      buckets = [5280000, 528000, 52800, 5280, 500, 50, 5, 1];
-    } else {
-      buckets = [5000000, 500000, 50000, 5000, 500, 50, 5, 1];
-    }
+    const buckets = this._isImperial ? IMPERIAL_BUCKETS : METRIC_BUCKETS;
 
     // Determine a user-friendly endpoint for the scale
     let scaleDistance = 0;
@@ -119,17 +129,21 @@ export class UiScale {
     const scaleWidth = Math.round(viewport.project([loc1[0] + dLon, loc1[1]])[0]);
     const scaleHeight = TICKHEIGHT;
     const scaleText = l10n.displayLength(scaleDistance / conversion, this._isImperial);
+    if (this._lastScaleWidth === scaleWidth && this._lastScaleText === scaleText) return;
+    this._lastScaleWidth = scaleWidth;
+    this._lastScaleText = scaleText;
 
-    const [w, h] = [scaleWidth + 2, scaleHeight + 2];
-    this.$wrap.select('.scale')
+    const w = scaleWidth + 2;
+    const h = scaleHeight + 2;
+    this.$scale
       .attr('width', `${w}px`)
       .attr('height', `${h}px`)
       .attr('viewBox', `0 0 ${w} ${h}`);
 
-    this.$wrap.select('.scale-path')
+    this.$scalePath
       .attr('d', `M0.5,0.5 v${scaleHeight} h${scaleWidth} v${-scaleHeight}`);
 
-    this.$wrap.select('.scale-text')
+    this.$scaleText
       .text(scaleText);
   }
 
@@ -140,6 +154,8 @@ export class UiScale {
    */
   toggleUnits() {
     this._isImperial = !this._isImperial;
+    this._lastScaleWidth = null;
+    this._lastScaleText = null;
     this.updateScale();
   }
 

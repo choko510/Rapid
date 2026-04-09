@@ -364,6 +364,37 @@ describe('Graph', () => {
     });
   });
 
+  describe('#replaceMany', () => {
+    it('is a no-op if all replacements are identical to existing entities', () => {
+      const n1 = Rapid.osmNode({ id: 'n1' });
+      const n2 = Rapid.osmNode({ id: 'n2' });
+      const graph = new Rapid.Graph([n1, n2]);
+      assert.equal(graph.replaceMany([n1, n2]), graph);
+    });
+
+    it('replaces multiple entities in the result', () => {
+      const n1 = Rapid.osmNode({ id: 'n1' });
+      const n2 = Rapid.osmNode({ id: 'n2' });
+      const n1m = n1.move([1, 1]);
+      const n2m = n2.move([2, 2]);
+      const graph = new Rapid.Graph([n1, n2]);
+      const result = graph.replaceMany([n1m, n2m]);
+      assert.equal(result.entity('n1'), n1m);
+      assert.equal(result.entity('n2'), n2m);
+    });
+
+    it('updates parentWays across multiple replacements', () => {
+      const n1 = Rapid.osmNode({ id: 'n1' });
+      const n2 = Rapid.osmNode({ id: 'n2' });
+      const w1 = Rapid.osmWay({ id: 'w1', nodes: ['n1'] });
+      const w2 = Rapid.osmWay({ id: 'w1', nodes: ['n2'] });
+      const graph = new Rapid.Graph([n1, n2, w1]);
+      const result = graph.replaceMany([w2]);
+      assert.deepEqual(result.parentWays(n1), []);
+      assert.deepEqual(result.parentWays(n2), [w2]);
+    });
+  });
+
   describe('#revert', () => {
     it('is a no-op if the head entity is identical to the base entity', () => {
       const n1 = Rapid.osmNode({ id: 'n' });

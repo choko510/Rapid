@@ -345,12 +345,12 @@ export class MapillaryService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     for (const req of this._cache.inflight.values()) {
       if (!req.tileID) continue;
-      const needed = tiles.find(tile => tile.id === req.tileID);
-      if (!needed) {
+      if (!wantedTileIDs.has(req.tileID)) {
         req.controller.abort();
       }
     }

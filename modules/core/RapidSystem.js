@@ -131,7 +131,7 @@ export class RapidSystem extends AbstractSystem {
     const prerequisites = Promise.all(services.map(service => service.startAsync()));
 
     return this._startPromise = prerequisites
-      .then(async () => {
+      .then(() => {
         // Gather all available datasets and categories into the dataset catalog..
         for (const service of services) {
           const datasets = service.getAvailableDatasets();
@@ -150,9 +150,16 @@ export class RapidSystem extends AbstractSystem {
           this._datasetsChanged();
         }
 
-        await this._restoreExternalManifestURLs();
-
         this._started = true;
+
+        const restore = () => this._restoreExternalManifestURLs()
+          .catch(err => console.error(err));  // eslint-disable-line no-console
+
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(restore, { timeout: 10000 });
+        } else {
+          window.setTimeout(restore, 0);
+        }
       });
   }
 

@@ -25,6 +25,7 @@ export class UiZoomControl {
 
     // D3 selections
     this.$parent = null;
+    this._lastRenderKey = null;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     // (This is also necessary when using `d3-selection.call`)
@@ -82,6 +83,7 @@ export class UiZoomControl {
     }
 
     const context = this.context;
+    const map = context.systems.map;
     const l10n = context.systems.l10n;
 
     let $buttons = $parent.selectAll('button')
@@ -103,15 +105,27 @@ export class UiZoomControl {
       });
 
     // update
+    const didEnter = !$$buttons.empty();
     $buttons = $buttons.merge($$buttons);
 
+    const canZoomIn = map.canZoomIn();
+    const canZoomOut = map.canZoomOut();
+    const disabledByID = new Map([
+      ['zoom-in', !canZoomIn],
+      ['zoom-out', !canZoomOut]
+    ]);
+    const renderKey = `${l10n.localeCode()}|${l10n.isRTL() ? 1 : 0}|${canZoomIn ? 1 : 0}|${canZoomOut ? 1 : 0}`;
+
+    if (!didEnter && this._lastRenderKey === renderKey) return;
+    this._lastRenderKey = renderKey;
+
     $buttons
-      .classed('disabled', d => d.isDisabled());
+      .classed('disabled', d => disabledByID.get(d.id));
 
     // Update tooltip
     this.Tooltip
       .placement(l10n.isRTL() ? 'right' : 'left')
-      .title(d => d.isDisabled() ? d.getDisabledTitle() : d.getTitle())
+      .title(d => disabledByID.get(d.id) ? d.getDisabledTitle() : d.getTitle())
       .shortcut(d => d.key);
 
     $buttons

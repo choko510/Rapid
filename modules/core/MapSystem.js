@@ -1,7 +1,7 @@
 import { selection } from 'd3-selection';
 import {
   DEG2RAD, RAD2DEG, TAU, Extent, Viewport, geoMetersToLon, geoZoomToScale,
-  numClamp, numWrap, vecAdd, vecRotate, vecSubtract
+  numClamp, numWrap, vecAdd, vecSubtract
 } from '@rapid-sdk/math';
 
 import { AbstractSystem } from './AbstractSystem.js';
@@ -692,7 +692,19 @@ export class MapSystem extends AbstractSystem {
    */
   pan(delta, duration = 0) {
     const t = this.context.viewport.transform;
-    const [dx, dy] = vecRotate(delta, -t.r, [0, 0]);   // remove any rotation
+    const x = delta?.[0] ?? 0;
+    const y = delta?.[1] ?? 0;
+    let dx = x;
+    let dy = y;
+
+    // Remove any rotation from the pan delta.
+    if (t.r) {
+      const cos = Math.cos(-t.r);
+      const sin = Math.sin(-t.r);
+      dx = (x * cos) - (y * sin);
+      dy = (x * sin) + (y * cos);
+    }
+
     return this.transform({ x: t.x + dx, y: t.y + dy, k: t.k, r: t.r }, duration);
   }
 

@@ -156,8 +156,8 @@ export class MapWithAIService extends AbstractSystem {
   resetAsync() {
     for (const handle of this._deferred) {
       window.cancelIdleCallback(handle);
-      this._deferred.delete(handle);
     }
+    this._deferred.clear();
 
     for (const ds of Object.values(this._datasets)) {
       if (ds.cache.inflight) {
@@ -238,11 +238,11 @@ export class MapWithAIService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     for (const k of Object.keys(cache.inflight)) {
-      const wanted = tiles.find(tile => tile.id === k);
-      if (!wanted) {
+      if (!wantedTileIDs.has(k)) {
         this._abortRequest(cache.inflight[k]);
         delete cache.inflight[k];
       }
@@ -374,15 +374,20 @@ export class MapWithAIService extends AbstractSystem {
 
 
   _getNodes(xml) {
-    const elems = Array.from(xml.getElementsByTagName('nd'));
-    return elems.map(elem => 'n' + elem.attributes.ref.value);
+    const elems = xml.getElementsByTagName('nd');
+    const nodeIDs = new Array(elems.length);
+    for (let i = 0; i < elems.length; i++) {
+      nodeIDs[i] = 'n' + elems[i].attributes.ref.value;
+    }
+    return nodeIDs;
   }
 
 
   _getTags(xml) {
-    const elems = Array.from(xml.getElementsByTagName('tag'));
+    const elems = xml.getElementsByTagName('tag');
     const tags = {};
-    for (const elem of elems) {
+    for (let i = 0; i < elems.length; i++) {
+      const elem = elems[i];
       const attrs = elem.attributes;
       const k = (attrs.k.value ?? '').trim();
       const v = (attrs.v.value ?? '').trim();
@@ -430,7 +435,8 @@ export class MapWithAIService extends AbstractSystem {
     const handle = window.requestIdleCallback(() => {
       this._deferred.delete(handle);
       let results = [];
-      for (const child of children) {
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i];
         const result = this._parseEntity(dataset, tile, child);
         if (result) results.push(result);
       }

@@ -22,6 +22,8 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     this._enabled = true;
     this._overlaysDefined = null;
     this.overlaysContainer = null;
+    this._overlayFeatures = new Map();   // Map<featureID, PIXI.Graphics>
+    this._overlayRetained = new Map();   // Map<featureID, frame>
   }
 
 
@@ -49,6 +51,8 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     overlays.interactiveChildren = true;
     this.overlaysContainer = overlays;
     this._overlaysDefined = null;
+    this._overlayFeatures.clear();
+    this._overlayRetained.clear();
 
     groupContainer.addChild(overlays);
   }
@@ -65,24 +69,19 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     if (!this.enabled || !(this.hasData())) return;
 
     const vtService = this.context.services.vectortile;
-    const datasets = this.context.systems.rapid.datasets;
-    const parentContainer = this.overlaysContainer;
+    if (!vtService) return;
 
-    // Extremely inefficient but we're not drawing anything else at this zoom
-    parentContainer.removeChildren();
-
-    for (const dataset of datasets.values()) {
-      if (dataset.overlay && dataset.enabled) {
+    for (const dataset of this.context.systems.rapid.catalog.values()) {
+      if (dataset.overlay && dataset.enabled && dataset.added) {
+        const colorKey = dataset.color;
         const customColor = new PIXI.Color(dataset.color);
         const overlay = dataset.overlay;
-        if (vtService) {
-          if ((zoom >= overlay.minZoom ) && (zoom <= overlay.maxZoom)) {  // avoid firing off too many API requests
-            vtService.loadTiles(overlay.url);
-          }
-          const overlayData = vtService.getData(overlay.url).map(d => d.geojson);
-          const points = overlayData.filter(d => d.geometry.type === 'Point' || d.geometry.type === 'MultiPoint');
-          this.renderPoints(frame, viewport, zoom, points, customColor);
+        if ((zoom >= overlay.minZoom ) && (zoom <= overlay.maxZoom)) {  // avoid firing off too many API requests
+          vtService.loadTiles(overlay.url);
         }
+
+        const overlayData = vtService.getData(overlay.url);
+        this.renderPoints(frame, viewport, overlayData, dataset.id, customColor, colorKey);
       }
     }
   }
@@ -92,27 +91,65 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
    * renderPoints
    * @param  frame      Integer frame being rendered
    * @param  viewport   Pixi viewport to use for rendering
-   * @param  zoom       Effective zoom to use for rendering
-   * @param  lines      Array of point data
+   * @param  data       Array of point data
+   * @param  datasetID  Dataset ID
    * @param  color      The color to use
+   * @param  colorKey   Key used to determine whether a point needs a style refresh
    */
-  renderPoints(frame, viewport, zoom, points, color) {
+  renderPoints(frame, viewport, data, datasetID, color, colorKey) {
     const parentContainer = this.overlaysContainer;
-    for (const d of points) {
-      const parts = (d.geometry.type === 'Point') ? [d.geometry.coordinates]
-        : (d.geometry.type === 'MultiPoint') ? d.geometry.coordinates : [];
+    for (let d = 0; d < data.length; d++) {
+      const item = data[d];
+      const geojson = item?.geojson;
+      if (!geojson?.geometry) continue;
+
+      const parts = (geojson.geometry.type === 'Point') ? [geojson.geometry.coordinates]
+        : (geojson.geometry.type === 'MultiPoint') ? geojson.geometry.coordinates : [];
+      const sourceID = item.id ?? geojson.id ?? d;
 
       for (let i = 0; i < parts.length; ++i) {
+        const featureID = `${datasetID}-${sourceID}-${i}`;
         const loc = parts[i];
-
         const point = viewport.project(loc);
-        const feature = new PIXI.Graphics()
-          .circle(0, 0, 40)
-          .fill({color, alpha:0.05});
+        let feature = this._overlayFeatures.get(featureID);
 
+        if (feature && feature.__rapidColor !== colorKey) {
+          feature.destroy();
+          feature = null;
+          this._overlayFeatures.delete(featureID);
+          this._overlayRetained.delete(featureID);
+        }
+
+        if (!feature) {
+          feature = new PIXI.Graphics()
+            .circle(0, 0, 40)
+            .fill({ color, alpha: 0.05 });
+          feature.eventMode = 'none';
+          feature.__rapidColor = colorKey;
+          parentContainer.addChild(feature);
+          this._overlayFeatures.set(featureID, feature);
+        }
+
+        feature.visible = true;
         feature.x = point[0];
         feature.y = point[1];
-        parentContainer.addChild(feature);
+        this._overlayRetained.set(featureID, frame);
+      }
+    }
+  }
+
+
+  cull(frame) {
+    for (const [featureID, feature] of this._overlayFeatures) {
+      const seenFrame = this._overlayRetained.get(featureID);
+      if (seenFrame === frame) continue;
+
+      feature.visible = false;
+
+      if (seenFrame === undefined || frame - seenFrame > 20) {
+        feature.destroy();
+        this._overlayFeatures.delete(featureID);
+        this._overlayRetained.delete(featureID);
       }
     }
   }
@@ -125,11 +162,11 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
    */
   hasData() {
     if (this._overlaysDefined === null) {
-      const datasets = this.context.systems.rapid.datasets;
       this._overlaysDefined = false;
-      for (const dataset of datasets.values()) {
+      for (const dataset of this.context.systems.rapid.catalog.values()) {
         if (dataset.overlay) {
           this._overlaysDefined = true;
+          break;
         }
       }
     }

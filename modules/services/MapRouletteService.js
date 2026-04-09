@@ -599,10 +599,10 @@ export class MapRouletteService extends AbstractSystem {
 
   _abortUnwantedRequests(tiles) {
     const cache = this._cache;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
     for (const [tileID, request] of cache.tileRequest) {
       if (request.status !== 'inflight') continue;
-      const wanted = tiles.find(tile => tile.id === tileID);
-      if (!wanted) {
+      if (!wantedTileIDs.has(tileID)) {
         request.controller.abort();
         cache.inflight.delete(request.url);
       }

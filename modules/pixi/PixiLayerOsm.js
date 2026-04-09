@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import geojsonRewind from '@mapbox/geojson-rewind';
-import { vecAngle, vecLength, vecInterp } from '@rapid-sdk/math';
+import { vecAngle } from '@rapid-sdk/math';
 
 import { AbstractLayer } from './AbstractLayer.js';
 import { PixiFeatureLine } from './PixiFeatureLine.js';
@@ -27,8 +27,23 @@ export class PixiLayerOsm extends AbstractLayer {
 
     this.areaContainer = null;
     this.lineContainer = null;
+    this._lineLevelContainers = new Map();
 
     this._resolved = new Map();  // Map <entityID, GeoJSON feature>
+    this._renderData = {
+      polygons: new Map(),
+      lines: new Map(),
+      points: new Map(),
+      vertices: new Map()
+    };
+    this._scratchDataIDs = new Set();
+    this._scratchInterestingIDs = new Set();
+    this._scratchRelated = {
+      descendantIDs: new Set(),
+      siblingIDs: new Set()
+    };
+    this._scratchMidpoints = new Map();
+    this._midpointStyle = { markerName: 'midpoint' };
 
 // experiment for benchmarking
 //    this._alreadyDownloaded = false;
@@ -106,6 +121,16 @@ export class PixiLayerOsm extends AbstractLayer {
     super.reset();
 
     this._resolved.clear();  // cached geojson features
+    this._renderData.polygons.clear();
+    this._renderData.lines.clear();
+    this._renderData.points.clear();
+    this._renderData.vertices.clear();
+    this._scratchDataIDs.clear();
+    this._scratchInterestingIDs.clear();
+    this._scratchRelated.descendantIDs.clear();
+    this._scratchRelated.siblingIDs.clear();
+    this._scratchMidpoints.clear();
+    this._lineLevelContainers.clear();
 
     const groupContainer = this.scene.groups.get('basemap');
 
@@ -153,12 +178,11 @@ export class PixiLayerOsm extends AbstractLayer {
     let entities = editor.intersects(context.viewport.visibleExtent());   // Gather data in view
     entities = filters.filterScene(entities, graph);   // Apply feature filters
 
-    const data = {
-      polygons: new Map(),
-      lines: new Map(),
-      points: new Map(),
-      vertices: new Map(),
-    };
+    const data = this._renderData;
+    data.polygons.clear();
+    data.lines.clear();
+    data.points.clear();
+    data.vertices.clear();
 
     for (const entity of entities) {
       const geom = entity.geometry(graph);
@@ -205,17 +229,22 @@ export class PixiLayerOsm extends AbstractLayer {
     // and parent-child data links have been established.
 
     // Gather ids related for the selected/hovered/drawing features.
-    const selectedIDs = this.getDataWithClass('select');
-    const hoveredIDs = this.getDataWithClass('hover');
-    const drawingIDs = this.getDataWithClass('drawing');
-    const dataIDs = new Set([...selectedIDs, ...hoveredIDs, ...drawingIDs]);
+    const selectedIDs = this.getDataWithClass('select', false);
+    const hoveredIDs = this.getDataWithClass('hover', false);
+    const drawingIDs = this.getDataWithClass('drawing', false);
+    const dataIDs = this._scratchDataIDs;
+    dataIDs.clear();
+    for (const dataID of selectedIDs) dataIDs.add(dataID);
+    for (const dataID of hoveredIDs) dataIDs.add(dataID);
+    for (const dataID of drawingIDs) dataIDs.add(dataID);
 
     // Experiment: avoid showing child vertices/midpoints for too small parents
     for (const dataID of dataIDs) {
       const entity = graph.hasEntity(dataID);
       if (entity?.type === 'node') continue;  // ways, relations only
 
-      const renderedFeatureIDs = this._dataHasFeature.get(dataID) ?? new Set();
+      const renderedFeatureIDs = this._dataHasFeature.get(dataID);
+      if (!renderedFeatureIDs?.size) continue;
       let tooSmall = false;
       for (const featureID of renderedFeatureIDs) {
         const geom = this.features.get(featureID)?.geometry;
@@ -231,8 +260,10 @@ export class PixiLayerOsm extends AbstractLayer {
     }
 
     // Expand set to include parent ways for selected/hovered/drawing nodes too..
-    const interestingIDs = new Set(dataIDs);
+    const interestingIDs = this._scratchInterestingIDs;
+    interestingIDs.clear();
     for (const dataID of dataIDs) {
+      interestingIDs.add(dataID);
       const entity = graph.hasEntity(dataID);
       if (entity?.type !== 'node') continue;   // nodes only
       for (const parent of graph.parentWays(entity)) {
@@ -242,10 +273,9 @@ export class PixiLayerOsm extends AbstractLayer {
 
     // Create collections of the sibling and descendant IDs,
     // These will determine which vertices and midpoints get drawn.
-    const related = {
-      descendantIDs: new Set(),
-      siblingIDs: new Set()
-    };
+    const related = this._scratchRelated;
+    related.descendantIDs.clear();
+    related.siblingIDs.clear();
     for (const interestingID of interestingIDs) {
       this.getSelfAndDescendants(interestingID, related.descendantIDs);
       this.getSelfAndSiblings(interestingID, related.siblingIDs);
@@ -277,24 +307,6 @@ export class PixiLayerOsm extends AbstractLayer {
 
     const pointsContainer = this.scene.groups.get('points');
     const showPoints = filters.isEnabled('points');
-
-    // For deciding if an unlabeled polygon feature is interesting enough to show a virtual pin.
-    // Note that labeled polygon features will always get a virtual pin.
-    function isInterestingPreset(preset) {
-      if (!preset || preset.isFallback()) return false;
-
-      // These presets probably are not POIs
-      if (/^(address|building|indoor|landuse|man_made|military|natural|playground)/.test(preset.id)) return false;
-
-      // These presets probably are POIs even without a label
-      // See nsi.guide for the sort of things we are looking for.
-      if (/^(attraction|club|craft|emergency|healthcare|office|power|shop|telecom|tourism)/.test(preset.id)) return true;
-      if (/^amenity\/(?!parking|shelter)/.test(preset.id)) return true;
-      if (/^leisure\/(?!garden|firepit|picnic_table|pitch|swimming_pool)/.test(preset.id)) return true;
-
-      return false;   // not sure, just ignore it
-    }
-
 
     for (const [entityID, entity] of entities) {
       const version = entity.v || 0;
@@ -339,10 +351,14 @@ export class PixiLayerOsm extends AbstractLayer {
           feature.setData(entityID, entity);
           feature.clearChildData(entityID);
           if (entity.type === 'relation') {
-            entity.members.forEach(member => feature.addChildData(entityID, member.id));
+            for (const member of entity.members) {
+              feature.addChildData(entityID, member.id);
+            }
           }
           if (entity.type === 'way') {
-            entity.nodes.forEach(nodeID => feature.addChildData(entityID, nodeID));
+            for (const nodeID of entity.nodes) {
+              feature.addChildData(entityID, nodeID);
+            }
           }
         }
 
@@ -432,11 +448,10 @@ export class PixiLayerOsm extends AbstractLayer {
     const graph = context.systems.editor.staging.graph;
     const l10n = context.systems.l10n;
     const styles = context.systems.styles;
-    const lineContainer = this.lineContainer;
 
     for (const [entityID, entity] of entities) {
-      const layer = (typeof entity.layer === 'function') ? entity.layer() : 0;
-      const levelContainer = _getLevelContainer(layer.toString());
+      const layer = ((typeof entity.layer === 'function') ? entity.layer() : 0).toString();
+      const levelContainer = this._getLineLevelContainer(layer);
       const zindex = getzIndex(entity.tags);
       const version = entity.v || 0;
 
@@ -485,10 +500,14 @@ export class PixiLayerOsm extends AbstractLayer {
             feature.setData(entityID, entity);
             feature.clearChildData(entityID);
             if (entity.type === 'relation') {
-              entity.members.forEach(member => feature.addChildData(entityID, member.id));
+              for (const member of entity.members) {
+                feature.addChildData(entityID, member.id);
+              }
             }
             if (entity.type === 'way') {
-              entity.nodes.forEach(nodeID => feature.addChildData(entityID, nodeID));
+              for (const nodeID of entity.nodes) {
+                feature.addChildData(entityID, nodeID);
+              }
             }
           }
 
@@ -528,20 +547,6 @@ export class PixiLayerOsm extends AbstractLayer {
         }
       }
     }
-
-
-    function _getLevelContainer(level) {
-      let levelContainer = lineContainer.getChildByLabel(level);
-      if (!levelContainer) {
-        levelContainer = new PIXI.Container();
-        levelContainer.label= level.toString();
-        levelContainer.sortableChildren = true;
-        levelContainer.zIndex = level;
-        lineContainer.addChild(levelContainer);
-      }
-      return levelContainer;
-    }
-
   }
 
 
@@ -564,23 +569,14 @@ export class PixiLayerOsm extends AbstractLayer {
     const selectedContainer = this.scene.layers.get('map-ui').selected;
     const pointsContainer = this.scene.groups.get('points');
 
-    function isInterestingVertex(node) {
-      return node.hasInterestingTags() || node.isEndpoint(graph) || node.isIntersection(graph);
-    }
-
-    function isRelatedVertex(entityID) {
-      return related.descendantIDs.has(entityID) || related.siblingIDs.has(entityID);
-    }
-
-
     for (const [nodeID, node] of entities) {
       let parentContainer = null;
 
-      if (zoom >= 16 && isInterestingVertex(node) ) {  // minor importance
-        parentContainer = pointsContainer;
-      }
-      if (isRelatedVertex(nodeID)) {   // major importance
+      const isRelated = related.descendantIDs.has(nodeID) || related.siblingIDs.has(nodeID);
+      if (isRelated) {   // major importance
         parentContainer = selectedContainer;
+      } else if (zoom >= 16 && (node.hasInterestingTags() || node.isEndpoint(graph) || node.isIntersection(graph))) {
+        parentContainer = pointsContainer;  // minor importance
       }
 
       if (!parentContainer) continue;   // this vertex isn't important enough to render
@@ -651,6 +647,20 @@ export class PixiLayerOsm extends AbstractLayer {
       feature.update(viewport, zoom);
       this.retainFeature(feature, frame);
     }
+  }
+
+
+  _getLineLevelContainer(level) {
+    let levelContainer = this._lineLevelContainers.get(level);
+    if (!levelContainer) {
+      levelContainer = new PIXI.Container();
+      levelContainer.label = level;
+      levelContainer.sortableChildren = true;
+      levelContainer.zIndex = Number(level);
+      this.lineContainer.addChild(levelContainer);
+      this._lineLevelContainers.set(level, levelContainer);
+    }
+    return levelContainer;
   }
 
 
@@ -749,63 +759,20 @@ export class PixiLayerOsm extends AbstractLayer {
    */
   renderMidpoints(frame, viewport, zoom, data, related) {
     const MIN_MIDPOINT_DIST = 40;   // distance in pixels
+    const MIN_MIDPOINT_DIST_SQ = MIN_MIDPOINT_DIST * MIN_MIDPOINT_DIST;
     const context = this.context;
     const graph = context.systems.editor.staging.graph;
-
-    // Need to consider both lines and polygons for drawing our midpoints
-    const entities = new Map([...data.lines, ...data.polygons]);
 
     // Midpoints should be drawn above everything
     const selectedContainer = this.scene.layers.get('map-ui').selected;
 
     // Generate midpoints from all the highlighted ways
-    let midpoints = new Map();
-    const MIDPOINT_STYLE = { markerName: 'midpoint' };
-    for (const [wayID, way] of entities) {
-      // Include only ways that are selected, or descended from a relation that is selected
-      if (!related.descendantIDs.has(wayID)) continue;
+    const midpoints = this._scratchMidpoints;
+    midpoints.clear();
+    const MIDPOINT_STYLE = this._midpointStyle;
 
-      // Include only actual ways that have child nodes
-      const nodes = graph.childNodes(way);
-      if (!nodes.length) continue;
-
-      // Compute midpoints in projected coordinates
-      let nodeData = nodes.map(node => {
-        return {
-          id: node.id,
-          point: viewport.project(node.loc)
-        };
-      });
-
-      if (way.tags.oneway === '-1') {
-        nodeData.reverse();
-      }
-
-      for (let i = 0; i < nodeData.length - 1; i++) {
-        const a = nodeData[i];
-        const b = nodeData[i + 1];
-        const midpointID = [a.id, b.id].sort().join('-');
-        const dist = vecLength(a.point, b.point);
-        if (dist < MIN_MIDPOINT_DIST) continue;
-
-        const pos = vecInterp(a.point, b.point, 0.5);
-        const rot = vecAngle(a.point, b.point) + viewport.transform.rotation;
-        const loc = viewport.unproject(pos);  // store as wgs84 lon/lat
-        const midpoint = {
-          type: 'midpoint',
-          id: midpointID,
-          a: a,
-          b: b,
-          way: way,
-          loc: loc,
-          rot: rot
-        };
-
-        if (!midpoints.has(midpointID)) {
-          midpoints.set(midpointID, midpoint);
-        }
-      }
-    }
+    _collectMidpoints(data.lines);
+    _collectMidpoints(data.polygons);
 
     for (const [midpointID, midpoint] of midpoints) {
       const featureID = `${this.layerID}-${midpointID}`;
@@ -837,6 +804,64 @@ export class PixiLayerOsm extends AbstractLayer {
     }
 
 
+    function _collectMidpoints(entities) {
+      for (const [wayID, way] of entities) {
+        // Include only ways that are selected, or descended from a relation that is selected
+        if (!related.descendantIDs.has(wayID)) continue;
+
+        // Include only actual ways that have child nodes
+        const nodes = graph.childNodes(way);
+        if (nodes.length < 2) continue;
+
+        if (way.tags.oneway === '-1') {
+          let aNode = nodes[nodes.length - 1];
+          let aPoint = viewport.project(aNode.loc);
+          for (let i = nodes.length - 2; i >= 0; i--) {
+            const bNode = nodes[i];
+            const bPoint = viewport.project(bNode.loc);
+            _addMidpoint(aNode, aPoint, bNode, bPoint, way);
+            aNode = bNode;
+            aPoint = bPoint;
+          }
+        } else {
+          let aNode = nodes[0];
+          let aPoint = viewport.project(aNode.loc);
+          for (let i = 1; i < nodes.length; i++) {
+            const bNode = nodes[i];
+            const bPoint = viewport.project(bNode.loc);
+            _addMidpoint(aNode, aPoint, bNode, bPoint, way);
+            aNode = bNode;
+            aPoint = bPoint;
+          }
+        }
+      }
+    }
+
+    function _addMidpoint(aNode, aPoint, bNode, bPoint, way) {
+      const midpointID = (aNode.id < bNode.id) ?
+        `${aNode.id}-${bNode.id}` : `${bNode.id}-${aNode.id}`;
+      if (midpoints.has(midpointID)) return;
+
+      const dx = aPoint[0] - bPoint[0];
+      const dy = aPoint[1] - bPoint[1];
+      if ((dx * dx + dy * dy) < MIN_MIDPOINT_DIST_SQ) return;
+
+      const pos = [(aPoint[0] + bPoint[0]) * 0.5, (aPoint[1] + bPoint[1]) * 0.5];
+      const rot = vecAngle(aPoint, bPoint) + viewport.transform.rotation;
+      const loc = viewport.unproject(pos);  // store as wgs84 lon/lat
+
+      midpoints.set(midpointID, {
+        type: 'midpoint',
+        id: midpointID,
+        a: { id: aNode.id, point: aPoint },
+        b: { id: bNode.id, point: bPoint },
+        way: way,
+        loc: loc,
+        rot: rot
+      });
+    }
+
+
     // If any of these change, the midpoint needs to be redrawn.
     // (This can happen if a sibling node has moved, the midpoint moves too)
     function _midpointVersion(d) {
@@ -845,6 +870,24 @@ export class PixiLayerOsm extends AbstractLayer {
 
   }
 
+}
+
+
+// For deciding if an unlabeled polygon feature is interesting enough to show a virtual pin.
+// Note that labeled polygon features will always get a virtual pin.
+function isInterestingPreset(preset) {
+  if (!preset || preset.isFallback()) return false;
+
+  // These presets probably are not POIs
+  if (/^(address|building|indoor|landuse|man_made|military|natural|playground)/.test(preset.id)) return false;
+
+  // These presets probably are POIs even without a label
+  // See nsi.guide for the sort of things we are looking for.
+  if (/^(attraction|club|craft|emergency|healthcare|office|power|shop|telecom|tourism)/.test(preset.id)) return true;
+  if (/^amenity\/(?!parking|shelter)/.test(preset.id)) return true;
+  if (/^leisure\/(?!garden|firepit|picnic_table|pitch|swimming_pool)/.test(preset.id)) return true;
+
+  return false;   // not sure, just ignore it
 }
 
 

@@ -213,11 +213,11 @@ export class EsriService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     for (const k of Object.keys(cache.inflight)) {
-      const wanted = tiles.find(tile => tile.id === k);
-      if (!wanted) {
+      if (!wantedTileIDs.has(k)) {
         this._abortRequest(cache.inflight[k]);
         delete cache.inflight[k];
       }

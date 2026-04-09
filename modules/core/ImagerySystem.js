@@ -35,6 +35,9 @@ export class ImagerySystem extends AbstractSystem {
 
     this._initPromise = null;
     this._imageryIndex = null;
+    this._imageryData = null;
+    this._sourceList = [];
+    this._spatialIndexPromise = null;
     this._baseLayer = null;
     this._overlayLayers = new Map();   // Map (sourceID -> source)
     this._checkedBlocklists = [];
@@ -91,7 +94,19 @@ export class ImagerySystem extends AbstractSystem {
       })
       .then(() => assets.loadAssetAsync('imagery'))
       .then(data => this._initImageryIndex(data))
-      .then(() => this._initWaybackAsync());
+      .then(() => {
+        this._scheduleSpatialIndexBuild();
+      })
+      .then(() => {
+        const startWayback = () => this._initWaybackAsync()
+          .catch(err => console.error(err));  // eslint-disable-line no-console
+
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(startWayback, { timeout: 5000 });
+        } else {
+          window.setTimeout(startWayback, 0);
+        }
+      });
       // .catch(e => {
         // if (e instanceof Error) console.error(e);  // eslint-disable-line no-console
       // });
@@ -112,36 +127,13 @@ export class ImagerySystem extends AbstractSystem {
   _initImageryIndex(data) {
     const context = this.context;
     const arr = data.imagery || [];
+    this._imageryData = arr;
 
     this._imageryIndex = {
       features: new Map(),   // Map(id -> GeoJSON feature)
       sources: new Map(),    // Map(id -> ImagerySource)
       query: null            // which-polygon index
     };
-
-    // Extract a GeoJSON feature for each imagery item.
-    const features = arr.map(d => {
-      if (!d.polygon) return null;
-
-      // workaround for editor-layer-index weirdness..
-      // Add an extra array nest to each element in `d.polygon`
-      // so the rings are not treated as a bunch of holes:
-      //   what we get:  [ [[outer],[hole],[hole]] ]
-      //   what we want: [ [[outer]],[[outer]],[[outer]] ]
-      const rings = d.polygon.map(ring => [ring]);
-
-      const feature = {
-        type: 'Feature',
-        properties: { id: d.id },
-        geometry: { type: 'MultiPolygon', coordinates: rings }
-      };
-
-      this._imageryIndex.features.set(d.id.toLowerCase(), feature);
-      return feature;
-    }).filter(Boolean);
-
-    // Create a which-polygon index to support efficient spatial querying.
-    this._imageryIndex.query = whichPolygon({ type: 'FeatureCollection', features: features });
 
     // Instantiate `ImagerySource` objects for each imagery item.
     for (const d of arr) {
@@ -168,6 +160,8 @@ export class ImagerySystem extends AbstractSystem {
       }
     }
 
+    this._sourceList = [...this._imageryIndex.sources.values()];
+
     // Add 'None'
     const none = new ImagerySourceNone(context);
     this._imageryIndex.sources.set(none.id.toLowerCase(), none);
@@ -177,12 +171,69 @@ export class ImagerySystem extends AbstractSystem {
     const storage = this.context.systems.storage;
     custom.template = storage.getItem('background-custom-template') || '';
     this._imageryIndex.sources.set(custom.id.toLowerCase(), custom);
+    this._sourceList.push(none, custom);
 
     // Default the locator overlay to "on"..
     const locator = this._imageryIndex.sources.get('mapbox_locator_overlay');
     if (locator) {
       this.toggleOverlayLayer(locator);
     }
+  }
+
+
+  _scheduleSpatialIndexBuild() {
+    if (!this._imageryIndex?.sources || this._imageryIndex.query || this._spatialIndexPromise) {
+      return this._spatialIndexPromise;
+    }
+
+    const run = () => {
+      const arr = this._imageryData || [];
+      const features = arr.map(d => {
+        if (!d.polygon) return null;
+
+        // workaround for editor-layer-index weirdness..
+        // Add an extra array nest to each element in `d.polygon`
+        // so the rings are not treated as a bunch of holes:
+        //   what we get:  [ [[outer],[hole],[hole]] ]
+        //   what we want: [ [[outer]],[[outer]],[[outer]] ]
+        const rings = d.polygon.map(ring => [ring]);
+
+        const feature = {
+          type: 'Feature',
+          properties: { id: d.id },
+          geometry: { type: 'MultiPolygon', coordinates: rings }
+        };
+
+        this._imageryIndex.features.set(d.id.toLowerCase(), feature);
+        return feature;
+      }).filter(Boolean);
+
+      this._imageryIndex.query = whichPolygon({ type: 'FeatureCollection', features: features });
+      this._imageryData = null;
+      this.emit('imagerychange');
+    };
+
+    this._spatialIndexPromise = new Promise((resolve, reject) => {
+      const done = () => {
+        try {
+          run();
+          resolve();
+        } catch (err) {
+          reject(err);
+        } finally {
+          this._spatialIndexPromise = null;
+        }
+      };
+
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(done, { timeout: 10000 });
+      } else {
+        window.setTimeout(done, 0);
+      }
+    });
+
+    this._spatialIndexPromise.catch(err => console.error(err));  // eslint-disable-line no-console
+    return this._spatialIndexPromise;
   }
 
 
@@ -355,18 +406,28 @@ export class ImagerySystem extends AbstractSystem {
    */
   visibleSources() {
     if (!this._imageryIndex) return [];   // called before init()?
+    this._scheduleSpatialIndexBuild();
 
     const context = this.context;
     const viewport = context.viewport;
     const extent = viewport.visibleExtent();
     const zoom = viewport.transform.zoom;
+    const currSource = this._baseLayer;
+    const sources = this._sourceList.length ? this._sourceList : [...this._imageryIndex.sources.values()];
 
     const visible = new Set();
-    (this._imageryIndex.query.bbox(extent.rectangle(), true) || [])
-      .forEach(d => visible.add(d.id));
+    const query = this._imageryIndex.query;
+    if (query?.bbox) {
+      (query.bbox(extent.rectangle(), true) || [])
+        .forEach(d => visible.add(d.id));
+    } else {
+      sources.forEach(source => {
+        if (!source.polygon) {
+          visible.add(source.id);
+        }
+      });
+    }
 
-    const currSource = this._baseLayer;
-    const sources = [...this._imageryIndex.sources.values()];
     this._refreshBlockedSources(sources);
 
     return sources.filter(source => {
@@ -384,15 +445,21 @@ export class ImagerySystem extends AbstractSystem {
    */
   sourceIsAvailable(source) {
     if (!this._imageryIndex || !source) return false;
+    this._scheduleSpatialIndexBuild();
 
     const viewport = this.context.viewport;
     const extent = viewport.visibleExtent();
     const zoom = viewport.transform.zoom;
     const visible = new Set();
-    (this._imageryIndex.query?.bbox(extent.rectangle(), true) || [])
-      .forEach(d => visible.add(d.id));
+    const query = this._imageryIndex.query;
+    if (query?.bbox) {
+      (query.bbox(extent.rectangle(), true) || [])
+        .forEach(d => visible.add(d.id));
+    } else {
+      visible.add(source.id);
+    }
 
-    this._refreshBlockedSources([...this._imageryIndex.sources.values()]);
+    this._refreshBlockedSources(this._sourceList.length ? this._sourceList : [...this._imageryIndex.sources.values()]);
     return this._sourceIsAvailableAtView(source, visible, zoom);
   }
 

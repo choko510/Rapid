@@ -39,6 +39,7 @@ export function actionReflect(reflectIds, viewport) {
         var dy = q[1] - p[1];
         var a = (dx * dx - dy * dy) / (dx * dx + dy * dy);
         var b = 2 * dx * dy / (dx * dx + dy * dy);
+        var replacements = [];
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             var c = viewport.project(node.loc);
@@ -47,8 +48,11 @@ export function actionReflect(reflectIds, viewport) {
                 b * (c[0] - p[0]) - a * (c[1] - p[1]) + p[1]
             ];
             var loc2 = viewport.unproject(c2);
-            node = node.move(vecInterp(node.loc, loc2, t));
-            graph = graph.replace(node);
+            replacements.push(node.move(vecInterp(node.loc, loc2, t)));
+        }
+
+        if (replacements.length) {
+            graph = graph.replaceMany(replacements);
         }
 
         return graph;

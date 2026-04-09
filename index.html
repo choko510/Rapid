@@ -26,13 +26,36 @@
 
     <script>
       var container = document.getElementById('rapid-container');
-      var newScript = document.createElement('script');
-      newScript.type = 'text/javascript';
-      newScript.onload = checkScript;
-      newScript.onerror = checkScript;
-      newScript.src = 'dist/rapid.js';
+      var isLocalhost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+      var preferredScript = isLocalhost ? 'dist/rapid.js' : 'dist/rapid.min.js';
+      var fallbackScript = isLocalhost ? null : 'dist/rapid.js';
 
-      document.getElementsByTagName('head')[0].appendChild(newScript);
+      preloadScript(preferredScript);
+      loadScript(preferredScript, fallbackScript);
+
+      function preloadScript(src) {
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'script';
+        link.href = src;
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+
+      function loadScript(src, fallbackSrc) {
+        var script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.fetchPriority = 'high';
+        script.onload = checkScript;
+        script.onerror = function() {
+          if (fallbackSrc) {
+            loadScript(fallbackSrc, null);
+          } else {
+            checkScript();
+          }
+        };
+        script.src = src;
+        document.getElementsByTagName('head')[0].appendChild(script);
+      }
 
       function checkScript() {
         if (typeof Rapid === 'undefined') {

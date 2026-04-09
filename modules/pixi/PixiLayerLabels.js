@@ -77,6 +77,16 @@ export class PixiLayerLabels extends AbstractLayer {
     this._dObjs = new Map();       // Map<dObjID, Display Object>
     // Keep track of textures that we've allocated
     this._textureIDs = new Map();  // Map<string, textureID>
+    this._labelIDs = new Set();    // Reused Set<labelID> for labels in view
+    this._seenTextures = new Set();  // Reused Set<string> for textures currently visible
+    this._toInsert = [];           // Reused Array<Box> for rbush bulk inserts
+    this._points = [];             // Reused Array<Feature> for point labels
+    this._lines = [];              // Reused Array<Feature> for line labels
+    this._polygons = [];           // Reused Array<Feature> for polygon labels
+    this._screenBounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 };  // Reused rbush query box
+    this._resetBoxes = new Set();      // Reused Set<Box> for resetFeature
+    this._resetLabelIDs = new Set();   // Reused Set<labelID> for resetFeature
+    this._resetDObjIDs = new Set();    // Reused Set<dObjID> for resetFeature
 
     // We reset the labeling when scale or rotation change
     this._tPrev = { x: 0, y: 0, k: 256 / Math.PI, r: 0 };
@@ -162,9 +172,12 @@ export class PixiLayerLabels extends AbstractLayer {
    * @param  featureID  the feature ID to remove the label data
    */
   resetFeature(featureID) {
-    const boxes = new Set();
-    const labelIDs = new Set();
-    const dObjIDs = new Set();
+    const boxes = this._resetBoxes;
+    const labelIDs = this._resetLabelIDs;
+    const dObjIDs = this._resetDObjIDs;
+    boxes.clear();
+    labelIDs.clear();
+    dObjIDs.clear();
 
     // Gather all boxes related to this feature
     (this._avoidBoxes.get(featureID) || []).forEach(box => boxes.add(box));
@@ -208,6 +221,10 @@ export class PixiLayerLabels extends AbstractLayer {
       }
       this._dObjs.delete(dObjID);
     }
+
+    boxes.clear();
+    labelIDs.clear();
+    dObjIDs.clear();
   }
 
 
@@ -268,9 +285,12 @@ export class PixiLayerLabels extends AbstractLayer {
       this.gatherAvoids();
 
       // Collect features to place labels on.
-      let points = [];
-      let lines = [];
-      let polygons = [];
+      const points = this._points;
+      const lines = this._lines;
+      const polygons = this._polygons;
+      points.length = 0;
+      lines.length = 0;
+      polygons.length = 0;
       for (const [featureID, feature] of this.scene.features) {
         // If the feature can be labeled, and hasn't yet been, add it to the list for placement.
         if (feature.label && feature.visible && !this._labelBoxes.has(featureID)) {
@@ -357,7 +377,8 @@ export class PixiLayerLabels extends AbstractLayer {
     }
 
     // For each container, gather the avoid boxes
-    let toInsert = [];
+    const toInsert = this._toInsert;
+    toInsert.length = 0;
     for (const container of avoidContainers) {
       for (const child of container.children) {
         avoidObject(child);
@@ -862,16 +883,17 @@ this.placeRopeLabel(feature, labelObj, coords);
     // Get the display bounds in screen/global coordinates
     const screen = this.gfx.pixi.screen;
     const labelOffset = this._labelOffset;
-    const screenBounds = {
-      minX: screen.x - labelOffset.x,
-      minY: screen.y - labelOffset.y,
-      maxX: screen.width - labelOffset.x,
-      maxY: screen.height - labelOffset.y
-    };
+    const screenBounds = this._screenBounds;
+    screenBounds.minX = screen.x - labelOffset.x;
+    screenBounds.minY = screen.y - labelOffset.y;
+    screenBounds.maxX = screen.width - labelOffset.x;
+    screenBounds.maxY = screen.height - labelOffset.y;
 
     // Collect Labels in view
-    const labelIDs = new Set();
-    const seenTextures = new Set();
+    const labelIDs = this._labelIDs;
+    labelIDs.clear();
+    const seenTextures = this._seenTextures;
+    seenTextures.clear();
     const visible = this._rbush.search(screenBounds);
     for (const box of visible) {
       if (box.labelID) {

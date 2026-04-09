@@ -257,11 +257,11 @@ export class StreetsideService extends AbstractSystem {
     // By default: request 2 nearby tiles so we can connect sequences.
     const MARGIN = 2;
     const tiles = this._tiler.zoomRange(TILEZOOM).margin(MARGIN).getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     for (const [tileID, inflight] of this._cache.inflight) {
-      const needed = tiles.find(tile => tile.id === tileID);
-      if (!needed) {
+      if (!wantedTileIDs.has(tileID)) {
         inflight.controller.abort();
       }
     }

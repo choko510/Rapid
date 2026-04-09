@@ -37,6 +37,7 @@ export function actionStraightenNodes(nodeIDs, viewport) {
         var endpoints = getEndpoints(points);
         var startPoint = endpoints[0];
         var endPoint = endpoints[1];
+        var replacements = [];
 
         // Move points onto the line connecting the endpoints
         for (var i = 0; i < points.length; i++) {
@@ -45,7 +46,11 @@ export function actionStraightenNodes(nodeIDs, viewport) {
             var u = positionAlongWay(point, startPoint, endPoint);
             var point2 = vecInterp(startPoint, endPoint, u);
             var loc2 = viewport.unproject(point2);
-            graph = graph.replace(node.move(vecInterp(node.loc, loc2, t)));
+            replacements.push(node.move(vecInterp(node.loc, loc2, t)));
+        }
+
+        if (replacements.length) {
+            graph = graph.replaceMany(replacements);
         }
 
         return graph;

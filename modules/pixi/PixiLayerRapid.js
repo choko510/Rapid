@@ -26,6 +26,8 @@ export class PixiLayerRapid extends AbstractLayer {
     this.enabled = true;     // Rapid features should be enabled by default
 
     this._resolved = new Map();  // Map<entityID, GeoJSON feature>
+    this._datasetContainers = new Map();  // Map<datasetID, { areas: PIXI.Container, lines: PIXI.Container }>
+    this._datasetColors = new Map();      // Map<datasetID, { color: string, pixi: PIXI.Color }>
 
 //// shader experiment:
 //this._uniforms = {
@@ -159,6 +161,8 @@ export class PixiLayerRapid extends AbstractLayer {
   reset() {
     super.reset();
     this._resolved.clear();  // cached geojson features
+    this._datasetContainers.clear();
+    this._datasetColors.clear();
 
     const groupContainer = this.scene.groups.get('basemap');
 
@@ -194,7 +198,7 @@ export class PixiLayerRapid extends AbstractLayer {
    */
   render(frame, viewport, zoom) {
     const rapid = this.context.systems.rapid;
-    if (!this.enabled || !rapid.datasets.size || zoom < MINZOOM) return;
+    if (!this.enabled || zoom < MINZOOM || !rapid.catalog.size) return;
 
 // shader experiment
 //const offset = this.gfx.pixi.stage.position;
@@ -202,8 +206,12 @@ export class PixiLayerRapid extends AbstractLayer {
 //this._uniforms.translationMatrix = transform.clone().translate(-offset.x, -offset.y);
 //this._uniforms.u_time = frame/10;
 
-    for (const dataset of rapid.datasets.values()) {
-      this.renderDataset(dataset, frame, viewport, zoom);
+    const conflation = utilStringQs(window.location.hash).conflation;
+    const disableConflation = (conflation === 'false' || conflation === 'no');
+
+    for (const dataset of rapid.catalog.values()) {
+      if (!dataset.added || !dataset.enabled) continue;
+      this.renderDataset(dataset, frame, viewport, zoom, disableConflation);
     }
   }
 
@@ -217,23 +225,14 @@ export class PixiLayerRapid extends AbstractLayer {
    * @param  viewport   Pixi viewport to use for rendering
    * @param  zoom       Effective zoom to use for rendering
    */
-  renderDataset(dataset, frame, viewport, zoom) {
+  renderDataset(dataset, frame, viewport, zoom, disableConflation) {
     const context = this.context;
     const rapid = context.systems.rapid;
-
-    const dsEnabled = (dataset.added && dataset.enabled);
-    if (!dsEnabled) return;
 
     const service = context.services[dataset.service];  // 'mapwithai' or 'esri'
     if (!service?.started) return;
 
-    const useConflationStr = utilStringQs(window.location.hash).conflation;
-
-    let useConflation = dataset.conflated;
-
-    if (useConflationStr === 'false' || useConflationStr === 'no') {
-      useConflation = false;
-    }
+    const useConflation = dataset.conflated && !disableConflation;
 
     // Adjust the dataset id for whether we want the data conflated or not
     const datasetID = dataset.id + (useConflation ? '-conflated' : '');
@@ -244,10 +243,8 @@ export class PixiLayerRapid extends AbstractLayer {
        dsGraph = service.graph(datasetID);
     }
 
-    // Filter out features that have already been accepted or ignored by the user.
-    function isAcceptedOrIgnored(entity) {
-      return rapid.acceptIDs.has(entity.id) || rapid.ignoreIDs.has(entity.id);
-    }
+    const acceptIDs = rapid.acceptIDs;
+    const ignoreIDs = rapid.ignoreIDs;
 
     // Gather data
     const data = { points: [], vertices: new Set(), lines: [], polygons: [] };
@@ -258,28 +255,38 @@ export class PixiLayerRapid extends AbstractLayer {
         service.loadTiles(datasetID);  // fetch more
       }
 
-      // Skip features already accepted/ignored by the user
-      const entities = service.getData(datasetID)
-        .filter(entity => entity.type === 'way' && !isAcceptedOrIgnored(entity));
+      const entities = service.getData(datasetID);
 
       // fb_ai service gives us roads and buildings together,
       // so filter further according to which dataset we're drawing
-      if (dataset.id === 'fbRoads'
-          || dataset.id === 'omdFootways'
-          || dataset.id === 'metaSyntheticFootways'
-          || dataset.id === 'rapid_intro_graph') {
-        data.lines = entities.filter(d => d.geometry(dsGraph) === 'line' && !!d.tags.highway);
+      const isRoadDataset = (dataset.id === 'fbRoads' ||
+        dataset.id === 'omdFootways' ||
+        dataset.id === 'metaSyntheticFootways' ||
+        dataset.id === 'rapid_intro_graph');
 
-        // Gather endpoint vertices, we will render these also
-        for (const way of data.lines) {
-          const first = dsGraph.entity(way.first());
-          const last = dsGraph.entity(way.last());
-          data.vertices.add(first);
-          data.vertices.add(last);
+      if (isRoadDataset) {
+        for (const entity of entities) {
+          if (entity.type !== 'way') continue;
+          if (acceptIDs.has(entity.id) || ignoreIDs.has(entity.id)) continue;
+          if (entity.geometry(dsGraph) !== 'line' || !entity.tags.highway) continue;
+
+          data.lines.push(entity);
+          if (dsGraph) {
+            const first = dsGraph.hasEntity(entity.first());
+            if (first) data.vertices.add(first);
+            const last = dsGraph.hasEntity(entity.last());
+            if (last) data.vertices.add(last);
+          }
         }
 
       } else {  // ms buildings or esri buildings through conflation service
-        data.polygons = entities.filter(d => d.geometry(dsGraph) === 'area');
+        for (const entity of entities) {
+          if (entity.type !== 'way') continue;
+          if (acceptIDs.has(entity.id) || ignoreIDs.has(entity.id)) continue;
+          if (entity.geometry(dsGraph) === 'area') {
+            data.polygons.push(entity);
+          }
+        }
       }
 
     /* ESRI ArcGIS */
@@ -290,7 +297,7 @@ export class PixiLayerRapid extends AbstractLayer {
 
       const entities = service.getData(datasetID);
       for (const entity of entities) {
-        if (isAcceptedOrIgnored(entity)) continue;   // skip features already accepted/ignored by the user
+        if (acceptIDs.has(entity.id) || ignoreIDs.has(entity.id)) continue;  // skip features already accepted/ignored by the user
         const geom = entity.geometry(dsGraph);
         if (geom === 'point' && !!entity.__fbid__) {  // standalone points only (not vertices/childnodes)
           data.points.push(entity);
@@ -306,43 +313,40 @@ export class PixiLayerRapid extends AbstractLayer {
         service.loadTiles(datasetID);  // fetch more
       }
       const entities = service.getData(datasetID);
+      const isPlacesDataset = datasetID.includes('places');
+      const isBuildingsDataset = datasetID.includes('buildings');
+      const isRoadsDataset = datasetID.includes('roads');
+
+      if (isBuildingsDataset || isRoadsDataset) {
+        dsGraph = service.graph(dataset.id);
+      }
 
       // Support both points (places) and polygons (buildings)
       for (const entity of entities) {
-        if (isAcceptedOrIgnored(entity)) continue;
+        if (acceptIDs.has(entity.id) || ignoreIDs.has(entity.id)) continue;
 
-        if (datasetID.includes('places')) {
+        if (isPlacesDataset) {
           // Points for places (GeoJSON features from VectorTileService)
           entity.overture = true;
           entity.__datasetid__ = datasetID;
           data.points.push(entity);
-        } else if (datasetID.includes('buildings')) {
+        } else if (isBuildingsDataset) {
           // Polygons for buildings (OSM entities from OvertureService)
           if (entity.type === 'way') {
             data.polygons.push(entity);
           }
-        } else if (datasetID.includes('roads')) {
+        } else if (isRoadsDataset) {
           // Lines for roads (OSM entities from OvertureService)
           if (entity.type === 'way') {
             data.lines.push(entity);
-            const graph = service.graph(dataset.id);
-            if (graph) {
-              try {
-                const first = graph.entity(entity.first());
-                const last = graph.entity(entity.last());
-                data.vertices.add(first);
-                data.vertices.add(last);
-              } catch (e) {
-                // Skip if we can't resolve endpoint nodes
-              }
+            if (dsGraph) {
+              const first = dsGraph.hasEntity(entity.first());
+              if (first) data.vertices.add(first);
+              const last = dsGraph.hasEntity(entity.last());
+              if (last) data.vertices.add(last);
             }
           }
         }
-      }
-
-      // For buildings and roads, we need the graph to resolve node coordinates
-      if (datasetID.includes('buildings') || datasetID.includes('roads')) {
-        dsGraph = service.graph(dataset.id);
       }
 
     } else if (dataset.service === 'external') {
@@ -352,7 +356,7 @@ export class PixiLayerRapid extends AbstractLayer {
 
       const entities = service.getData(datasetID);
       for (const entity of entities) {
-        if (isAcceptedOrIgnored(entity)) continue;
+        if (acceptIDs.has(entity.id) || ignoreIDs.has(entity.id)) continue;
 
         if (entity?.type && typeof entity.geometry === 'function') {
           const geom = entity.geometry(dsGraph);
@@ -386,25 +390,7 @@ export class PixiLayerRapid extends AbstractLayer {
     }
 
     const pointsContainer = this.scene.groups.get('points');
-    const basemapContainer = this.scene.groups.get('basemap');
-    const areasID = `${this.layerID}-${dataset.id}-areas`;
-    const linesID = `${this.layerID}-${dataset.id}-lines`;
-
-    let areasContainer = basemapContainer.getChildByLabel(areasID);
-    if (!areasContainer) {
-      areasContainer = new PIXI.Container();
-      areasContainer.label= areasID;
-      areasContainer.sortableChildren = true;
-      basemapContainer.addChild(areasContainer);
-    }
-
-    let linesContainer = basemapContainer.getChildByLabel(linesID);
-    if (!linesContainer) {
-      linesContainer = new PIXI.Container();
-      linesContainer.label= linesID;
-      linesContainer.sortableChildren = true;
-      basemapContainer.addChild(linesContainer);
-    }
+    const { areas: areasContainer, lines: linesContainer } = this._getDatasetContainers(dataset.id);
 
     this.renderPolygons(areasContainer, dataset, dsGraph, frame, viewport, zoom, data);
     this.renderLines(linesContainer, dataset, dsGraph, frame, viewport, zoom, data);
@@ -416,7 +402,7 @@ export class PixiLayerRapid extends AbstractLayer {
    * renderPolygons
    */
   renderPolygons(parentContainer, dataset, graph, frame, viewport, zoom, data) {
-    const color = new PIXI.Color(dataset.color);
+    const color = this._getDatasetColor(dataset);
     const l10n = this.context.systems.l10n;
 
     for (const entity of data.polygons) {
@@ -488,7 +474,7 @@ export class PixiLayerRapid extends AbstractLayer {
    * renderLines
    */
   renderLines(parentContainer, dataset, graph, frame, viewport, zoom, data) {
-    const color = new PIXI.Color(dataset.color);
+    const color = this._getDatasetColor(dataset);
     const l10n = this.context.systems.l10n;
 
     for (const entity of data.lines) {
@@ -540,7 +526,7 @@ export class PixiLayerRapid extends AbstractLayer {
    * renderPoints
    */
   renderPoints(parentContainer, dataset, graph, frame, viewport, zoom, data) {
-    const color = new PIXI.Color(dataset.color);
+    const color = this._getDatasetColor(dataset);
     const l10n = this.context.systems.l10n;
 
     const pointStyle = {
@@ -620,6 +606,44 @@ export class PixiLayerRapid extends AbstractLayer {
       this.retainFeature(feature, frame);
     }
 
+  }
+
+
+  _getDatasetContainers(datasetID) {
+    let containers = this._datasetContainers.get(datasetID);
+    if (containers) return containers;
+
+    const basemapContainer = this.scene.groups.get('basemap');
+    const areas = new PIXI.Container();
+    areas.label = `${this.layerID}-${datasetID}-areas`;
+    areas.sortableChildren = true;
+
+    const lines = new PIXI.Container();
+    lines.label = `${this.layerID}-${datasetID}-lines`;
+    lines.sortableChildren = true;
+
+    basemapContainer.addChild(areas, lines);
+
+    containers = { areas, lines };
+    this._datasetContainers.set(datasetID, containers);
+    return containers;
+  }
+
+
+  _getDatasetColor(dataset) {
+    const datasetID = dataset.id;
+    const colorVal = dataset.color;
+
+    let colorEntry = this._datasetColors.get(datasetID);
+    if (!colorEntry || colorEntry.color !== colorVal) {
+      colorEntry = {
+        color: colorVal,
+        pixi: new PIXI.Color(colorVal)
+      };
+      this._datasetColors.set(datasetID, colorEntry);
+    }
+
+    return colorEntry.pixi;
   }
 
 }

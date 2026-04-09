@@ -5,6 +5,8 @@ function asSet(vals) {
   return new Set(vals !== undefined && [].concat(vals));
 }
 
+const EMPTY_SET = new Set();
+
 
 /**
  * AbstractLayer is the base class from which all Layers inherit.
@@ -265,7 +267,7 @@ export class AbstractLayer {
    * @param  {string}  parentID - dataID (e.g. 'r123')
    */
   clearChildData(parentID) {
-    const childIDs = this._parentHasChildren.get(parentID) ?? new Set();
+    const childIDs = this._parentHasChildren.get(parentID) ?? EMPTY_SET;
     for (const childID of childIDs) {
       this.removeChildData(parentID, childID);
     }
@@ -286,7 +288,7 @@ export class AbstractLayer {
       result = new Set([dataID]);
     }
 
-    const childIDs = this._parentHasChildren.get(dataID) ?? new Set();
+    const childIDs = this._parentHasChildren.get(dataID) ?? EMPTY_SET;
     for (const childID of childIDs) {
       if (!result.has(childID)) {
         this.getSelfAndDescendants(childID, result);
@@ -311,7 +313,7 @@ export class AbstractLayer {
       result = new Set([dataID]);
     }
 
-    const parentIDs = this._childHasParents.get(dataID) ?? new Set();
+    const parentIDs = this._childHasParents.get(dataID) ?? EMPTY_SET;
     for (const parentID of parentIDs) {
       if (!result.has(parentID)) {
         this.getSelfAndAncestors(parentID, result);
@@ -336,9 +338,9 @@ export class AbstractLayer {
       result = new Set([dataID]);
     }
 
-    const parentIDs = this._childHasParents.get(dataID) ?? new Set();
+    const parentIDs = this._childHasParents.get(dataID) ?? EMPTY_SET;
     for (const parentID of parentIDs) {
-      const siblingIDs = this._parentHasChildren.get(parentID) ?? new Set();
+      const siblingIDs = this._parentHasChildren.get(parentID) ?? EMPTY_SET;
       for (const siblingID of siblingIDs) {
         result.add(siblingID);
       }
@@ -402,7 +404,7 @@ export class AbstractLayer {
    * @param  {string}  classID  - classID to clear (e.g. 'hover')
    */
   clearClass(classID) {
-    const dataIDs = this._classHasData.get(classID) ?? new Set();
+    const dataIDs = this._classHasData.get(classID) ?? EMPTY_SET;
     for (const dataID of dataIDs) {
       this.unsetClass(classID, dataID);
     }
@@ -412,12 +414,13 @@ export class AbstractLayer {
   /**
    * getDataWithClass
    * Returns the dataIDs that are currently classed with the given classID
-   * @param  {string}      classID - classID to check (e.g. 'hover')
-   * @return {Set<string>} dataIDs the dataIDs that currently have this classID set
+   * @param  {string}       classID - classID to check (e.g. 'hover')
+   * @param  {boolean}      copy - Whether to return a defensive copy (defaults to `true`)
+   * @return {Set<string>}  dataIDs that currently have this classID set
    */
-  getDataWithClass(classID) {
-    const dataIDs = this._classHasData.get(classID) ?? new Set();
-    return new Set(dataIDs);  // copy
+  getDataWithClass(classID, copy = true) {
+    const dataIDs = this._classHasData.get(classID) ?? EMPTY_SET;
+    return copy ? new Set(dataIDs) : dataIDs;
   }
 
 
@@ -438,7 +441,7 @@ export class AbstractLayer {
     const dataID = this._featureHasData.get(featureID);
     if (!dataID) return;
 
-    const layerClasses = this._dataHasClass.get(dataID) ?? new Set();
+    const layerClasses = this._dataHasClass.get(dataID) ?? EMPTY_SET;
     const featureClasses = feature._classes;
 
     for (const classID of featureClasses) {

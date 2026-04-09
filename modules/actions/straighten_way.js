@@ -97,6 +97,7 @@ export function actionStraightenWay(selectedIDs, viewport) {
         var points = nodes.map(function(n) { return viewport.project(n.loc); });
         var startPoint = points[0];
         var endPoint = points[points.length-1];
+        var replacements = [];
         var toDelete = [];
         var i;
 
@@ -108,7 +109,7 @@ export function actionStraightenWay(selectedIDs, viewport) {
                 var u = positionAlongWay(point, startPoint, endPoint);
                 var p = vecInterp(startPoint, endPoint, u);
                 var loc2 = viewport.unproject(p);
-                graph = graph.replace(node.move(vecInterp(node.loc, loc2, t)));
+                replacements.push(node.move(vecInterp(node.loc, loc2, t)));
 
             } else {
                 // safe to delete
@@ -116,6 +117,10 @@ export function actionStraightenWay(selectedIDs, viewport) {
                     toDelete.push(node);
                 }
             }
+        }
+
+        if (replacements.length) {
+            graph = graph.replaceMany(replacements);
         }
 
         for (i = 0; i < toDelete.length; i++) {

@@ -27,6 +27,7 @@ export class Tree {
 
     this._segmentRBush = new RBush();
     this._segmentBoxes = new Map();    // Map(segmentID -> Box Object)
+    this._queryBox = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
   }
 
@@ -225,7 +226,18 @@ export class Tree {
    */
   intersects(extent, graph) {
     this._setCurrentGraph(graph);
-    return this._entityRBush.search(extent.bbox()).map(ebox => graph.entity(ebox.id));
+    const bbox = this._queryBox;
+    bbox.minX = extent.min[0];
+    bbox.minY = extent.min[1];
+    bbox.maxX = extent.max[0];
+    bbox.maxY = extent.max[1];
+
+    const boxes = this._entityRBush.search(bbox);
+    const entities = new Array(boxes.length);
+    for (let i = 0; i < boxes.length; i++) {
+      entities[i] = graph.entity(boxes[i].id);
+    }
+    return entities;
   }
 
   /**
@@ -238,7 +250,18 @@ export class Tree {
    */
   waySegments(extent, graph) {
     this._setCurrentGraph(graph);
-    return this._segmentRBush.search(extent.bbox()).map(sbox => sbox.segment);
+    const bbox = this._queryBox;
+    bbox.minX = extent.min[0];
+    bbox.minY = extent.min[1];
+    bbox.maxX = extent.max[0];
+    bbox.maxY = extent.max[1];
+
+    const boxes = this._segmentRBush.search(bbox);
+    const segments = new Array(boxes.length);
+    for (let i = 0; i < boxes.length; i++) {
+      segments[i] = boxes[i].segment;
+    }
+    return segments;
   }
 
 }

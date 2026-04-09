@@ -36,6 +36,9 @@ const paths = {
   'pedestrian': true
 };
 
+const EMPTY_ARRAY = [];
+const EMPTY_MATCHES = new Set();
+
 
 
 class Filter {
@@ -414,10 +417,10 @@ export class FilterSystem extends AbstractSystem {
    */
   getMatches(entity, resolver, geometry) {
     // skip - vertexes are hidden based on whatever filters their parent ways have matched
-    if (geometry === 'vertex') return new Set();
+    if (geometry === 'vertex') return EMPTY_MATCHES;
     // skip - most relations don't have a geometry worth checking
     // (note that multipolygons are considered 'area' geometry not 'relation')
-    if (geometry === 'relation' && entity.tags.type !== 'boundary') return new Set();
+    if (geometry === 'relation' && entity.tags.type !== 'boundary') return EMPTY_MATCHES;
 
     const ekey = osmEntity.key(entity);
     let cached = this._cache[ekey];
@@ -483,7 +486,7 @@ export class FilterSystem extends AbstractSystem {
    * @return  {Array<Entity>}  An array of parent entities
    */
   getParents(entity, resolver, geometry) {
-    if (geometry === 'point') return [];
+    if (geometry === 'point') return EMPTY_ARRAY;
 
     const ekey = osmEntity.key(entity);
     let cached = this._cache[ekey];
@@ -545,12 +548,14 @@ export class FilterSystem extends AbstractSystem {
     if (!entity.version) return null;
     if (this._forceVisible.has(entity.id)) return null;
 
-    const filterIDs = [...this.getMatches(entity, resolver, geometry)];
-    if (filterIDs.length && filterIDs.every(filterID => this._hidden.has(filterID))) {
-      return filterIDs[0];
-    } else {
-      return null;
+    const filterIDs = this.getMatches(entity, resolver, geometry);
+    let firstMatch = null;
+    for (const filterID of filterIDs) {
+      if (!firstMatch) firstMatch = filterID;
+      if (!this._hidden.has(filterID)) return null;
     }
+
+    return firstMatch;
   }
 
 
@@ -644,7 +649,9 @@ export class FilterSystem extends AbstractSystem {
 
     if (!this._hidden.size) return entities;  // no filters enabled
 
-    const results = [];
+    const results = new Array(entities.length);
+    let resultCount = 0;
+
     for (const entity of entities) {
       const geometry = entity.geometry(resolver);
       const filterID = this.isHidden(entity, resolver, geometry);
@@ -656,10 +663,11 @@ export class FilterSystem extends AbstractSystem {
           filter.count++;
         }
       } else {
-        results.push(entity);
+        results[resultCount++] = entity;
       }
     }
 
+    results.length = resultCount;
     return results;
   }
 

@@ -394,10 +394,14 @@ export class UiMinimap {
   _draw() {
     if (this._isHidden) return;
 
-    const gfx = this.context.systems.gfx;
+    const context = this.context;
+    const gfx = context.systems.gfx;
     if (!gfx.pixi || !gfx.textures?.loaded) return;  // called too early?
 
-    window.performance.mark('minimap-start');
+    const perfDebug = context.getDebug('perf');
+    if (perfDebug) {
+      window.performance.mark('minimap-start');
+    }
 
     const frame = 0;    // not used
     this.layer.render(frame, this.viewMini);   // APP
@@ -422,8 +426,10 @@ if (mainCanvas) {
 renderer.view.canvas = mainCanvas;  // restore main canvas
 }
 
-    window.performance.mark('minimap-end');
-    window.performance.measure('minimap', 'minimap-start', 'minimap-end');
+    if (perfDebug) {
+      window.performance.mark('minimap-end');
+      window.performance.measure('minimap', 'minimap-start', 'minimap-end');
+    }
   }
 
 

@@ -13,6 +13,14 @@ describe('actionMoveNode', () => {
     assert.deepEqual(result.entity('a').loc, toLoc);
   });
 
+  it('is a no-op if the target location matches the current location', () => {
+    const node = Rapid.osmNode({ id: 'a', loc: [2, 3] });
+    const graph = new Rapid.Graph([node]);
+
+    const result = Rapid.actionMoveNode('a', [2, 3])(graph);
+    assert.equal(result, graph);
+  });
+
 
   describe('transitions', () => {
     it('is transitionable', () => {
@@ -27,6 +35,7 @@ describe('actionMoveNode', () => {
 
       const result = Rapid.actionMoveNode('a', toLoc)(graph, 0);
       assert.ok(result instanceof Rapid.Graph);
+      assert.equal(result, graph);
       assert.equal(result.entity('a').loc[0], 0);
       assert.equal(result.entity('a').loc[1], 0);
     });

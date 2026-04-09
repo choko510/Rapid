@@ -401,27 +401,41 @@ export class Map3dSystem extends AbstractSystem {
     const viewport = context.viewport;
 
     const entities = editor.intersects(viewport.visibleExtent());
-    const noRelationEnts = entities.filter(entity => !entity.id.startsWith('r'));
+    const highways = [];
+    const buildings = [];
+    const areas = [];
 
-    const highways = noRelationEnts.filter(entity => {
-      const tags = Object.keys(entity.tags).filter(tagname => tagname.startsWith('highway'));
-      return tags.length > 0;
-    });
+    for (const entity of entities) {
+      if (entity.id[0] === 'r') continue;  // skip relations
 
-    const buildings = noRelationEnts.filter(entity => {
-      const tags = Object.keys(entity.tags).filter(tagname => tagname.startsWith('building'));
-      return tags.length > 0;
-    });
+      const tags = entity.tags;
+      let isHighway = false;
+      let isBuilding = false;
+      let isArea = false;
 
-    const areas = noRelationEnts.filter(entity => {
-      const tags = Object.keys(entity.tags).filter(tagname =>
-        tagname.startsWith('landuse') ||
-        tagname.startsWith('leisure') ||
-        tagname.startsWith('natural') ||
-        tagname.startsWith('area')
-      );
-      return tags.length > 0;
-    });
+      for (const key in tags) {
+        if (!isHighway && key.startsWith('highway')) {
+          isHighway = true;
+        }
+        if (!isBuilding && key.startsWith('building')) {
+          isBuilding = true;
+        }
+        if (!isArea && (
+          key.startsWith('landuse') ||
+          key.startsWith('leisure') ||
+          key.startsWith('natural') ||
+          key.startsWith('area')
+        )) {
+          isArea = true;
+        }
+
+        if (isHighway && isBuilding && isArea) break;
+      }
+
+      if (isHighway) highways.push(entity);
+      if (isBuilding) buildings.push(entity);
+      if (isArea) areas.push(entity);
+    }
 
     this._updateRoadData(highways);
     this._updateBuildingData(buildings);

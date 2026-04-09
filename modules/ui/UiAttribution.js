@@ -19,6 +19,7 @@ export class UiAttribution {
 
     // D3 selections
     this.$parent = null;
+    this._lastRenderKey = null;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     // (This is also necessary when using `d3-selection.call`)
@@ -60,6 +61,7 @@ export class UiAttribution {
       .append('div')
       .attr('class', 'attribution-wrap');
 
+    const didEnterWrap = !$$wrap.empty();
     $wrap = $wrap.merge($$wrap);
 
 
@@ -88,6 +90,16 @@ export class UiAttribution {
         terms_url: 'https://mapwith.ai/doc/license/MapWithAILicense.pdf'
       });
     }
+
+    const sourceKeys = [];
+    for (const section of data) {
+      const keys = section.sources.map(source => source.key || source.id || source.name || '').join(',');
+      sourceKeys.push(`${section.id}:${keys}`);
+    }
+
+    const renderKey = `${l10n.localeCode()}|${showThirdPartyIcons ? 1 : 0}|${sourceKeys.join('|')}`;
+    if (!didEnterWrap && this._lastRenderKey === renderKey) return;
+    this._lastRenderKey = renderKey;
 
     // baselayer and overlays sections
     let $sections = $wrap.selectAll('.attribution-section')

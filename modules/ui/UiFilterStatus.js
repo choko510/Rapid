@@ -24,6 +24,7 @@ export class UiFilterStatus {
 
     // D3 selections
     this.$parent = null;
+    this._lastStateKey = null;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     // (This is also necessary when using `d3-selection.call`)
@@ -76,21 +77,30 @@ export class UiFilterStatus {
       .attr('class', 'count');
 
     // update
+    const didEnter = !$$wrap.empty();
     $wrap = $wrap.merge($$wrap);
 
 
     // Gather stats about what features are currently filtered
     const stats = filters.getStats();
-    const details = [];
+    const activeFilters = [];
     let total = 0;
+    let stateKey = l10n.localeCode();
+
     for (const [filterID, filter] of Object.entries(stats)) {
       if (filter.count > 0) {
         total += filter.count;
-        details.push(
-          l10n.t('inspector.title_count', { title: l10n.t(`filters.${filterID}.description`), count: filter.count })
-        );
+        activeFilters.push([filterID, filter.count]);
+        stateKey += `|${filterID}:${filter.count}`;
       }
     }
+
+    if (!didEnter && this._lastStateKey === stateKey) return;
+    this._lastStateKey = stateKey;
+
+    const details = activeFilters.map(([filterID, count]) => {
+      return l10n.t('inspector.title_count', { title: l10n.t(`filters.${filterID}.description`), count });
+    });
 
     if (details.length) {
       this.Tooltip.title(l10n.t('filters.active') + '<br/>' + details.join('<br/>'));
@@ -124,4 +134,3 @@ export class UiFilterStatus {
   }
 
 }
-

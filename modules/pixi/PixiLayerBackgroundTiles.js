@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { interpolateNumber } from 'd3-interpolate';
 import { AdjustmentFilter, ConvolutionFilter } from 'pixi-filters';
-import { Tiler, geoScaleToZoom, vecScale } from '@rapid-sdk/math';
+import { Tiler, geoScaleToZoom } from '@rapid-sdk/math';
 
 import { AbstractLayer } from './AbstractLayer.js';
 
@@ -42,6 +42,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this._tileMaps = new Map();    // Map (sourceID -> Map(tileID -> tile))
     this._failed = new Set();      // Set of failed tileURLs
     this._tiler = new Tiler();
+    this._needTiles = new Map();   // Reused Map(tileID -> tile)
+    this._sourceIDsToDestroy = []; // Reused Array<string>
   }
 
 
@@ -59,6 +61,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this.destroyAll();
     this._tileMaps.clear();
     this._failed.clear();
+    this._needTiles.clear();
+    this._sourceIDsToDestroy.length = 0;
   }
 
 
@@ -107,17 +111,19 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
     // Remove any sourceContainers and data not needed anymore
     // Doing this in 2 passes to avoid affecting `.children` while iterating over it.
-    const toDestroy = new Set();
+    const toDestroy = this._sourceIDsToDestroy;
+    toDestroy.length = 0;
     for (const sourceContainer of groupContainer.children) {
       const sourceID = sourceContainer.label;
       if (!showSources.has(sourceID)) {
-        toDestroy.add(sourceID);
+        toDestroy.push(sourceID);
       }
     }
 
     for (const sourceID of toDestroy) {
       this.destroySource(sourceID);
     }
+    toDestroy.length = 0;
   }
 
 
@@ -135,6 +141,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     const osm = context.services.osm;
     const t = viewport.transform.props;
     const sourceID = source.key;   // note: use `key` here, for Wayback it will include the date
+    const sourceIsLocatorOverlay = source.isLocatorOverlay();
 
     // Defensive coding in case nominatim/other reasons cause us to get an invalid view transform.
     if (isNaN(t.x) || isNaN(t.y)) {
@@ -154,12 +161,13 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     const z = geoScaleToZoom(t.k, tileSize);  // Use actual zoom for this, not effective zoom
 
     // Apply imagery offset (in pixels) to the source container
-    const offset = vecScale(source.offset, Math.pow(2, z));
-    sourceContainer.position.set(offset[0], offset[1]);
+    const offsetScale = Math.pow(2, z);
+    sourceContainer.position.set(source.offset[0] * offsetScale, source.offset[1] * offsetScale);
 
     // Determine tiles needed to cover the view at the zoom we want,
     // including any zoomed out tiles if this field contains any holes
-    const needTiles = new Map();                // Map(tileID -> tile)
+    const needTiles = this._needTiles;
+    needTiles.clear();
 
     // Make sure the min zoom is at least 1.
     // z=0 causes a bug for Mapbox layers to disappear, these use very large tile size.
@@ -170,7 +178,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     let covered = false;
     for (let tryZoom = maxZoom; !covered && tryZoom >= minZoom; tryZoom--) {
       if (!source.validZoom(tryZoom)) continue;  // not valid here, zoom out
-      if (source.isLocatorOverlay() && maxZoom > 17) continue;   // overlay is blurry if zoomed in this far
+      if (sourceIsLocatorOverlay && maxZoom > 17) continue;   // overlay is blurry if zoomed in this far
 
       const result = this._tiler
         .tileSize(tileSize)
@@ -181,7 +189,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       let hasHoles = false;
       for (const tile of result.tiles) {
         // skip locator overlay tiles where we have osm data loaded there
-        if (!this.isMinimap && tryZoom >= 10 && osm && source.isLocatorOverlay()) {
+        if (!this.isMinimap && tryZoom >= 10 && osm && sourceIsLocatorOverlay) {
           const loc = tile.wgs84Extent.center();
           if (osm.isDataLoaded(loc)) continue;
         }
@@ -311,15 +319,17 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     const groupContainer = this.scene.groups.get('background');
 
     // Doing this in 2 passes to avoid affecting `.children` while iterating over it.
-    const toDestroy = new Set();
+    const toDestroy = this._sourceIDsToDestroy;
+    toDestroy.length = 0;
     for (const sourceContainer of groupContainer.children) {
       const sourceID = sourceContainer.label;
-      toDestroy.add(sourceID);
+      toDestroy.push(sourceID);
     }
 
     for (const sourceID of toDestroy) {
       this.destroySource(sourceID);
     }
+    toDestroy.length = 0;
   }
 
 

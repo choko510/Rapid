@@ -241,6 +241,7 @@ export class GraphicsSystem extends AbstractSystem {
     if (!this._started || this._paused) return;
 
     const ticker = this.ticker;
+    const perfDebug = this.context.getDebug('perf');
     // console.log('FPS=' + ticker.FPS.toFixed(1));
 
     // For now, we will perform either APP (Rapid prepares scene graph) or DRAW (Pixi render) during a tick.
@@ -252,18 +253,22 @@ export class GraphicsSystem extends AbstractSystem {
     // Process a pending DRAW before a pending APP.
     // This is so pending APP does not sneak in front of DRAW causing a race condition.
     if (this._drawPending) {
-      const frame = this._frame;
-      const drawStart = `draw-${frame}-start`;
-      const drawEnd = `draw-${frame}-end`;
-      window.performance.mark(drawStart);
+      if (perfDebug) {
+        const frame = this._frame;
+        const drawStart = `draw-${frame}-start`;
+        const drawEnd = `draw-${frame}-end`;
+        window.performance.mark(drawStart);
 
-      this._draw();  // note that DRAW increments the frame counter
+        this._draw();  // note that DRAW increments the frame counter
 
-      window.performance.mark(drawEnd);
-      window.performance.measure(`draw-${frame}`, drawStart, drawEnd);
-      // const measureDraw = window.performance.getEntriesByName(`draw-${frame}`, 'measure')[0];
-      // const durationDraw = measureDraw.duration.toFixed(1);
-      // console.log(`draw-${frame} : ${durationDraw} ms`);
+        window.performance.mark(drawEnd);
+        window.performance.measure(`draw-${frame}`, drawStart, drawEnd);
+        // const measureDraw = window.performance.getEntriesByName(`draw-${frame}`, 'measure')[0];
+        // const durationDraw = measureDraw.duration.toFixed(1);
+        // console.log(`draw-${frame} : ${durationDraw} ms`);
+      } else {
+        this._draw();  // note that DRAW increments the frame counter
+      }
       return;
     }
 
@@ -281,18 +286,22 @@ export class GraphicsSystem extends AbstractSystem {
         return;
 
       } else {  // render now
-        const frame = this._frame;
-        const appStart = `app-${frame}-start`;
-        const appEnd = `app-${frame}-end`;
-        window.performance.mark(appStart);
+        if (perfDebug) {
+          const frame = this._frame;
+          const appStart = `app-${frame}-start`;
+          const appEnd = `app-${frame}-end`;
+          window.performance.mark(appStart);
 
-        this._app();
+          this._app();
 
-        window.performance.mark(appEnd);
-        window.performance.measure(`app-${frame}`, appStart, appEnd);
-        // const measureApp = window.performance.getEntriesByName(`app-${frame}`, 'measure')[0];
-        // const durationApp = measureApp.duration.toFixed(1);
-        // console.log(`app-${frame} : ${durationApp} ms`);
+          window.performance.mark(appEnd);
+          window.performance.measure(`app-${frame}`, appStart, appEnd);
+          // const measureApp = window.performance.getEntriesByName(`app-${frame}`, 'measure')[0];
+          // const durationApp = measureApp.duration.toFixed(1);
+          // console.log(`app-${frame} : ${durationApp} ms`);
+        } else {
+          this._app();
+        }
         return;
       }
     }

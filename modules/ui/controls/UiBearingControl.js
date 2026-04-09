@@ -24,6 +24,9 @@ export class UiBearingControl {
     // D3 selections
     this.$parent = null;
     this.$button = null;
+    this.$bearingN = null;
+    this.$compassUse = null;
+    this._lastRot = null;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     // (This is also necessary when using `d3-selection.call`)
@@ -72,6 +75,9 @@ export class UiBearingControl {
 
     // update
     this.$button = $button = $button.merge($$button);
+    this.$bearingN = $button.selectAll('.bearing_n');
+    this.$compassUse = $button.selectAll(':scope > .icon use');
+    this._lastRot = null;
 
     // Update tooltip
     this.Tooltip
@@ -109,21 +115,26 @@ export class UiBearingControl {
    */
   updateBearing() {
     const $button = this.$button;
-    if (!$button) return;   // called too early?
+    const $bearingN = this.$bearingN;
+    const $compassUse = this.$compassUse;
+    if (!$button || !$bearingN || !$compassUse) return;   // called too early?
 
     const context = this.context;
     const rot = context.viewport.transform.rotation;
+    if (rot === this._lastRot) return;
+    this._lastRot = rot;
+
     const isNorthUp = (rot === 0);
 
     // Translate the 'N' around opposite of the compass pointer
     const npos = vecRotate([0, 8], rot, [0, 0]);
-    $button.selectAll('.bearing_n')
+    $bearingN
       .style('transform', `translate(${npos[0]}px, ${npos[1]}px)`);
 
     // Select direct descendant compass icon only (not the tooltip-keys icon!)...
     // Because `d3.selectAll` uses `element.querySelectorAll`, `:scope` refers to self
     // see https://developer.mozilla.org/en-US/docs/Web/CSS/:scope
-    $button.selectAll(':scope > .icon use')
+    $compassUse
       .style('transform-origin', isNorthUp ? null : 'center')
       .style('transform', isNorthUp ? null : `rotate(${rot}rad)`);
   }

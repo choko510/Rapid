@@ -88,6 +88,7 @@ export class UiContributors {
     }
 
     if (seen.size === 0) {  // nothing to show
+      this._lastv = viewport.v;
       $wrap.classed('hide', true);
       return;
     } else {

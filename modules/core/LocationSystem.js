@@ -40,7 +40,9 @@ export class LocationSystem extends AbstractSystem {
     this.id = 'locations';
     this.dependencies = new Set();
 
-    this._wp = null;                        // A which-polygon index
+    this._wp = () => [];                    // A which-polygon index
+    this._wpblocks = () => [];              // A which-polygon index (blocked regions only)
+    this._bootstrapped = false;
     this._resolved = new Map();             // Map (id -> GeoJSON feature)
     this._knownLocationSets = new Map();    // Map (locationSetID -> Number area)
     this._locationIncludedIn = new Map();   // Map (locationID -> Set(locationSetID) )
@@ -52,23 +54,6 @@ export class LocationSystem extends AbstractSystem {
       text: 'Editing has been blocked in this region per request of the OSM Ukrainian community.',
       url: 'https://wiki.openstreetmap.org/wiki/Russian%E2%80%93Ukrainian_war'
     }];
-
-    const blockedFeatures = this._blocks.map(block => {
-      // Pre-resolve the blocked region locationSets into GeoJSON features
-      this._resolveLocationSet(block);
-      // Merge the info about the block into the GeoJSON's properties
-      let feature = this._resolved.get(block.locationSetID);
-      Object.assign(feature.properties, block);
-      return feature;
-    });
-
-    // Make a separate which-polygon just for these (static, very few features, very frequent lookups)
-    this._wpblocks = whichPolygon({ type: 'FeatureCollection', features: blockedFeatures });
-
-    // pre-resolve the worldwide locationSet
-    const world = { locationSet: { include: ['Q2'] } };
-    this._resolveLocationSet(world);
-    this._rebuildIndex();
   }
 
 
@@ -83,6 +68,7 @@ export class LocationSystem extends AbstractSystem {
         return Promise.reject(`Cannot init:  ${this.id} requires ${id}`);
       }
     }
+    this._bootstrap();
     return Promise.resolve();
   }
 
@@ -105,6 +91,28 @@ export class LocationSystem extends AbstractSystem {
    */
   resetAsync() {
     return Promise.resolve();
+  }
+
+
+  _bootstrap() {
+    if (this._bootstrapped) return;
+
+    const blockedFeatures = this._blocks.map(block => {
+      // Resolve blocked-region locationSets into GeoJSON features on demand
+      this._resolveLocationSet(block);
+      const feature = this._resolved.get(block.locationSetID);
+      Object.assign(feature.properties, block);
+      return feature;
+    });
+
+    // Make a separate which-polygon just for blocked regions.
+    this._wpblocks = whichPolygon({ type: 'FeatureCollection', features: blockedFeatures });
+
+    // Resolve the worldwide locationSet once so fallbacks always exist.
+    const world = { locationSet: { include: ['Q2'] } };
+    this._resolveLocationSet(world);
+    this._rebuildIndex();
+    this._bootstrapped = true;
   }
 
 
@@ -296,6 +304,7 @@ export class LocationSystem extends AbstractSystem {
    */
   mergeLocationSets(objects) {
     if (!Array.isArray(objects)) return Promise.reject('nothing to do');
+    this._bootstrap();
 
     objects.forEach(obj => this._validateLocationSet(obj));
     this._rebuildIndex();
@@ -337,8 +346,9 @@ export class LocationSystem extends AbstractSystem {
    * @return  GeoJSON object (fallback to world)
    */
   feature(locationSetID = '+[Q2]') {
- // should we actually resolve it if it hasn't been?
- // this shouldn't matter, as it's currently only used to render the blocked regions
+    this._bootstrap();
+    // should we actually resolve it if it hasn't been?
+    // this shouldn't matter, as it's currently only used to render the blocked regions
     const feature = this._resolved.get(locationSetID);
     return feature || this._resolved.get('+[Q2]');
   }
@@ -361,6 +371,7 @@ export class LocationSystem extends AbstractSystem {
    * @return  Object of locationSetIDs valid at given location
    */
   locationSetsAt(loc) {
+    this._bootstrap();
     let result = {};
 
     const hits = this._wp(loc, true) || [];
@@ -411,6 +422,7 @@ export class LocationSystem extends AbstractSystem {
    * @return  Array of block Objects (empty array if none)
    */
   blocksAt(loc) {
+    this._bootstrap();
     if (!this._blocks.length) return [];
     return this._wpblocks(loc, true) || [];
   }
@@ -423,6 +435,7 @@ export class LocationSystem extends AbstractSystem {
 
   // Direct access to the "blocks" which-polygon index
   wpblocks() {
+    this._bootstrap();
     return this._wpblocks;
   }
 }
