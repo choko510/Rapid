@@ -1,5 +1,6 @@
 export { operationCircularize } from './circularize.js';
 export { operationAutoAlignRoads } from './auto_align_roads.js';
+export { operationAutoAlignWaterways } from './auto_align_waterways.js';
 export { operationCreateWaterFromReference } from './create_water_from_reference.js';
 export { operationDockPondToForest } from './dock_pond_to_forest.js';
 export { operationContinue } from './continue.js';

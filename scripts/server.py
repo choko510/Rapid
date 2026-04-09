@@ -24,6 +24,7 @@ from fastapi import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.gzip import GZipMiddleware
 import uvicorn
 
 
@@ -143,12 +144,12 @@ async def lifespan(app: FastAPI):
     HTTP_CLIENT = httpx.AsyncClient(
         headers={"User-Agent": _USER_AGENT},
         limits=httpx.Limits(
-            max_connections=64,
-            max_keepalive_connections=64,
+            max_connections=128,
+            max_keepalive_connections=128,
         ),
         timeout=REQUEST_TIMEOUT,
         follow_redirects=True,
-        http2=False,
+        http2=True,
     )
     yield
     await HTTP_CLIENT.aclose()
@@ -160,6 +161,7 @@ app = FastAPI(
     default_response_class=ORJSONResponse,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -197,16 +199,37 @@ def _tilecoord_to_lonlat(px: float, py: float, z: int, x: int, y: int, extent: i
 
 
 def _coords_to_geojson(coords: Iterable[Tuple[int, int]], z: int, x: int, y: int, extent: int) -> List[List[float]]:
-    """NumPy ベクトル化座標変換。全座標を一括変換し Python ループを排除。"""
+    """ベクトル化のオーバーヘッドを避け、標準 math による高速な座標変換。
+    小中規模のポリゴン（建物など）では NumPy で配列アロケーションを行うより、
+    ピュア Python で math 関数を呼ぶ方が数倍高速。
+    """
     if not coords:
         return []
-    arr = np.array(coords, dtype=np.float64)
+    
     n = 2.0 ** z
     ne = n * extent
-    lon = (x * extent + arr[:, 0]) / ne * 360.0 - 180.0
-    lat_arg = np.pi * (1.0 - 2.0 * (y * extent + arr[:, 1]) / ne)
-    lat = np.degrees(np.arctan(np.sinh(lat_arg)))
-    return np.column_stack((lon, lat)).tolist()
+    base_lon = x * extent
+    base_lat = y * extent
+    
+    # ループ外で定数を事前計算
+    c_lon1 = 360.0 / ne
+    c_lon2 = -180.0
+    c_lat1 = math.pi
+    c_lat2 = 2.0 / ne
+    
+    # ローカル変数に math 関数をキャッシュしてグローバル参照を回避
+    _degrees = math.degrees
+    _atan = math.atan
+    _sinh = math.sinh
+    
+    res = []
+    for px, py in coords:
+        lon = (base_lon + px) * c_lon1 + c_lon2
+        lat_arg = c_lat1 * (1.0 - (base_lat + py) * c_lat2)
+        lat = _degrees(_atan(_sinh(lat_arg)))
+        res.append([lon, lat])
+        
+    return res
 
 
 def _parse_layers_argument(layers: str | None) -> Tuple[str, ...]:
@@ -466,16 +489,14 @@ def _decode_geometry_commands(commands: List[int]) -> List[Tuple[List[Tuple[int,
             for _ in range(count):
                 if i + 1 >= len(commands):
                     raise ValueError("MoveTo command is truncated")
-                dx = _zigzag_decode(commands[i])
-                dy = _zigzag_decode(commands[i + 1])
+                c1, c2 = commands[i], commands[i + 1]
+                x += (c1 >> 1) ^ (-(c1 & 1))
+                y += (c2 >> 1) ^ (-(c2 & 1))
                 i += 2
-                x += dx
-                y += dy
                 if current:
                     parts.append((current, current_closed))
-                current = []
+                current = [(x, y)]
                 current_closed = False
-                current.append((x, y))
 
         elif cmd == 2:
             for _ in range(count):
@@ -483,11 +504,10 @@ def _decode_geometry_commands(commands: List[int]) -> List[Tuple[List[Tuple[int,
                     raise ValueError("LineTo command is truncated")
                 if not current:
                     raise ValueError("LineTo command appeared before MoveTo")
-                dx = _zigzag_decode(commands[i])
-                dy = _zigzag_decode(commands[i + 1])
+                c1, c2 = commands[i], commands[i + 1]
+                x += (c1 >> 1) ^ (-(c1 & 1))
+                y += (c2 >> 1) ^ (-(c2 & 1))
                 i += 2
-                x += dx
-                y += dy
                 current.append((x, y))
 
         elif cmd == 7:

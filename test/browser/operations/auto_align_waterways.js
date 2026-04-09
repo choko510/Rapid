@@ -1,4 +1,4 @@
-describe('operationAutoAlignRoads', () => {
+describe('operationAutoAlignWaterways', () => {
   let _graph;
   let _reshapeResult;
   let _prepareResult;
@@ -65,7 +65,7 @@ describe('operationAutoAlignRoads', () => {
       status: 'ready',
       lines: [{
         coords: [[0, 0], [0.001, 0]],
-        properties: { layer: 'road', highway: 'residential' }
+        properties: { layer: 'waterway', waterway: 'river' }
       }]
     };
     _reshapeResult = { ok: true, moveNodeLocs: new Map([['n1', [0.0002, 0]]]), insertions: [], removals: [] };
@@ -76,20 +76,20 @@ describe('operationAutoAlignRoads', () => {
     _graph = new Rapid.Graph([
       Rapid.osmNode({ id: 'n1', loc: [0, 0] }),
       Rapid.osmNode({ id: 'n2', loc: [0.001, 0] }),
-      Rapid.osmWay({ id: 'w1', nodes: ['n1', 'n2'], tags: { highway: 'residential' } }),
+      Rapid.osmWay({ id: 'w1', nodes: ['n1', 'n2'], tags: { waterway: 'river' } }),
       Rapid.osmNode({ id: 'p1', loc: [0, 0] })
     ]);
   });
 
 
   describe('#available', () => {
-    it('is available for selected highway ways', () => {
-      const result = Rapid.operationAutoAlignRoads(context, ['w1']).available();
+    it('is available for selected flowing waterway ways', () => {
+      const result = Rapid.operationAutoAlignWaterways(context, ['w1']).available();
       expect(result).to.be.ok;
     });
 
     it('is not available for non-way selection', () => {
-      const result = Rapid.operationAutoAlignRoads(context, ['p1']).available();
+      const result = Rapid.operationAutoAlignWaterways(context, ['p1']).available();
       expect(result).to.not.be.ok;
     });
   });
@@ -97,32 +97,32 @@ describe('operationAutoAlignRoads', () => {
 
   describe('#disabled', () => {
     it('returns false when reshape plan is ready', () => {
-      const result = Rapid.operationAutoAlignRoads(context, ['w1']).disabled();
+      const result = Rapid.operationAutoAlignWaterways(context, ['w1']).disabled();
       expect(result).to.be.false;
     });
 
     it('returns loading state while reference tiles are loading', () => {
       _prepareResult = { status: 'loading', reason: 'reference_loading', lines: [] };
-      const result = Rapid.operationAutoAlignRoads(context, ['w1']).disabled();
+      const result = Rapid.operationAutoAlignWaterways(context, ['w1']).disabled();
       expect(result).to.eql('reference_loading');
     });
 
     it('returns alignment failure reason when reshape fails', () => {
       _reshapeResult = { ok: false, reason: 'not_enough_matches' };
-      const result = Rapid.operationAutoAlignRoads(context, ['w1']).disabled();
+      const result = Rapid.operationAutoAlignWaterways(context, ['w1']).disabled();
       expect(result).to.eql('not_enough_matches');
     });
 
-    it('returns no_reference_data when only waterway reference lines are available', () => {
+    it('returns no_reference_data when only road reference lines are available', () => {
       _prepareResult = {
         status: 'ready',
         lines: [{
           coords: [[0, 0], [0.001, 0]],
-          properties: { layer: 'waterway', waterway: 'river' }
+          properties: { layer: 'road', highway: 'residential' }
         }]
       };
 
-      const result = Rapid.operationAutoAlignRoads(context, ['w1']).disabled();
+      const result = Rapid.operationAutoAlignWaterways(context, ['w1']).disabled();
       expect(result).to.eql('no_reference_data');
     });
   });
@@ -130,7 +130,7 @@ describe('operationAutoAlignRoads', () => {
 
   describe('#operation', () => {
     it('performs edit actions + commit when reshape succeeds', () => {
-      const operation = Rapid.operationAutoAlignRoads(context, ['w1']);
+      const operation = Rapid.operationAutoAlignWaterways(context, ['w1']);
       operation();
 
       expect(_performCalls.length).to.eql(1);
@@ -142,7 +142,7 @@ describe('operationAutoAlignRoads', () => {
 
     it('does nothing when reshape is not ok', () => {
       _reshapeResult = { ok: false, reason: 'already_aligned' };
-      const operation = Rapid.operationAutoAlignRoads(context, ['w1']);
+      const operation = Rapid.operationAutoAlignWaterways(context, ['w1']);
       operation();
 
       expect(_performCalls.length).to.eql(0);
@@ -158,7 +158,7 @@ describe('operationAutoAlignRoads', () => {
         removals: ['n2']
       };
 
-      const operation = Rapid.operationAutoAlignRoads(context, ['w1']);
+      const operation = Rapid.operationAutoAlignWaterways(context, ['w1']);
       operation();
 
       expect(_performCalls.length).to.eql(5); // move existing + addEntity + addVertex + move inserted + deleteNode

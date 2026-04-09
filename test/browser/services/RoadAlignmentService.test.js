@@ -31,7 +31,7 @@ describe('RoadAlignmentService', () => {
         features: [
           {
             type: 'Feature',
-            properties: {},
+            properties: { layer: 'road', highway: 'residential' },
             geometry: {
               type: 'LineString',
               coordinates: [[0.0000, 0.0000], [0.0010, 0.0000]]
@@ -39,7 +39,7 @@ describe('RoadAlignmentService', () => {
           },
           {
             type: 'Feature',
-            properties: {},
+            properties: { layer: 'road', highway: 'residential' },
             geometry: {
               type: 'MultiLineString',
               coordinates: [
@@ -66,6 +66,7 @@ describe('RoadAlignmentService', () => {
 
         const lines = service.getReferenceLines(extent);
         expect(lines.length).to.be.at.least(2);
+        expect(lines.some(line => line.properties?.layer === 'road')).to.be.true;
         done();
       }, 30);
     });

@@ -2,12 +2,12 @@ import { actionAddVertex } from '../actions/add_vertex.js';
 import { actionAddEntity } from '../actions/add_entity.js';
 import { actionDeleteNode } from '../actions/delete_node.js';
 import { actionMoveNode } from '../actions/move_node.js';
-import { osmNode } from '../osm/index.js';
+import { osmFlowingWaterwayTagValues, osmNode } from '../osm/index.js';
 import { utilTotalExtent } from '../util/index.js';
-import { filterRoadReferenceLines } from './auto_align_reference_lines.js';
+import { filterWaterwayReferenceLines } from './auto_align_reference_lines.js';
 
 
-export function operationAutoAlignRoads(context, selectedIDs) {
+export function operationAutoAlignWaterways(context, selectedIDs) {
   const editor = context.systems.editor;
   const graph = editor.staging.graph;
   const l10n = context.systems.l10n;
@@ -17,8 +17,10 @@ export function operationAutoAlignRoads(context, selectedIDs) {
 
   const entities = selectedIDs.map(entityID => graph.hasEntity(entityID)).filter(Boolean);
   const ways = entities.filter(entity => {
+    const waterway = entity.tags.waterway?.toLowerCase();
     return entity.type === 'way' &&
-      entity.tags.highway &&
+      waterway &&
+      osmFlowingWaterwayTagValues[waterway] &&
       entity.geometry(graph) === 'line';
   });
   const nodes = ways.flatMap(way => way.nodes.map(nodeID => graph.hasEntity(nodeID)).filter(Boolean));
@@ -32,7 +34,7 @@ export function operationAutoAlignRoads(context, selectedIDs) {
 
     const prep = roadAlignment.prepareForWays(ways, editor.staging.graph);
     if (prep.status !== 'ready') return;
-    const referenceLines = filterRoadReferenceLines(prep.lines);
+    const referenceLines = filterWaterwayReferenceLines(prep.lines);
     if (!referenceLines.length) return;
 
     const shapePlan = roadAlignment.reshapeForWays(ways, editor.staging.graph, referenceLines);
@@ -105,7 +107,7 @@ export function operationAutoAlignRoads(context, selectedIDs) {
     if (!roadAlignment) return 'reference_service_unavailable';
     const prep = roadAlignment.prepareForWays(ways, editor.staging.graph);
     if (prep.status !== 'ready') return prep.reason || 'reference_loading';
-    const referenceLines = filterRoadReferenceLines(prep.lines);
+    const referenceLines = filterWaterwayReferenceLines(prep.lines);
     if (!referenceLines.length) return 'no_reference_data';
     const shapePlan = roadAlignment.reshapeForWays(ways, editor.staging.graph, referenceLines);
     return shapePlan.ok ? false : shapePlan.reason;
@@ -135,19 +137,19 @@ export function operationAutoAlignRoads(context, selectedIDs) {
   operation.tooltip = function() {
     const disabledReason = operation.disabled();
     return disabledReason ?
-      l10n.t(`operations.auto_align_roads.${disabledReason}`, { n: selectedIDs.length }) :
-      l10n.t('operations.auto_align_roads.description', { n: selectedIDs.length });
+      l10n.t(`operations.auto_align_waterways.${disabledReason}`, { n: selectedIDs.length }) :
+      l10n.t('operations.auto_align_waterways.description', { n: selectedIDs.length });
   };
 
 
   operation.annotation = function() {
-    return l10n.t('operations.auto_align_roads.annotation', { n: selectedIDs.length });
+    return l10n.t('operations.auto_align_waterways.annotation', { n: selectedIDs.length });
   };
 
 
-  operation.id = 'auto_align_roads';
+  operation.id = 'auto_align_waterways';
   operation.keys = [];
-  operation.title = l10n.t('operations.auto_align_roads.title');
+  operation.title = l10n.t('operations.auto_align_waterways.title');
 
   return operation;
 }

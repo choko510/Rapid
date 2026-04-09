@@ -540,6 +540,61 @@
           "other": "These roads are already aligned closely enough (no further shape edits needed)."
         }
       },
+      "auto_align_waterways": {
+        "title": "Auto Align Waterways",
+        "description": {
+          "one": "Move this waterway to match reference waterways.",
+          "other": "Move these waterways to match reference waterways."
+        },
+        "annotation": {
+          "one": "Auto-aligned a waterway.",
+          "other": "Auto-aligned {n} waterways."
+        },
+        "not_eligible": {
+          "one": "This selection can't be auto-aligned.",
+          "other": "These features can't be auto-aligned."
+        },
+        "too_large": {
+          "one": "This waterway can't be auto-aligned because not enough of it is currently visible.",
+          "other": "These waterways can't be auto-aligned because not enough of them are currently visible."
+        },
+        "connected_to_hidden": {
+          "one": "This waterway can't be auto-aligned because it is connected to a hidden feature.",
+          "other": "These waterways can't be auto-aligned because some are connected to hidden features."
+        },
+        "not_downloaded": {
+          "one": "This waterway can't be auto-aligned because parts of it have not yet been downloaded.",
+          "other": "These waterways can't be auto-aligned because parts of them have not yet been downloaded."
+        },
+        "reference_service_unavailable": {
+          "one": "Waterway alignment service is unavailable.",
+          "other": "Waterway alignment service is unavailable."
+        },
+        "reference_loading": {
+          "one": "Reference waterways are still loading.",
+          "other": "Reference waterways are still loading."
+        },
+        "reference_fetch_failed": {
+          "one": "Reference waterways could not be fetched.",
+          "other": "Reference waterways could not be fetched."
+        },
+        "no_reference_data": {
+          "one": "No reference waterways were found for this area.",
+          "other": "No reference waterways were found for this area."
+        },
+        "not_enough_matches": {
+          "one": "Not enough matching reference waterways were found.",
+          "other": "Not enough matching reference waterways were found."
+        },
+        "shift_too_large": {
+          "one": "The detected shift is too large to apply safely.",
+          "other": "The detected shift is too large to apply safely."
+        },
+        "already_aligned": {
+          "one": "This waterway is already aligned closely enough (no further shape edits needed).",
+          "other": "These waterways are already aligned closely enough (no further shape edits needed)."
+        }
+      },
       "create_water_from_reference": {
         "title": "Create Water from Reference",
         "description": "Create a pond/water area from reference data at this location.",

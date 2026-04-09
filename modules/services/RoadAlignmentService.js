@@ -744,7 +744,7 @@ export class RoadAlignmentService extends AbstractSystem {
     }
 
     for (const feature of features) {
-      this._extractLineGeometries(feature?.geometry, lines);
+      this._extractLineGeometries(feature?.geometry, lines, feature?.properties);
     }
 
     return lines;
@@ -755,19 +755,20 @@ export class RoadAlignmentService extends AbstractSystem {
    * _extractLineGeometries
    * @param   {Object} geometry
    * @param   {Array<Object>} output
+   * @param   {Object?} properties
    */
-  _extractLineGeometries(geometry, output) {
+  _extractLineGeometries(geometry, output, properties = null) {
     if (!geometry) return;
 
     if (geometry.type === 'LineString') {
-      const line = this._lineFromCoords(geometry.coordinates);
+      const line = this._lineFromCoords(geometry.coordinates, properties);
       if (line) output.push(line);
       return;
     }
 
     if (geometry.type === 'MultiLineString') {
       for (const coords of geometry.coordinates ?? []) {
-        const line = this._lineFromCoords(coords);
+        const line = this._lineFromCoords(coords, properties);
         if (line) output.push(line);
       }
       return;
@@ -775,7 +776,7 @@ export class RoadAlignmentService extends AbstractSystem {
 
     if (geometry.type === 'GeometryCollection') {
       for (const child of geometry.geometries ?? []) {
-        this._extractLineGeometries(child, output);
+        this._extractLineGeometries(child, output, properties);
       }
     }
   }
@@ -784,9 +785,10 @@ export class RoadAlignmentService extends AbstractSystem {
   /**
    * _lineFromCoords
    * @param   {Array} coords
+   * @param   {Object?} properties
    * @return  {Object|null}
    */
-  _lineFromCoords(coords) {
+  _lineFromCoords(coords, properties = null) {
     if (!Array.isArray(coords)) return null;
 
     const clean = coords.filter(coord => this._isValidCoordinate(coord));
@@ -800,7 +802,8 @@ export class RoadAlignmentService extends AbstractSystem {
     return {
       coords: clean,
       extent: extent,
-      bbox: extent.bbox()
+      bbox: extent.bbox(),
+      properties: (properties && typeof properties === 'object') ? Object.assign({}, properties) : null
     };
   }
 
