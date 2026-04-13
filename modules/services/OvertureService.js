@@ -11,8 +11,6 @@ import { utilFetchResponse } from '../util/index.js';
 const STAC_CATALOG_URL = 'https://stac.overturemaps.org/catalog.json';
 
 // Geometry source filters for different datasets
-// These match the @geometry_source attribute in Overture PMTiles
-// TODO: Verify these source strings match actual PMTiles data values
 const ESRI_SOURCES = new Set([
   'Esri Community Maps',
   'City of Vancouver'
@@ -27,11 +25,6 @@ const ML_SOURCES = new Set([
 const OSM_SOURCES = new Set([
   'OpenStreetMap',
 ]);
-
-// DEBUG: Track unique @geometry_source values seen in PMTiles data
-const DEBUG_SOURCES = true;
-const seenSources = new Set();
-
 
 // Source filter for TomTom-sourced transportation data
 const TOMTOM_SOURCES = new Set(['TomTom']);
@@ -555,13 +548,6 @@ export class OvertureService extends AbstractSystem {
 
       // Filter by @geometry_source
       const geometrySource = geojson.properties?.['@geometry_source'];
-
-      // DEBUG: Log unique @geometry_source values
-      if (DEBUG_SOURCES && geometrySource && !seenSources.has(geometrySource)) {
-        seenSources.add(geometrySource);
-        console.log('[OvertureService] New @geometry_source value found:', geometrySource);  // eslint-disable-line no-console
-        console.log('[OvertureService] All sources seen so far:', [...seenSources]);  // eslint-disable-line no-console
-      }
 
       // Always filter out OpenStreetMap-sourced buildings
       if (geometrySource && OSM_SOURCES.has(geometrySource)) continue;

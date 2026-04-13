@@ -318,11 +318,10 @@ export class SaveMode extends AbstractMode {
     this._wasSuccessfulSave = true;
     Sidebar.show(successContent);
 
-    // Add delay before resetting to allow for postgres replication iD#1646 iD#2678
-    window.setTimeout(() => {
-      context.resetAsync()
-        .then(() => context.enter('browse'));
-    }, 2500);
+    // Upload callback is already delayed for replication in OsmService.
+    // Reset immediately here to avoid compounding post-save wait time.
+    context.resetAsync()
+      .then(() => context.enter('browse'));
   }
 
 

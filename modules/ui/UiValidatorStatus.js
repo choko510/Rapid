@@ -34,6 +34,7 @@ export class UiValidatorStatus {
     // Event listeners
     const validator = context.systems.validator;
     validator.on('validated', this.rerender);
+    validator.on('optionchange', this.rerender);
   }
 
 

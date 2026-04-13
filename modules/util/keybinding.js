@@ -3,7 +3,12 @@ import { utilArrayUniq } from '@rapid-sdk/util';
 
 
 export function utilKeybinding(namespace) {
-    var _keybindings = {};
+    let _keybindings = {};
+
+
+    function normalizeCodes(codes) {
+        return utilArrayUniq([].concat(codes ?? []).filter(Boolean));
+    }
 
 
     function testBindings(d3_event, isCapturing) {
@@ -45,12 +50,12 @@ export function utilKeybinding(namespace) {
 
 
         function matches(d3_event, binding, testShift) {
-            var event = d3_event;
-            var isMatch = false;
-            var tryKeyCode = true;
+            const event = d3_event;
+            let isMatch = false;
+            let tryKeyCode = true;
 
             // Prefer a match on `KeyboardEvent.key`
-            if (event.key !== undefined) {
+            if (typeof event.key === 'string' && event.key.length) {
                 tryKeyCode = (event.key.charCodeAt(0) > 255);  // outside ISO-Latin-1
                 isMatch = true;
 
@@ -58,7 +63,7 @@ export function utilKeybinding(namespace) {
                     isMatch = false;
                 } else if (Array.isArray(binding.event.key)) {
                     if (binding.event.key.map(function(s) {
-                        return s.toLowerCase();
+                        return (typeof s === 'string') ? s.toLowerCase() : s;
                     }).indexOf(event.key.toLowerCase()) === -1) {
                         isMatch = false;
                     }
@@ -114,7 +119,7 @@ export function utilKeybinding(namespace) {
 
     // was: keybinding.off()
     keybinding.unbind = function(selection) {
-        _keybindings = [];
+        _keybindings = {};
         selection = selection || d3_select(document);
         selection.on('keydown.capture.' + namespace, null);
         selection.on('keydown.bubble.' + namespace, null);
@@ -130,10 +135,10 @@ export function utilKeybinding(namespace) {
 
     // Remove one or more keycode bindings.
     keybinding.off = function(codes, capture) {
-        var arr = utilArrayUniq([].concat(codes));
+        const arr = normalizeCodes(codes);
 
-        for (var i = 0; i < arr.length; i++) {
-            var id = arr[i] + (capture ? '-capture' : '-bubble');
+        for (let i = 0; i < arr.length; i++) {
+            const id = arr[i] + (capture ? '-capture' : '-bubble');
             delete _keybindings[id];
         }
         return keybinding;
@@ -161,11 +166,12 @@ export function utilKeybinding(namespace) {
             return keybinding.off(codes, capture);
         }
 
-        var arr = utilArrayUniq([].concat(codes));
+        const arr = normalizeCodes(codes);
 
-        for (var i = 0; i < arr.length; i++) {
-            var id = arr[i] + (capture ? '-capture' : '-bubble');
-            var binding = {
+        for (let i = 0; i < arr.length; i++) {
+            const code = arr[i];
+            const id = code + (capture ? '-capture' : '-bubble');
+            const binding = {
                 id: id,
                 capture: capture,
                 callback: callback,
@@ -182,18 +188,18 @@ export function utilKeybinding(namespace) {
             };
 
             if (_keybindings[id]) {
-                console.warn('warning: duplicate keybinding for "' + id + '"'); // eslint-disable-line no-console
+                console.warn(`warning: duplicate keybinding for "${id}"`); // eslint-disable-line no-console
             }
 
             _keybindings[id] = binding;
 
-            var matches = arr[i].toLowerCase().match(/(?:(?:[^+⇧⌃⌥⌘])+|[⇧⌃⌥⌘]|\+\+|^\+$)/g);
-            for (var j = 0; j < matches.length; j++) {
+            const matches = code.toLowerCase().match(/(?:(?:[^+⇧⌃⌥⌘])+|[⇧⌃⌥⌘]|\+\+|^\+$)/g) ?? [];
+            for (let j = 0; j < matches.length; j++) {
                 // Normalise matching errors
                 if (matches[j] === '++') matches[j] = '+';
 
                 if (matches[j] in utilKeybinding.modifierCodes) {
-                    var prop = utilKeybinding.modifierProperties[utilKeybinding.modifierCodes[matches[j]]];
+                    const prop = utilKeybinding.modifierProperties[utilKeybinding.modifierCodes[matches[j]]];
                     binding.event.modifiers[prop] = true;
                 } else {
                     binding.event.key = utilKeybinding.keys[matches[j]] || matches[j];

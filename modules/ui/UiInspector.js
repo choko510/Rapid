@@ -90,6 +90,7 @@ export class UiInspector {
     const editor = context.systems.editor;
     const graph = editor.staging.graph;
     const osm = context.services.osm;
+    const l10n = context.systems.l10n;
     const validator = context.systems.validator;
 
     const state = this._state;
@@ -144,9 +145,21 @@ export class UiInspector {
     }
 
     // add .sidebar-footer
-    const entityID = graph.hasEntity(entityIDs.length === 1 && entityIDs[0]);
+    const entity = graph.hasEntity(entityIDs.length === 1 && entityIDs[0]);
     this.ViewOn.stringID = 'inspector.view_on_osm';
-    this.ViewOn.url = (osm && entityID) ? osm.entityURL(entityID) : '';
+    this.ViewOn.stringOptions = null;
+    this.ViewOn.url = (osm && entity && !entity.isNew()) ? osm.historyURL(entity) : '';
+
+    if (this.ViewOn.url) {
+      const latest = UiViewOn.findLastModifiedChild(editor.base.graph, entity);
+      if (latest?.timestamp) {
+        this.ViewOn.stringID = 'inspector.last_touched';
+        this.ViewOn.stringOptions = {
+          timeago: UiViewOn.getRelativeDate(context, latest.timestamp),
+          user: latest.user || l10n.t('inspector.unknown')
+        };
+      }
+    }
 
     const $footer = $inspector.selectAll('.sidebar-footer')
       .data([0]);

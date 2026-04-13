@@ -1,6 +1,7 @@
 import { utilGetAllNodes } from '@rapid-sdk/util';
 
 import { KeyOperationBehavior } from '../behaviors/KeyOperationBehavior.js';
+import { operationIsTooLarge } from './helpers/large_edit.js';
 import { utilTotalExtent } from '../util/util.js';
 
 
@@ -8,8 +9,6 @@ export function operationRotate(context, selectedIDs) {
   const editor = context.systems.editor;
   const graph = editor.staging.graph;
   const l10n = context.systems.l10n;
-  const storage = context.systems.storage;
-  const viewport = context.viewport;
 
   const entities = selectedIDs.map(entityID => graph.hasEntity(entityID)).filter(Boolean);
   const isNew = entities.every(entity => entity.isNew());
@@ -45,8 +44,7 @@ export function operationRotate(context, selectedIDs) {
 
     // If the selection is not 80% contained in view
     function tooLarge() {
-      const allowLargeEdits = storage.getItem('rapid-internal-feature.allowLargeEdits') === 'true';
-      return !allowLargeEdits && extent.percentContainedIn(viewport.visibleExtent()) < 0.8;
+      return operationIsTooLarge(context, extent);
     }
 
     // If fhe selection spans tiles that haven't been downloaded yet

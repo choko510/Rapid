@@ -5,7 +5,7 @@ import { AbstractSystem } from './AbstractSystem.js';
 import { utilDetect } from '../util/detect.js';
 
 import {
-  UiApiStatus, UiDefs, uiEditMenu, uiFlash, UiFullscreen, uiIntro,
+  UiApiStatus, UiCommandPalette, UiDefs, uiEditMenu, uiFlash, UiFullscreen, uiIntro,
   uiLoading, UiMapFooter, UiMapToolbar, uiMapRouletteMenu, UiOvermap,
   uiSplash, uiRestore, UiShortcuts, UiSidebar, uiWhatsNew
 } from '../ui/index.js';
@@ -39,6 +39,7 @@ export class UiSystem extends AbstractSystem {
     this.AuthModal = null;
     this.Defs = null;
     this.EditMenu = null;
+    this.CommandPalette = null;
     this.MapRouletteMenu = null;
     this.Flash = null;
     this.Fullscreen = null;
@@ -101,6 +102,7 @@ export class UiSystem extends AbstractSystem {
         this.AuthModal = uiLoading(context).blocking(true).message(l10n.t('loading_auth'));
         this.Defs = new UiDefs(context);
         this.EditMenu = uiEditMenu(context);
+        this.CommandPalette = new UiCommandPalette(context);
         this.MapRouletteMenu = uiMapRouletteMenu(context);
         this.Flash = uiFlash(context);
         this.Fullscreen = new UiFullscreen(context);
@@ -131,36 +133,6 @@ export class UiSystem extends AbstractSystem {
             .on('authDone', () => this.AuthModal.close());
         }
       });
-
-// not sure what these were for
-//    $container.on('click.ui', d3_event => {
-//      if (d3_event.button !== 0) return;  // we're only concerned with the primary mouse button
-//      if (!d3_event.composedPath) return;
-//
-//      // some targets have default click events we don't want to override
-//      const isOkayTarget = d3_event.composedPath().some(node => {
-//        return node.nodeType === 1 && (  // we only care about element nodes
-//          node.nodeName === 'INPUT' ||   // clicking <input> focuses it and/or changes a value
-//          node.nodeName === 'LABEL' ||   // clicking <label> affects its <input> by default
-//          node.nodeName === 'A');        // clicking <a> opens a hyperlink by default
-//       });
-//      if (isOkayTarget) return;
-//
-//      d3_event.preventDefault();   // disable double-tap-to-zoom on touchscreens
-//    });
-//
-//    // only WebKit supports gesture events
-//    // Listening for gesture events on iOS 13.4+ breaks double-tapping,
-//    // but we only need to do this on desktop Safari anyway. – #7694
-//    if ('GestureEvent' in window && !detected.isMobileWebKit) {
-//      // On iOS we disable pinch-to-zoom of the UI via the `touch-action`
-//      // CSS property, but on desktop Safari we need to manually cancel the
-//      // default gesture events.
-//      $container.on('gesturestart.ui gesturechange.ui gestureend.ui', d3_event => {
-//        // disable pinch-to-zoom of the UI via multitouch trackpads on macOS Safari
-//        d3_event.preventDefault();
-//      });
-//    }
 
   }
 
@@ -319,13 +291,6 @@ export class UiSystem extends AbstractSystem {
 
     let dims = [curr.width, curr.height];
 
-// experiment:
-// Previously, the map surfaces were anchored to the top left of the main-map.
-// Now, the map surfaces are centered in a CSS Grid, to support rotation around the center.
-// We can extend the map dimensions a little bit so that as the user pans, we dont see seams at the edges of the map.
-const overscan = 50;
-dims = vecAdd(dims, [overscan * 2, overscan * 2]);
-
     viewport.dimensions = dims;
 
     // check if header or footer have overflowed
@@ -333,13 +298,6 @@ dims = vecAdd(dims, [overscan * 2, overscan * 2]);
     this.checkOverflow('.map-footer');
 
     this.emit('uichange');
-
-// this was for the restrictions editor?
-// or any other component that needs to know when resizing is happening
-//    // Use outdated code so it works on Explorer
-//    const resizeWindowEvent = document.createEvent('Event');
-//    resizeWindowEvent.initEvent('resizeWindow', true, true);
-//    document.dispatchEvent(resizeWindowEvent);
   }
 
 

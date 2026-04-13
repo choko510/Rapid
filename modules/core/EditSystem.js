@@ -8,6 +8,10 @@ import { Difference, Edit, Graph, Tree } from './lib/index.js';
 import { osmEntity } from '../osm/entity.js';
 import { uiLoading } from '../ui/loading.js';
 
+const MAX_BACKUP_SNAPSHOTS = 8;
+const BACKUP_SNAPSHOT_INTERVAL_MS = 30000;
+const BACKUP_SNAPSHOT_CHANGE_DELTA = 25;
+
 
 /**
  * `EditSystem` maintains the history of user edits.
@@ -101,6 +105,8 @@ export class EditSystem extends AbstractSystem {
     this._fullDifference = null;
     this._lastStableGraph = null;
     this._lastStagingGraph = null;
+    this._lastSnapshotAt = 0;
+    this._lastSnapshotChangeCount = 0;
 
     this._initPromise = null;
 
@@ -130,22 +136,29 @@ export class EditSystem extends AbstractSystem {
     const prerequisites = storage.initAsync();
 
     return this._initPromise = prerequisites
-      .then(() => {
+      .then(async () => {
         if (window.mocha) return;
 
         // Setup event handlers..
         window.addEventListener('beforeunload', e => {
           if (this._history.length > 1) {  // user did something
             e.preventDefault();
-            this.saveBackup();
+            this._saveBackupSync();  // fallback in case async writes are cut short during unload
             return (e.returnValue = '');  // show browser prompt
           }
         });
 
         window.addEventListener('unload', () => this._mutex.unlock());
 
-        // changes are restorable if Rapid is not open in another window/tab and a backup exists in localStorage
-        this._canRestoreBackup = this._mutex.lock() && storage.hasItem(this._backupKey());
+        const backupKey = this._backupKey();
+        await storage.migrateItemToAsync(backupKey);
+
+        // changes are restorable if Rapid is not open in another window/tab and a backup exists
+        const snapshots = this.getBackupSnapshots();
+        const hasBackup = (await storage.hasItemAsync(backupKey, { preferIndexedDB: true })) ||
+          storage.hasItem(backupKey) ||
+          snapshots.length > 0;
+        this._canRestoreBackup = this._mutex.lock() && hasBackup;
       });
   }
 
@@ -210,6 +223,8 @@ export class EditSystem extends AbstractSystem {
     this._checkpoints.clear();
     this._inTransition = false;
     this._inTransaction = false;
+    this._lastSnapshotAt = 0;
+    this._lastSnapshotChangeCount = 0;
   }
 
 
@@ -1166,28 +1181,106 @@ export class EditSystem extends AbstractSystem {
 
   /**
    * saveBackup
-   * Backup the user's edits to a JSON string in localStorage.
+   * Backup the user's edits to async storage.
    * This code runs occasionally as the user edits.
    */
   saveBackup() {
-    const context = this.context;
-    if (context.inIntro) return;               // Don't backup edits made in the walkthrough
-    if (context.mode?.id === 'save') return;   // Edits made in save mode may be conflict resolutions
-    if (this._canRestoreBackup) return;        // Wait to see if the user wants to restore other edits
-    if (this._inTransition) return;            // Don't backup edits mid-transition
-    if (this._inTransaction) return;           // Don't backup edits mid-transaction
-    if (!this._mutex.locked()) return;         // Another browser tab owns the history
+    if (!this._canSaveBackup()) return;
 
-    const storage = context.systems.storage;
+    const storage = this.context.systems.storage;
+    const backupKey = this._backupKey();
     const json = this.toJSON();
-    if (json) {
-      // status will be `true` if the backup succeeded
-      const status = storage.setItem(this._backupKey(), json);
-      if (status !== this._backupStatus) {
-        this._backupStatus = status;
-        this.emit('backupstatuschange', this._backupStatus);
-      }
+    if (!json) return;
+    const changeCount = this._fullDifference?.summary()?.size ?? 0;
+    let snapshotPromise = Promise.resolve(false);
+    if (this._shouldSaveBackupSnapshot(changeCount)) {
+      const prevSnapshotAt = this._lastSnapshotAt;
+      const prevSnapshotChangeCount = this._lastSnapshotChangeCount;
+      this._lastSnapshotAt = Date.now();
+      this._lastSnapshotChangeCount = changeCount;
+
+      snapshotPromise = this._saveBackupSnapshotAsync(json, changeCount)
+        .then(status => {
+          if (!status) {
+            this._lastSnapshotAt = prevSnapshotAt;
+            this._lastSnapshotChangeCount = prevSnapshotChangeCount;
+          }
+          return status;
+        });
     }
+
+    void Promise.all([
+      storage.setItemAsync(backupKey, json, { preferIndexedDB: true }),
+      snapshotPromise
+    ]).then(([backupStatus, snapshotStatus]) => {
+      // Fallback if async storage is unavailable.
+      const finalStatus = backupStatus || snapshotStatus || storage.setItem(backupKey, json);
+      this._setBackupStatus(finalStatus);
+    });
+  }
+
+
+  /**
+   * _saveBackupSync
+   * Best-effort sync backup used during page unload as a fallback.
+   */
+  _saveBackupSync() {
+    if (!this._canSaveBackup()) return;
+
+    const storage = this.context.systems.storage;
+    const json = this.toJSON();
+    if (!json) return;
+
+    this._setBackupStatus(storage.setItem(this._backupKey(), json));
+  }
+
+
+  /**
+   * _setBackupStatus
+   * Emit `backupstatuschange` if status changed.
+   * @param {boolean} status - whether the latest backup attempt succeeded
+   */
+  _setBackupStatus(status) {
+    if (status !== this._backupStatus) {
+      this._backupStatus = status;
+      this.emit('backupstatuschange', this._backupStatus);
+    }
+  }
+
+
+  /**
+   * _canSaveBackup
+   * Returns whether backup writes should run at this moment.
+   * @return {boolean}
+   */
+  _canSaveBackup() {
+    const context = this.context;
+    if (context.inIntro) return false;               // Don't backup edits made in the walkthrough
+    if (context.mode?.id === 'save') return false;   // Edits made in save mode may be conflict resolutions
+    if (this._canRestoreBackup) return false;        // Wait to see if the user wants to restore other edits
+    if (this._inTransition) return false;            // Don't backup edits mid-transition
+    if (this._inTransaction) return false;           // Don't backup edits mid-transaction
+    if (!this._mutex.locked()) return false;         // Another browser tab owns the history
+
+    return true;
+  }
+
+
+  /**
+   * _shouldSaveBackupSnapshot
+   * Returns whether we should persist another historical snapshot.
+   * @param  {number}  changeCount
+   * @return {boolean}
+   */
+  _shouldSaveBackupSnapshot(changeCount) {
+    if (changeCount <= 0) return false;
+    if (!this._lastSnapshotAt) return true;
+
+    const elapsed = Date.now() - this._lastSnapshotAt;
+    if (elapsed >= BACKUP_SNAPSHOT_INTERVAL_MS) return true;
+
+    const changeDelta = Math.abs(changeCount - this._lastSnapshotChangeCount);
+    return changeDelta >= BACKUP_SNAPSHOT_CHANGE_DELTA;
   }
 
 
@@ -1205,28 +1298,33 @@ export class EditSystem extends AbstractSystem {
 
   /**
    * restoreBackup
-   * Restore the user's backup from localStorage.
+   * Restore the user's backup from async storage (or localStorage fallback).
    * This happens when:
    * - The user chooses to "Restore my changes" from the restore screen
+   * @param  {string?} backupKeyOverride - Optional backup key (for snapshot restore)
    */
-  restoreBackup() {
+  restoreBackup(backupKeyOverride) {
     this._canRestoreBackup = false;
 
-    if (!this._mutex.locked()) return;  // another browser tab owns the history
+    if (!this._mutex.locked()) return Promise.resolve();  // another browser tab owns the history
 
     const context = this.context;
     const storage = context.systems.storage;
-    const json = storage.getItem(this._backupKey());
-    if (json) {
-      context.resetAsync()
-        .then(() => this.fromJSONAsync(json));
-    }
+    const backupKey = backupKeyOverride || this._backupKey();
+
+    return storage.getItemAsync(backupKey, { preferIndexedDB: true })
+      .then(json => json || storage.getItem(backupKey))
+      .then(json => {
+        if (!json) return;
+        return context.resetAsync()
+          .then(() => this.fromJSONAsync(json));
+      });
   }
 
 
   /**
    * clearBackup
-   * Remove any backup stored in localStorage.
+   * Remove any backup stored in async storage and localStorage fallback.
    * This happens when:
    * - The user chooses to "Discard my changes" from the restore screen
    * - The user switches sources with the source switcher
@@ -1239,7 +1337,18 @@ export class EditSystem extends AbstractSystem {
     if (!this._mutex.locked()) return;  // another browser tab owns the history
 
     const storage = this.context.systems.storage;
-    storage.removeItem(this._backupKey());
+    const backupKey = this._backupKey();
+    const snapshots = this.getBackupSnapshots();
+    storage.removeItem(backupKey);
+    void storage.removeItemAsync(backupKey, { preferIndexedDB: true });
+    storage.removeItem(this._snapshotIndexKey());
+
+    for (const snapshot of snapshots) {
+      void storage.removeItemAsync(snapshot.key, { preferIndexedDB: true });
+    }
+
+    this._lastSnapshotAt = 0;
+    this._lastSnapshotChangeCount = 0;
 
     // clear the changeset metadata associated with the saved history
     storage.removeItem('comment');
@@ -1252,10 +1361,85 @@ export class EditSystem extends AbstractSystem {
    * _backupKey
    * Generate a key used to store/retrieve backup edits.
    * It uses `window.location.origin` avoid conflicts with other instances of Rapid.
-   * @return {string}  The key used to store/retrieve backup edits in localStorage
+   * @return {string}  The key used to store/retrieve backup edits in storage
    */
   _backupKey() {
     return 'Rapid_' + window.location.origin + '_saved_history';
+  }
+
+
+  _snapshotIndexKey() {
+    return `${this._backupKey()}_snapshot_index`;
+  }
+
+
+  _snapshotKey(timestamp) {
+    return `${this._backupKey()}_snapshot_${timestamp}`;
+  }
+
+
+  _loadSnapshotIndex() {
+    const storage = this.context.systems.storage;
+    const raw = storage.getItem(this._snapshotIndexKey());
+    if (!raw) return [];
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(item => item && typeof item.key === 'string' && Number.isFinite(item.timestamp))
+        .map(item => ({
+          key: item.key,
+          timestamp: item.timestamp,
+          changeCount: Number.isFinite(item.changeCount) ? item.changeCount : 0
+        }))
+        .sort((a, b) => b.timestamp - a.timestamp);
+    } catch {
+      return [];
+    }
+  }
+
+
+  _storeSnapshotIndex(snapshots) {
+    const storage = this.context.systems.storage;
+    storage.setItem(this._snapshotIndexKey(), JSON.stringify(snapshots));
+  }
+
+
+  /**
+   * getBackupSnapshots
+   * Returns metadata for saved backup snapshots.
+   * @return {Array<{key:string, timestamp:number, changeCount:number}>}
+   */
+  getBackupSnapshots() {
+    return this._loadSnapshotIndex();
+  }
+
+
+  async _saveBackupSnapshotAsync(json, changeCount = this._fullDifference?.summary()?.size ?? 0) {
+    const storage = this.context.systems.storage;
+    const timestamp = Date.now();
+    const key = this._snapshotKey(timestamp);
+    const status = await storage.setItemAsync(key, json, { preferIndexedDB: true });
+    if (!status) return false;
+
+    let snapshots = this._loadSnapshotIndex()
+      .filter(item => item.key !== key);
+
+    snapshots.unshift({ key: key, timestamp: timestamp, changeCount: changeCount });
+
+    const stale = snapshots.slice(MAX_BACKUP_SNAPSHOTS);
+    snapshots = snapshots.slice(0, MAX_BACKUP_SNAPSHOTS);
+    this._storeSnapshotIndex(snapshots);
+
+    for (const item of stale) {
+      await storage.removeItemAsync(item.key, { preferIndexedDB: true });
+    }
+
+    this._lastSnapshotAt = timestamp;
+    this._lastSnapshotChangeCount = changeCount;
+
+    return true;
   }
 
 

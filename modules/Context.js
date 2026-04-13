@@ -42,7 +42,6 @@ export class Context extends EventEmitter {
     super();
 
     this.version = '2.5.6';             // see https://semver.org/ for examples
-    // this.version = '2.5.3-pre.0';    // see https://semver.org/ for examples
 
     // If user has not seen this version of our software, we will show them a modal at startup.
     // Just bump these dates to a higher number to get the screen to come back.
@@ -87,8 +86,6 @@ export class Context extends EventEmitter {
 
 
     // User interface and keybinding
-    // AFAICT `lastPointerType` is just used to localize the intro? for now - instead get this from pixi?
-    // this.lastPointerType = () => _uiSystem.lastPointerType;
     this.lastPointerType = 'mouse';
     this._keybinding = utilKeybinding('context');
     d3_select(document).call(this._keybinding);

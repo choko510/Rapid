@@ -7,6 +7,7 @@ export function uiRestore(context) {
 
   return function(selection) {
     if (!editor.canRestoreBackup) return;
+    const snapshots = editor.getBackupSnapshots();
 
     let modalSelection = uiModal(selection, true);
 
@@ -66,6 +67,43 @@ export function uiRestore(context) {
     reset
       .append('div')
       .text(l10n.t('restore.reset'));
+
+    if (snapshots.length) {
+      const snapshotSection = introModal
+        .append('div')
+        .attr('class', 'modal-section restore-snapshots');
+
+      snapshotSection
+        .append('h4')
+        .text(l10n.t('restore.snapshot.title', { default: 'Recent snapshots' }));
+
+      const snapshotButtons = snapshotSection.selectAll('.restore-snapshot-item')
+        .data(snapshots)
+        .enter()
+        .append('button')
+        .attr('class', 'restore-snapshot-item')
+        .on('click', (d3_event, d) => {
+          d3_event.preventDefault();
+          editor.restoreBackup(d.key);
+          modalSelection.remove();
+        });
+
+      snapshotButtons
+        .append('div')
+        .attr('class', 'restore-snapshot-time')
+        .text(d => (new Date(d.timestamp)).toLocaleString(l10n.localeCode()));
+
+      snapshotButtons
+        .append('div')
+        .attr('class', 'restore-snapshot-count')
+        .text(d => {
+          const count = Number.isFinite(d.changeCount) ? d.changeCount : 0;
+          return l10n.t('restore.snapshot.changes', {
+            default: `${count} changes`,
+            n: count
+          });
+        });
+    }
 
     restore.node().focus();
   };

@@ -905,6 +905,11 @@ a.hide-toggle {
 .feature-list-item {
   display: flex;
 }
+.feature-list-item.active,
+.feature-list-recent:focus,
+.feature-list-recent:active {
+  background: #e8ebff;
+}
 .feature-list-item .label {
   display: flex;
   flex: 1 1 0px;
@@ -939,6 +944,28 @@ a.hide-toggle {
   }
 }
 .feature-list-item .entity-name {
+  color: #666;
+  padding: 0 10px;
+}
+.feature-list-recent {
+  width: 100%;
+  border-bottom: 1px solid #ccc;
+  border-radius: 0;
+}
+.feature-list-recent .label {
+  display: flex;
+  flex: 1 1 0px;
+  flex-flow: row nowrap;
+  padding: 10px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.feature-list-recent .entity-type {
+  color: #7092ff;
+  font-weight: bold;
+}
+.feature-list-recent .entity-name {
   color: #666;
   padding: 0 10px;
 }
@@ -3243,6 +3270,39 @@ div.full-screen > button:focus {
     line-height: 2;
 }
 
+.layer-profiles {
+  margin-bottom: 10px;
+}
+
+.layer-profiles-title {
+  color: #444;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.layer-profile-select {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.layer-profile-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.layer-profile-buttons button {
+  flex: 1 1 auto;
+  padding: 2px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f9f9f9;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+
 /* preferences: map color scheme */
 .color-select {
     width: 100%;
@@ -4906,6 +4966,28 @@ li.issue-fix-item button:not(.actionable) .fix-icon {
     color: #e06c5e;
 }
 
+.restore-snapshots h4 {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.restore-snapshot-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  border: 1px solid #ccc;
+}
+
+.restore-snapshot-time {
+  font-weight: bold;
+}
+
+.restore-snapshot-count {
+  color: #666;
+  font-size: 12px;
+}
+
 /* Success Screen / Community Index
 ------------------------------------------------------- */
 .save-success.body {
@@ -5005,6 +5087,84 @@ li.issue-fix-item button:not(.actionable) .fix-icon {
 .modal-actions .logo-walkthrough,
 .modal-actions .logo-features {
   color: #7092ff;
+}
+
+/* Command Palette Modal
+------------------------------------------------------- */
+.modal-command-palette {
+  width: 90%;
+  max-width: 700px;
+}
+
+.command-palette-section {
+  padding: 15px;
+}
+
+.command-palette-heading {
+  margin-bottom: 10px;
+}
+
+.command-palette-input {
+  width: 100%;
+  height: 38px;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.command-palette-no-results {
+  margin: 10px 0;
+  color: #666;
+}
+
+.command-palette-list {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.command-palette-item {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 0;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.command-palette-list > li:last-child .command-palette-item {
+  border-bottom: 0;
+}
+
+.command-palette-item.active,
+.command-palette-item:focus,
+.command-palette-item:active {
+  background: #e8ebff;
+}
+
+.command-palette-item-shortcut {
+  display: flex;
+  gap: 4px;
+}
+
+.command-palette-item-shortcut kbd {
+  background-color: #f1f3f4;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  box-shadow: inset 0 -1px 0 #dadce0;
+  color: #3c4043;
+  display: inline-block;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 6px;
+  min-width: 16px;
+  text-align: center;
 }
 
 

@@ -1029,6 +1029,7 @@
       },
       "show_more": "Show More",
       "view_on_osm": "View on openstreetmap.org",
+      "last_touched": "Last touched {timeago} by {user}",
       "view_on_osmose": "View on osmose.openstreetmap.fr",
       "view_on_keepRight": "View on keepright.at",
       "view_on_maproulette": "View on maproulette.org",
@@ -1230,6 +1231,13 @@
       "measurement_panel": {
         "title": "Show Measurement Panel",
         "tooltip": "Show geometry values for the selection."
+      },
+      "layer_profiles": {
+        "title": "Layer Profiles",
+        "prompt": "Enter profile name",
+        "save": "Save Current",
+        "apply": "Apply",
+        "delete": "Delete"
       },
       "style_options": "Style Options",
       "autohidden": "These features have been automatically hidden because too many would be shown on the screen.  You can zoom in to edit them.",
@@ -1457,7 +1465,14 @@
       "heading": "You have unsaved changes",
       "description": "Do you wish to restore unsaved changes from a previous editing session?",
       "restore": "Restore my changes",
-      "reset": "Discard my changes"
+      "reset": "Discard my changes",
+      "snapshot": {
+        "title": "Recent snapshots",
+        "changes": {
+          "one": "{n} change",
+          "other": "{n} changes"
+        }
+      }
     },
     "save": {
       "title": "Save",
@@ -3440,6 +3455,10 @@
         },
         "find": {
           "label": "Find features matching search text"
+        },
+        "command_palette": {
+          "label": "Open command palette",
+          "key": "K"
         },
         "continue_line": {
           "label": "Continue a line at the selected endpoint",

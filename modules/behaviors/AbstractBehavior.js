@@ -60,28 +60,6 @@ export class AbstractBehavior extends EventEmitter {
     return this._enabled;
   }
 
-//  /**
-//   * _getEventCoord
-//   * Returns an [x,y] coordinate of interest for the supplied event.
-//   * This can get pretty hairy given the touch and mouse event interactions have different formats.
-//   */
-//  _getEventCoord(e) {
-//    let coord;
-//    const oe = e.data.originalEvent;
-//    if (oe.offsetX !== undefined) {
-//      coord = [oe.offsetX, oe.offsetY];    // mouse coords
-//    } else if (oe.layerX !== undefined) {
-//      coord = [oe.layerX, oe.layerY];      // ipad coords, seemingly?
-//    } else if (oe.touches && oe.touches[0]) {
-//      coord = [oe.touches[0].clientX, oe.touches[0].clientY];   // initial touch
-//    } else {
-//      coord = [oe.changedTouches.clientX, oe.changedTouches.clientY];   // updated touch
-//    }
-//
-//    return coord;
-//  }
-//
-
   /**
    * _getEventData
    * Returns an object containing the important details about this Pixi event.

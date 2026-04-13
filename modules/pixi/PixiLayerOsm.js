@@ -44,10 +44,6 @@ export class PixiLayerOsm extends AbstractLayer {
     };
     this._scratchMidpoints = new Map();
     this._midpointStyle = { markerName: 'midpoint' };
-
-// experiment for benchmarking
-//    this._alreadyDownloaded = false;
-//    this._saveCannedData = false;
   }
 
 

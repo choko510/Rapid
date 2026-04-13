@@ -6,6 +6,12 @@ import { uiSection } from '../section.js';
 import { uiSettingsCustomData } from '../settings/custom_data.js';
 import { utilCmd } from '../../util/cmd.js';
 
+const LAYER_PROFILE_STORAGE_KEY = 'map-data.layer-profiles';
+const ALL_PROFILE_LAYER_IDS = [
+  'osm', 'notes', 'rapid', 'maproulette', 'keepRight', 'osmose', 'geoScribble',
+  'custom-data', 'mapillary', 'streetside', 'kartaview'
+];
+
 
 /** uiSectionDataLayers
  *  This collapsable section displays various checkboxes for toggleable data layers.
@@ -28,7 +34,9 @@ import { utilCmd } from '../../util/cmd.js';
  */
 export function uiSectionDataLayers(context) {
   const l10n = context.systems.l10n;
+  const rapid = context.systems.rapid;
   const scene = context.systems.gfx.scene;
+  const storage = context.systems.storage;
   const ui = context.systems.ui;
 
   const section = uiSection(context, 'data-layers')
@@ -39,6 +47,7 @@ export function uiSectionDataLayers(context) {
     .on('change', customChanged);
 
   let _previousLayerStates = new Map();
+  let _activeProfileName = '';
   let _keys = null;
 
 
@@ -134,6 +143,105 @@ export function uiSectionDataLayers(context) {
 
   function toggleLayer(layerID) {
     setLayer(layerID, !showsLayer(layerID));
+  }
+
+
+  function normalizeLayerProfiles(profiles) {
+    const deduped = new Map();
+
+    for (const profile of profiles ?? []) {
+      const name = profile?.name?.trim();
+      if (!name) continue;
+
+      deduped.set(name, {
+        name: name,
+        layers: profile?.layers ?? {},
+        rapid: {
+          addedDatasetIDs: [...new Set(profile?.rapid?.addedDatasetIDs ?? [])],
+          enabledDatasetIDs: [...new Set(profile?.rapid?.enabledDatasetIDs ?? [])]
+        }
+      });
+    }
+
+    return [...deduped.values()];
+  }
+
+
+  function loadLayerProfiles() {
+    const raw = storage?.getItem(LAYER_PROFILE_STORAGE_KEY);
+    if (!raw) return [];
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const normalized = normalizeLayerProfiles(parsed);
+      if (normalized.length !== parsed.length) {
+        storage?.setItem(LAYER_PROFILE_STORAGE_KEY, JSON.stringify(normalized));
+      }
+      return normalized;
+    } catch {
+      return [];
+    }
+  }
+
+
+  function saveLayerProfiles(profiles) {
+    const normalized = normalizeLayerProfiles(profiles);
+    storage?.setItem(LAYER_PROFILE_STORAGE_KEY, JSON.stringify(normalized));
+    return normalized;
+  }
+
+
+  function captureLayerProfile(name) {
+    const layers = {};
+    for (const layerID of ALL_PROFILE_LAYER_IDS) {
+      if (scene.layers.get(layerID)) {
+        layers[layerID] = showsLayer(layerID);
+      }
+    }
+
+    const addedDatasetIDs = [...(rapid?.datasets?.keys() ?? [])];
+    const enabledDatasetIDs = [...(rapid?.datasets?.values() ?? [])]
+      .filter(dataset => dataset.enabled)
+      .map(dataset => dataset.id);
+
+    return {
+      name: name,
+      layers: layers,
+      rapid: {
+        addedDatasetIDs: addedDatasetIDs,
+        enabledDatasetIDs: enabledDatasetIDs
+      }
+    };
+  }
+
+
+  function applyLayerProfile(profile) {
+    if (!profile) return;
+
+    for (const [layerID, enabled] of Object.entries(profile.layers ?? {})) {
+      if (!scene.layers.get(layerID)) continue;
+      setLayer(layerID, !!enabled);
+    }
+
+    if (!rapid) return;
+
+    const allCatalogIDs = [...rapid.catalog.keys()];
+    if (allCatalogIDs.length) {
+      rapid.removeDatasets(allCatalogIDs);
+    }
+
+    const addedDatasetIDs = (profile.rapid?.addedDatasetIDs ?? [])
+      .filter(datasetID => rapid.catalog.has(datasetID));
+    const enabledDatasetIDs = (profile.rapid?.enabledDatasetIDs ?? [])
+      .filter(datasetID => rapid.catalog.has(datasetID));
+
+    if (addedDatasetIDs.length) {
+      rapid.addDatasets(addedDatasetIDs);
+    }
+    if (enabledDatasetIDs.length) {
+      rapid.enableDatasets(enabledDatasetIDs);
+    }
   }
 
 
@@ -444,6 +552,120 @@ export function uiSectionDataLayers(context) {
       .classed('active', MeasurementCard.visible)
       .selectAll('input')
       .property('checked', MeasurementCard.visible);
+
+
+    // Layer profiles
+    const profiles = loadLayerProfiles();
+    const hasActive = profiles.some(profile => profile.name === _activeProfileName);
+    if (!hasActive) {
+      _activeProfileName = profiles[0]?.name ?? '';
+    }
+
+    let $profilesWrap = selection.selectAll('.layer-profiles')
+      .data([0]);
+
+    const $$profilesWrap = $profilesWrap.enter()
+      .append('div')
+      .attr('class', 'layer-profiles');
+
+    $$profilesWrap
+      .append('div')
+      .attr('class', 'layer-profiles-title');
+
+    $$profilesWrap
+      .append('select')
+      .attr('class', 'layer-profile-select');
+
+    const $$buttons = $$profilesWrap
+      .append('div')
+      .attr('class', 'layer-profile-buttons');
+
+    $$buttons
+      .append('button')
+      .attr('class', 'save-profile');
+
+    $$buttons
+      .append('button')
+      .attr('class', 'apply-profile');
+
+    $$buttons
+      .append('button')
+      .attr('class', 'delete-profile');
+
+    $profilesWrap = $profilesWrap.merge($$profilesWrap);
+
+    $profilesWrap.selectAll('.layer-profiles-title')
+      .text(l10n.t('map_data.layer_profiles.title', { default: 'Layer Profiles' }));
+
+    $profilesWrap.selectAll('.layer-profile-select')
+      .on('change', d3_event => {
+        _activeProfileName = d3_event.target.value;
+      });
+
+    $profilesWrap.selectAll('.save-profile')
+      .on('click', d3_event => {
+        d3_event.preventDefault();
+        const profiles = loadLayerProfiles();
+        const promptText = l10n.t('map_data.layer_profiles.prompt', { default: 'Enter profile name' });
+        const defaultName = _activeProfileName || `Profile ${profiles.length + 1}`;
+        const name = window.prompt(promptText, defaultName)?.trim();
+        if (!name) return;
+
+        const next = profiles.filter(profile => profile.name !== name);
+        next.push(captureLayerProfile(name));
+        saveLayerProfiles(next);
+        _activeProfileName = name;
+        section.reRender();
+      });
+
+    $profilesWrap.selectAll('.apply-profile')
+      .on('click', d3_event => {
+        d3_event.preventDefault();
+        const profiles = loadLayerProfiles();
+        const profile = profiles.find(d => d.name === _activeProfileName);
+        if (!profile) return;
+        applyLayerProfile(profile);
+        section.reRender();
+      });
+
+    $profilesWrap.selectAll('.delete-profile')
+      .on('click', d3_event => {
+        d3_event.preventDefault();
+        if (!_activeProfileName) return;
+        const profiles = loadLayerProfiles();
+        const next = profiles.filter(profile => profile.name !== _activeProfileName);
+        const saved = saveLayerProfiles(next);
+        _activeProfileName = saved[0]?.name ?? '';
+        section.reRender();
+      });
+
+    let $options = $profilesWrap.selectAll('.layer-profile-select')
+      .selectAll('option')
+      .data(profiles, d => d.name);
+
+    $options.exit()
+      .remove();
+
+    $options = $options.enter()
+      .append('option')
+      .merge($options)
+      .attr('value', d => d.name)
+      .text(d => d.name);
+
+    $profilesWrap.selectAll('.layer-profile-select')
+      .property('value', _activeProfileName)
+      .property('disabled', !profiles.length);
+
+    $profilesWrap.selectAll('.save-profile')
+      .text(l10n.t('map_data.layer_profiles.save', { default: 'Save Current' }));
+
+    $profilesWrap.selectAll('.apply-profile')
+      .text(l10n.t('map_data.layer_profiles.apply', { default: 'Apply' }))
+      .property('disabled', !_activeProfileName);
+
+    $profilesWrap.selectAll('.delete-profile')
+      .text(l10n.t('map_data.layer_profiles.delete', { default: 'Delete' }))
+      .property('disabled', !_activeProfileName);
   }
 
 

@@ -1,15 +1,15 @@
+import { get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
+
 import { AbstractSystem } from './AbstractSystem.js';
 
 /**
  * `StorageSystem` is a wrapper around `window.localStorage`
  * It is used to store user preferences (good)
- * and the user's edit history (not good)
+ * and some fallback data used during migration.
  *
  * n.b.:  `localStorage` is a _synchronous_ API.
- * We should add another system for wrapping `indexedDB`,
- * which is an _asynchronous_ API, but would allow us to store
- * a whole lot more data, and share it with worker processes.
- * (The user's edit history should go there instead.)
+ * For larger and frequent writes (like edit-history backups),
+ * prefer the async `indexedDB` helpers below.
  */
 export class StorageSystem extends AbstractSystem {
 
@@ -129,5 +129,101 @@ export class StorageSystem extends AbstractSystem {
    */
   clear() {
     this._storage.clear();
+  }
+
+
+  /**
+   * hasItemAsync
+   * @param   k  String key to check for existance
+   * @param   options  Optional settings
+   * @return  Promise resolving `true` if the key is set, `false` if not
+   */
+  async hasItemAsync(k, options = {}) {
+    return (await this.getItemAsync(k, options)) !== null;
+  }
+
+
+  /**
+   * getItemAsync
+   * @param   k  String key to get the value for
+   * @param   options  Optional settings
+   * @return  Promise resolving to the stored value, or `null` if not found
+   */
+  async getItemAsync(k, options = {}) {
+    const preferIndexedDB = options.preferIndexedDB === true;
+    if (preferIndexedDB) {
+      try {
+        const val = await idbGet(k);
+        if (val !== undefined && val !== null) {
+          return val;
+        }
+      } catch (e) {
+        console.error('indexedDB read failed');   // eslint-disable-line no-console
+      }
+    }
+
+    return this.getItem(k);
+  }
+
+
+  /**
+   * setItemAsync
+   * @param   k  String key to set the value for
+   * @param   v  Value to set
+   * @param   options  Optional settings
+   * @return  Promise resolving `true` if the write to `indexedDB` succeeded, `false` if it failed
+   */
+  async setItemAsync(k, v, options = {}) {
+    const preferIndexedDB = options.preferIndexedDB === true;
+    if (preferIndexedDB) {
+      try {
+        await idbSet(k, v);
+        return true;
+      } catch (e) {
+        console.error('indexedDB write failed');  // eslint-disable-line no-console
+        return false;
+      }
+    }
+
+    return this.setItem(k, v);
+  }
+
+
+  /**
+   * removeItemAsync
+   * @param   k  String key to remove from storage
+   * @param   options  Optional settings
+   * @return  Promise resolving `true` if removal succeeded, `false` if it failed
+   */
+  async removeItemAsync(k, options = {}) {
+    const preferIndexedDB = options.preferIndexedDB === true;
+    if (preferIndexedDB) {
+      try {
+        await idbDel(k);
+      } catch (e) {
+        console.error('indexedDB delete failed');  // eslint-disable-line no-console
+      }
+    }
+    this.removeItem(k);
+    return true;
+  }
+
+
+  /**
+   * migrateItemToAsync
+   * Migrate a key from sync localStorage into async indexedDB.
+   * @param   k  String key to migrate
+   * @return  Promise resolving `true` when a key was migrated successfully, otherwise `false`
+   */
+  async migrateItemToAsync(k) {
+    const val = this.getItem(k);
+    if (val === null) return false;
+
+    const status = await this.setItemAsync(k, val, { preferIndexedDB: true });
+    if (status) {
+      this.removeItem(k);
+    }
+
+    return status;
   }
 }

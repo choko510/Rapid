@@ -13,6 +13,8 @@ export function uiSectionChanges(context) {
   const l10n = context.systems.l10n;
 
   let _discardTags = {};
+  let _downloadDiff = null;
+  let _downloadURL = null;
   assets.loadAssetAsync('tagging_discarded')
     .then(d => _discardTags = d)
     .catch(() => { /* ignore */ });
@@ -26,7 +28,8 @@ export function uiSectionChanges(context) {
 
 
   function renderDisclosureContent(selection) {
-    const summary = [...editor.difference().summary().values()];
+    const difference = editor.difference();
+    const summary = [...difference.summary().values()];
 
     let container = selection.selectAll('.commit-section')
       .data([0]);
@@ -93,28 +96,39 @@ export function uiSectionChanges(context) {
 
 
     // Download changeset link
-    let changeset = new osmChangeset().update({ id: undefined });
-    const changes = editor.changes(actionDiscardTags(editor.difference(), _discardTags));
-
-    delete changeset.id;  // Export without chnageset_id
-
-    const data = JXON.stringify(changeset.osmChangeJXON(changes));
-    const blob = new Blob([data], {type: 'text/xml;charset=utf-8;'});
     const fileName = 'changes.osc';
+    if (_downloadDiff !== difference) {
+      let changeset = new osmChangeset().update({ id: undefined });
+      const changes = editor.changes(actionDiscardTags(difference, _discardTags));
+      delete changeset.id;  // Export without changeset_id
 
-    let linkEnter = container.selectAll('.download-changes')
-      .data([0])
-      .enter()
+      const data = JXON.stringify(changeset.osmChangeJXON(changes));
+      const blob = new Blob([data], { type: 'text/xml;charset=utf-8;' });
+      if (_downloadURL) {
+        window.URL.revokeObjectURL(_downloadURL);
+      }
+      _downloadURL = window.URL.createObjectURL(blob);
+      _downloadDiff = difference;
+    }
+
+    let link = container.selectAll('.download-changes')
+      .data([0]);
+
+    let linkEnter = link.enter()
       .append('a')
       .attr('class', 'download-changes');
 
     linkEnter
-      .attr('href', window.URL.createObjectURL(blob)) // download the data as a file
+      .call(uiIcon('#rapid-icon-load', 'inline'))
+      .append('span');
+
+    link = linkEnter.merge(link);
+
+    link
+      .attr('href', _downloadURL)  // download the data as a file
       .attr('download', fileName);
 
-    linkEnter
-      .call(uiIcon('#rapid-icon-load', 'inline'))
-      .append('span')
+    link.selectAll('span')
       .text(l10n.t('commit.download_changes'));
 
 

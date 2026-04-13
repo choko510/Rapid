@@ -74,14 +74,6 @@ export class PixiFeaturePolygon extends AbstractFeature {
     this.strokes = strokes;
 
     this.container.addChild(lowRes, fill, strokes, mask);
-
-    // Debug SSR
-    // const debugSSR = new PIXI.Graphics();
-    // debugSSR.label = 'ssr';
-    // debugSSR.eventMode = 'none';
-    // debugSSR.sortableChildren = false;
-    // this.debugSSR = debugSSR;
-    // this.container.addChild(debugSSR);
   }
 
 
@@ -435,21 +427,6 @@ export class PixiFeaturePolygon extends AbstractFeature {
         fill.mask = mask;
       }
     }
-
-    // Debug SSR
-    // const p = this._ssrdata.ssr.poly;
-    // const ssrflat = [
-    //  p[0][0], p[0][1],
-    //  p[1][0], p[1][1],
-    //  p[2][0], p[2][1],
-    //  p[3][0], p[3][1],
-    //  p[0][0], p[0][1]
-    // ];
-    //
-    // this.debugSSR
-    //   .clear()
-    //   .poly(new PIXI.Polygon(ssrflat))
-    //   .stroke({ width: 2, color: 0x00ff00 });
 
     this._styleDirty = false;
 

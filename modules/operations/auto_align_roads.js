@@ -3,6 +3,7 @@ import { actionAddEntity } from '../actions/add_entity.js';
 import { actionDeleteNode } from '../actions/delete_node.js';
 import { actionMoveNode } from '../actions/move_node.js';
 import { osmNode } from '../osm/index.js';
+import { operationIsTooLarge } from './helpers/large_edit.js';
 import { utilTotalExtent } from '../util/index.js';
 import { filterRoadReferenceLines } from './auto_align_reference_lines.js';
 
@@ -11,8 +12,6 @@ export function operationAutoAlignRoads(context, selectedIDs) {
   const editor = context.systems.editor;
   const graph = editor.staging.graph;
   const l10n = context.systems.l10n;
-  const storage = context.systems.storage;
-  const viewport = context.viewport;
   const roadAlignment = context.services.roadAlignment;
 
   const entities = selectedIDs.map(entityID => graph.hasEntity(entityID)).filter(Boolean);
@@ -112,8 +111,7 @@ export function operationAutoAlignRoads(context, selectedIDs) {
 
     // If the selection is not 80% contained in view
     function tooLarge() {
-      const allowLargeEdits = storage.getItem('rapid-internal-feature.allowLargeEdits') === 'true';
-      return !allowLargeEdits && extent.percentContainedIn(viewport.visibleExtent()) < 0.8;
+      return operationIsTooLarge(context, extent);
     }
 
     // If the selection spans tiles that haven't been downloaded yet

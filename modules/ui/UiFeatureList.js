@@ -1,11 +1,15 @@
 import { selection, select } from 'd3-selection';
 import { Extent, geoSphericalDistance } from '@rapid-sdk/math';
 import * as sexagesimal from '@mapbox/sexagesimal';
+import { utilArrayUniq } from '@rapid-sdk/util';
 
 import { Graph } from '../core/lib/index.js';
 import { osmEntity } from '../osm/entity.js';
 import { uiIcon } from './icon.js';
 import { utilCmd, utilHighlightEntities, utilIsColorValid, utilNoAuto } from '../util/index.js';
+
+const RECENT_SEARCHES_KEY = 'feature-list.recent-searches';
+const MAX_RECENT_SEARCHES = 8;
 
 
 /**
@@ -29,6 +33,9 @@ export class UiFeatureList {
     this.context = context;
 
     this._geocodeResults = null;
+    this._selectedResultIndex = -1;
+    this._visibleResults = [];
+    this._recentQueries = this._loadRecentQueries();
 
     // D3 selections
     this.$parent = null;
@@ -49,6 +56,10 @@ export class UiFeatureList {
     this._mouseout = this._mouseout.bind(this);
     this._mouseover = this._mouseover.bind(this);
     this._nominatimSearch = this._nominatimSearch.bind(this);
+    this._moveSelection = this._moveSelection.bind(this);
+    this._rememberQuery = this._rememberQuery.bind(this);
+    this._loadRecentQueries = this._loadRecentQueries.bind(this);
+    this._saveRecentQueries = this._saveRecentQueries.bind(this);
 
     // Setup event listeners
     context.on('modechange', this._clearSearch);
@@ -152,8 +163,15 @@ export class UiFeatureList {
     const l10n = context.systems.l10n;
     const nominatim = context.services.nominatim;
 
-    const value = this.$search.property('value');
+    const value = this.$search.property('value').trim();
     const results = this._getSearchResults();
+    this._visibleResults = results;
+
+    if (!results.length) {
+      this._selectedResultIndex = -1;
+    } else if (this._selectedResultIndex < 0 || this._selectedResultIndex >= results.length) {
+      this._selectedResultIndex = 0;
+    }
 
     const $list = this.$list;
     $list.classed('filtered', value.length);
@@ -192,8 +210,52 @@ export class UiFeatureList {
     $list.selectAll('.geocode-item')
       .style('display', (value && this._geocodeResults === undefined) ? 'block' : 'none');
 
-    $list.selectAll('.feature-list-item')
+    $list.selectAll('.feature-list-recent')
       .data([-1])
+      .remove();
+
+    const recentData = (!value.length ? this._recentQueries : []).map((query, idx) => ({
+      id: `recent-${idx}`,
+      query: query
+    }));
+
+    let $recentItems = $list.selectAll('.feature-list-recent')
+      .data(recentData, d => d.id);
+
+    const $$recentItems = $recentItems.enter()
+      .append('button')
+      .attr('class', 'feature-list-recent')
+      .on('click', (e, d) => {
+        e.preventDefault();
+        this.$search.property('value', d.query);
+        this.$search.node().focus();
+        this._geocodeResults = undefined;
+        this._selectedResultIndex = 0;
+        this._drawList();
+      });
+
+    const $$recentLabel = $$recentItems
+      .append('div')
+      .attr('class', 'label');
+
+    $$recentLabel
+      .call(uiIcon('#rapid-icon-search', 'pre-text'));
+
+    $$recentLabel
+      .append('span')
+      .attr('class', 'entity-type')
+      .text(l10n.t('inspector.search'));
+
+    $$recentLabel
+      .append('span')
+      .attr('class', 'entity-name');
+
+    $recentItems = $recentItems.merge($$recentItems);
+
+    $recentItems.selectAll('.entity-name')
+      .text(d => d.query);
+
+    $recentItems.exit()
       .remove();
 
     let $items = $list.selectAll('.feature-list-item')
@@ -233,6 +295,9 @@ export class UiFeatureList {
       .transition()
       .style('opacity', 1);
 
+    $items
+      .classed('active', (d, i) => i === this._selectedResultIndex);
+
     $items.order();
 
     $items.exit()
@@ -264,6 +329,24 @@ export class UiFeatureList {
 
     if (e.keyCode === 27) {  // escape
       this.$search.node().blur();
+      return;
+    }
+
+    if (!this._visibleResults.length) return;
+
+    if (e.keyCode === 38) {  // arrow up
+      e.preventDefault();
+      this._moveSelection(-1);
+    } else if (e.keyCode === 40) {  // arrow down
+      e.preventDefault();
+      this._moveSelection(1);
+    } else if (e.keyCode === 13) {  // return
+      e.preventDefault();
+      const idx = this._selectedResultIndex < 0 ? 0 : this._selectedResultIndex;
+      const selected = this._visibleResults[idx];
+      if (selected) {
+        this._click(e, selected);
+      }
     }
   }
 
@@ -275,12 +358,6 @@ export class UiFeatureList {
    */
   _keypress(e) {
     if (!this.$search || !this.$list) return;  // called too early?
-
-    const q = this.$search.property('value');
-    const $items = this.$list.selectAll('.feature-list-item');
-    if (e.keyCode === 13 && q.length && $items.size()) {  // ↩ Return
-      this._click(e, $items.datum());
-    }
   }
 
 
@@ -290,6 +367,7 @@ export class UiFeatureList {
    */
   _input() {
     this._geocodeResults = undefined;
+    this._selectedResultIndex = 0;
     this._drawList();
   }
 
@@ -301,7 +379,62 @@ export class UiFeatureList {
     if (!this.$search) return;  // called too early?
 
     this.$search.property('value', '');
+    this._selectedResultIndex = -1;
     this._drawList();
+  }
+
+
+  /*
+   * _moveSelection
+   * Move active search result by +1 or -1 (wraparound)
+   * @param  {number}  delta
+   */
+  _moveSelection(delta) {
+    const total = this._visibleResults.length;
+    if (!total) return;
+
+    if (this._selectedResultIndex < 0) {
+      this._selectedResultIndex = 0;
+    } else {
+      this._selectedResultIndex = (this._selectedResultIndex + delta + total) % total;
+    }
+    this._drawList();
+  }
+
+
+  _loadRecentQueries() {
+    const storage = this.context.systems.storage;
+    const raw = storage?.getItem(RECENT_SEARCHES_KEY);
+    if (!raw) return [];
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter(s => typeof s === 'string')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .slice(0, MAX_RECENT_SEARCHES);
+    } catch {
+      return [];
+    }
+  }
+
+
+  _saveRecentQueries() {
+    const storage = this.context.systems.storage;
+    if (!storage) return;
+    storage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(this._recentQueries.slice(0, MAX_RECENT_SEARCHES)));
+  }
+
+
+  _rememberQuery(query) {
+    if (typeof query !== 'string') return;
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    this._recentQueries = utilArrayUniq([trimmed, ...this._recentQueries]).slice(0, MAX_RECENT_SEARCHES);
+    this._saveRecentQueries();
   }
 
 
@@ -353,6 +486,7 @@ export class UiFeatureList {
 
     const context = this.context;
     const map = context.systems.map;
+    this._rememberQuery(this.$search?.property('value'));
 
     if (d.location) {
       map.centerZoomEase([d.location[1], d.location[0]], 19);
@@ -463,23 +597,36 @@ export class UiFeatureList {
       if (!entity) continue;
 
       const name = l10n.displayName(entity.tags) || '';
-      if (name.toLowerCase().indexOf(q) < 0) continue;
-
       const matched = presets.match(entity, graph);
-      const type = (matched && matched.name()) || l10n.displayType(entity.id);
+      const presetName = (matched && matched.name()) || '';
+      const type = presetName || l10n.displayType(entity.id);
+      const tags = entity.tags || {};
+
+      const nameMatch = name.toLowerCase().includes(q);
+      const presetMatch = presetName.toLowerCase().includes(q);
+      const idMatchLocal = entity.id.toLowerCase().includes(q);
+      const tagMatch = Object.entries(tags).some(([k, v]) => {
+        const keyText = String(k).toLowerCase();
+        const valText = String(v).toLowerCase();
+        return keyText.includes(q) || valText.includes(q);
+      });
+
+      if (!nameMatch && !presetMatch && !idMatchLocal && !tagMatch) continue;
+
       const extent = entity.extent(graph);
       const distance = extent ? geoSphericalDistance(centerLoc, extent.center()) : 0;
+      const displayName = name || presetName || entity.id;
 
       localResults.push({
         id: entity.id,
         entity: entity,
         geometry: entity.geometry(graph),
         type: type,
-        name: name,
+        name: displayName,
         distance: distance
       });
 
-      if (localResults.length > 100) break;
+      if (localResults.length > 150) break;
     }
 
     localResults = localResults.sort((a, b) => a.distance - b.distance);

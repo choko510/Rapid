@@ -206,6 +206,11 @@
               "modifiers": ["⌘"],
               "shortcuts": ["F"],
               "text": "shortcuts.command.find.label"
+            },
+            {
+              "modifiers": ["⌘"],
+              "shortcuts": ["K"],
+              "text": "shortcuts.command.command_palette.label"
             }
           ]
         },

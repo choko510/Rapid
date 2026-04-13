@@ -147,13 +147,17 @@ export class UploaderSystem extends AbstractSystem {
     this._conflicts = [];
     this._errors = [];
 
-    // Store original changes, in case user wants to download them as an .osc file
+    // Prepare current changes once for the fast upload path.
     const editor = context.systems.editor;
-    this._origChanges = editor.changes(actionDiscardTags(editor.difference(), this._discardTags));
+    const preparedChanges = editor.changes(actionDiscardTags(editor.difference(), this._discardTags));
+    if (!tryAgain) {
+      // Store original changes, in case user wants to download them as an .osc file
+      this._origChanges = preparedChanges;
+    }
 
     // Attempt a fast upload first.. If there are conflicts, re-enter with `checkConflicts = true`
     if (!checkConflicts) {
-      this._tryUpload();
+      this._tryUpload(preparedChanges);
     } else {
       this._startConflictCheck();
     }
@@ -354,7 +358,7 @@ export class UploaderSystem extends AbstractSystem {
 
   // This is called when we are ready to attempt a changeset upload.
   // If conflicts or errors exist, present them to the user instead.
-  _tryUpload() {
+  _tryUpload(preparedChanges) {
     const context = this.context;
     const osm = context.services.osm;
     if (!osm) {
@@ -372,7 +376,7 @@ export class UploaderSystem extends AbstractSystem {
 
     } else {
       const editor = context.systems.editor;
-      const changes = editor.changes(actionDiscardTags(editor.difference(), this._discardTags));
+      const changes = preparedChanges || editor.changes(actionDiscardTags(editor.difference(), this._discardTags));
       if (changes.modified.length || changes.created.length || changes.deleted.length) {
         this.emit('willAttemptUpload');
         osm.sendChangeset(this.changeset, changes, this._uploadCallback);

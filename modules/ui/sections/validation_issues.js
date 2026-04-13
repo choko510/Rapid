@@ -238,6 +238,7 @@ export function uiSectionValidationIssues(context, severity) {
 
   // event handlers to refresh the lists
   validator.on('validated', deferredRender);
+  validator.on('optionchange', deferredRender);
 
   urlhash.on('hashchange', (currParams, prevParams) => {
     if (currParams.get('poweruser') !== prevParams.get('poweruser')) {   // change in poweruser status

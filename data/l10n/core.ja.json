@@ -19,20 +19,32 @@
       "undo_redo": "元に戻す/再実行",
       "recent": "選択履歴",
       "favorites": "お気に入り",
-      "add_feature": "地物を追加"
+      "add_feature": "地物を追加",
+      "lasso_selection": "囲って選択"
     },
     "title": {
-      "labeled_and_more": "{labeled} 詳細 {count} 件"
+      "format": {
+        "context": "{base} - {context}",
+        "changes": "({changes}) {base}",
+        "changes_context": "({changes}) {base} - {context}"
+      },
+      "labeled_and_more": {
+        "one": "{labeled} のほか {count} 件",
+        "other": "{labeled} のほか {count} 件"
+      }
     },
     "modes": {
       "add_area": {
-        "title": "エリア"
+        "title": "エリア",
+        "description": "建物、公園、湖などのエリアを地図に追加します。"
       },
       "add_line": {
-        "title": "ライン"
+        "title": "ライン",
+        "description": "道路、歩道、小川などのラインを地図に追加します。"
       },
       "add_point": {
-        "title": "ポイント"
+        "title": "ポイント",
+        "description": "店舗、ゴミ箱、郵便ポストなどのポイントを地図に追加します。"
       },
       "add_note": {
         "title": "メモ",
@@ -2060,9 +2072,23 @@
       "title": "キーボード・ショートカット",
       "tooltip": "キーボードショートカット画面を表示",
       "key": {
-        "cmd": "コマンド",
+        "alt": "Alt",
+        "backspace": "Backspace",
+        "cmd": "Cmd",
+        "ctrl": "Ctrl",
         "delete": "削除",
+        "del": "Del",
+        "end": "End",
+        "enter": "Enter",
+        "esc": "Esc",
+        "home": "Home",
         "menu": "メニュー",
+        "option": "Option",
+        "pause": "Pause",
+        "pgdn": "PgDn",
+        "pgup": "PgUp",
+        "return": "Return",
+        "shift": "Shift",
         "space": "スペース"
       },
       "gesture": {
@@ -2071,19 +2097,40 @@
       "or": "-または-",
       "browsing": "閲覧",
       "editing": "編集",
+      "tools": "ツール/表示",
       "navigation": "ナビゲーション",
       "selecting_features": "地物の選択",
       "with_features_selected": "選択された地物に対して",
       "with_node_selected": "選択されたノードに対して",
       "with_way_selected": "選択されたウェイに対して",
+      "with_rapid_selected": "Rapid地物選択時",
+      "with_photo_selected": "写真選択時",
       "drawing": "描画",
       "commands": "コマンド",
+      "operations": "編集操作",
       "help": "ヘルプ",
       "display_options": "オプション画面表示",
+      "viewers": "ビューア",
+      "layers": "レイヤー",
       "info": "補助情報パネル表示切替え",
       "command": {
         "pan": {
           "label": "マップを動かす"
+        },
+        "pan_more": {
+          "label": "地図を大きく動かす"
+        },
+        "zoom": {
+          "label": "ズームイン / ズームアウト"
+        },
+        "zoom_more": {
+          "label": "大きくズームイン / ズームアウト"
+        },
+        "rotate_map": {
+          "label": "地図を回転"
+        },
+        "rotate_incremental": {
+          "label": "地図を少しずつ回転"
         },
         "select_one": {
           "label": "地物を1つ選ぶ"
@@ -2096,6 +2143,16 @@
         },
         "edit_menu": {
           "label": "編集メニューの表示/非表示"
+        },
+        "zoom_to": {
+          "label": "選択中の地物をズームイン / ズームアウト",
+          "key": "Z"
+        },
+        "previous_node": {
+          "label": "前のノードへ移動"
+        },
+        "next_node": {
+          "label": "次のノードへ移動"
         },
         "first_node": {
           "label": "最初のノードへ移動"
@@ -2112,18 +2169,32 @@
         "select_children": {
           "label": "子ノードを選択"
         },
+        "accept_feature": {
+          "label": "地物を採用",
+          "key": "A"
+        },
+        "ignore_feature": {
+          "label": "地物を無視",
+          "key": "D"
+        },
+        "follow_sequence": {
+          "label": "シーケンス内の前後の写真へ移動"
+        },
         "add_point": {
-          "label": "「ポイントの追加」モード"
+          "label": "「ポイントの追加」モード",
+          "key": "1"
         },
         "add_line": {
-          "label": "「ラインの追加」モード"
+          "label": "「ラインの追加」モード",
+          "key": "2"
         },
         "add_area": {
-          "label": "「エリアの追加」モード"
+          "label": "「エリアの追加」モード",
+          "key": "3"
         },
         "add_note": {
           "label": "「メモの追加」モード",
-          "key": "北緯"
+          "key": "N"
         },
         "place_point": {
           "label": "ポイントまたはメモを置く"
@@ -2152,94 +2223,175 @@
         "find": {
           "label": "地物のテキスト検索欄に移動"
         },
+        "command_palette": {
+          "label": "コマンドパレットを開く",
+          "key": "K"
+        },
         "continue_line": {
-          "label": "選択エンドポイントでラインを継続"
+          "label": "選択エンドポイントでラインを継続",
+          "key": "A"
         },
         "merge": {
-          "label": "選択した地物を連結(マージ)"
+          "label": "選択した地物を連結(マージ)",
+          "key": "C"
         },
         "disconnect": {
-          "label": "選択した地物の接続を解除"
+          "label": "選択した地物の接続を解除",
+          "key": "D"
         },
         "extract": {
           "label": "ポイントを地物から抜き移す",
-          "key": "東経"
+          "key": "E"
         },
         "split": {
-          "label": "選択したポイントで地物を分割"
+          "label": "選択したポイントで地物を分割",
+          "key": "X"
         },
         "reverse": {
-          "label": "選択した地物を反転"
+          "label": "選択した地物を反転",
+          "key": "V"
         },
         "move": {
-          "label": "選択した地物を移動"
+          "label": "選択した地物を移動",
+          "key": "M"
         },
         "rotate": {
-          "label": "選択した地物を回転"
+          "label": "選択した地物を回転",
+          "key": "R"
         },
         "orthogonalize": {
-          "label": "ラインやエリアの角を直角化"
+          "label": "ラインやエリアの角を直角化",
+          "key": "Q"
         },
         "straighten": {
           "label": "ラインや複数ポイントを直線化",
-          "key": "南緯"
+          "key": "S"
         },
         "circularize": {
-          "label": "クローズドラインやエリアを円形化"
+          "label": "クローズドラインやエリアを円形化",
+          "key": "O"
         },
         "reflect_long": {
-          "label": "地物を長軸で回転"
+          "label": "地物を長軸で回転",
+          "key": "T"
         },
         "reflect_short": {
-          "label": "地物を短軸で回転"
+          "label": "地物を短軸で回転",
+          "key": "Y"
         },
         "delete": {
           "label": "選択された地物を削除"
         },
+        "cycle_highway_tag": {
+          "label": "よく使うタグを順に切り替え",
+          "key": "C"
+        },
         "toggle_background": {
-          "label": "背景画像パネルを表示/非表示"
+          "label": "背景画像パネルを表示/非表示",
+          "key": "B"
+        },
+        "background_switch": {
+          "label": "最後に使用した背景に戻す",
+          "key": "B"
+        },
+        "background_previous": {
+          "label": "一覧の前の背景に切り替え",
+          "key": ","
+        },
+        "background_next": {
+          "label": "一覧の次の背景に切り替え",
+          "key": "."
         },
         "toggle_map_data": {
-          "label": "地図データパネルを表示/非表示"
+          "label": "地図データパネルを表示/非表示",
+          "key": "F"
         },
         "toggle_issues": {
-          "label": "改善提案パネルを表示/非表示"
+          "label": "改善提案パネルを表示/非表示",
+          "key": "I"
         },
         "toggle_preferences": {
-          "label": "個人設定パネルを表示/非表示"
+          "label": "個人設定パネルを表示/非表示",
+          "key": "P"
+        },
+        "toggle_help": {
+          "label": "ヘルプ/ドキュメントパネルを表示/非表示",
+          "key": "H"
+        },
+        "toggle_fullscreen": {
+          "label": "全画面モードの表示/非表示"
+        },
+        "toggle_inspector": {
+          "label": "地物インスペクターを表示/非表示",
+          "key": "`"
         },
         "wireframe": {
-          "key": "西経"
+          "label": "ワイヤーフレーム表示の切り替え",
+          "key": "W"
         },
         "highlight_edits": {
-          "label": "未保存の編集をハイライト"
+          "label": "未保存の編集をハイライト",
+          "key": "G"
         },
         "keyboard_shortcuts": {
-          "label": "ショートカットキーを表示"
+          "label": "ショートカットキーを表示",
+          "key": "?"
+        },
+        "toggle_minimap": {
+          "label": "ミニマップの表示/非表示",
+          "key": "/"
+        },
+        "toggle_3dmap": {
+          "label": "3D地図の表示/非表示",
+          "key": "/"
+        },
+        "toggle_all_layers": {
+          "label": "全データレイヤーの表示/非表示",
+          "key": "D"
         },
         "toggle_osm_data": {
-          "label": "OpenStreetMapデータの表示切替"
+          "label": "OpenStreetMapデータの表示切替",
+          "key": "O"
         },
         "toggle_osm_notes": {
-          "key": "北緯"
+          "label": "OpenStreetMapメモの表示切替",
+          "key": "N"
+        },
+        "toggle_rapid_data": {
+          "label": "Rapid地物の表示/非表示",
+          "key": "R"
+        },
+        "toggle_mapillary": {
+          "label": "Mapillaryの表示/非表示",
+          "key": "M"
         },
         "toggle_streetside": {
-          "key": "南緯"
+          "label": "Bing Streetsideの表示/非表示",
+          "key": "S"
+        },
+        "toggle_kartaview": {
+          "label": "Kartaviewの表示/非表示",
+          "key": "K"
         },
         "toggle_all_cards": {
-          "label": "表示中の全補助情報パネルを一括表示/非表示"
+          "label": "表示中の全補助情報パネルを一括表示/非表示",
+          "key": "I"
         },
         "toggle_background_card": {
-          "label": "背景パネルを表示/非表示"
+          "label": "背景パネルを表示/非表示",
+          "key": "B"
         },
         "toggle_history_card": {
-          "label": "編集履歴パネルを表示/非表示"
+          "label": "編集履歴パネルを表示/非表示",
+          "key": "H"
         },
         "toggle_location_card": {
-          "label": "位置パネルを表示/非表示"
+          "label": "位置パネルを表示/非表示",
+          "key": "L"
         },
         "toggle_measurement_card": {
-          "label": "計測パネルを表示/非表示"
+          "label": "計測パネルを表示/非表示",
+          "key": "M"
         }
       }
     },

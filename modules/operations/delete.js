@@ -3,6 +3,7 @@ import { utilGetAllNodes } from '@rapid-sdk/util';
 
 import { actionDeleteMultiple } from '../actions/delete_multiple.js';
 import { KeyOperationBehavior } from '../behaviors/KeyOperationBehavior.js';
+import { operationIsTooLarge } from './helpers/large_edit.js';
 import { utilCmd, utilTotalExtent } from '../util/index.js';
 
 
@@ -11,8 +12,6 @@ export function operationDelete(context, selectedIDs) {
   const graph = editor.staging.graph;
   const l10n = context.systems.l10n;
   const map = context.systems.map;
-  const storage = context.systems.storage;
-  const viewport = context.viewport;
 
   const entities = selectedIDs.map(entityID => graph.hasEntity(entityID)).filter(Boolean);
   const isNew = entities.every(entity => entity.isNew());
@@ -29,8 +28,7 @@ export function operationDelete(context, selectedIDs) {
   }
 
   function isTooLargeSelection() {
-    const allowLargeEdits = storage.getItem('rapid-internal-feature.allowLargeEdits') === 'true';
-    return !allowLargeEdits && extent.percentContainedIn(viewport.visibleExtent()) < 0.8;
+    return operationIsTooLarge(context, extent);
   }
 
   function shouldConfirmLargeAreaDelete() {

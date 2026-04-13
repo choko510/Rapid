@@ -216,16 +216,6 @@ export class RotateMode extends AbstractMode {
     }
     this._lastPoint = currPoint.slice();  // copy
 
-    // "old" - rotational
-    // const pivotPoint = context.viewport.project(this._pivotLoc);
-    // const currAngle = Math.atan2(currPoint[1] - pivotPoint[1], currPoint[0] - pivotPoint[0]);
-    // if (this._lastAngle !== null) {
-    //   const angle = currAngle - this._lastAngle;
-    //   editor.perform(actionRotate(entityIDs, pivotPoint, angle, context.viewport));
-    // }
-    // this._lastAngle = currAngle;
-
-
     // Update selected/active collections to contain the current moved entities
     this._selectedData.clear();
     const currGraph = editor.staging.graph;

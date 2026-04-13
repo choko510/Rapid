@@ -284,10 +284,6 @@ export function uiConflicts(context) {
 
 
   function showEntityID(id, extent) {
-// todo replace legacy surface css class .hover
-//    context.surface().selectAll('.hover')
-//      .classed('hover', false);
-
     const graph = editor.staging.graph;
     const entity = graph.hasEntity(id);
     if (entity) {
@@ -296,9 +292,6 @@ export function uiConflicts(context) {
       } else {
           map.fitEntitiesEase(entity);
       }
-// todo replace legacy surface css class .hover
-//      context.surface().selectAll(utilEntityOrMemberSelector([entity.id], graph))
-//        .classed('hover', true);
     }
   }
 

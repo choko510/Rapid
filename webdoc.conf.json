@@ -13,7 +13,7 @@
     "template": {
         "outputSourceFiles": true,
         "readme": "./README.md",
-        "repository": "https://github.com/facebook/Rapid/"
+        "repository": "https://github.com/choko510/Rapid/"
     },
     "templates": {
         "cleverLinks"   : false,
@@ -21,7 +21,7 @@
         "default"       : {
             "outputSourceFiles" : true
         },
-        "applicationName": "Rapid",
+        "applicationName": "customRapid",
         "footer"        : "Made with ♥ by the Maps Geo Team at Meta",
         "copyright"     : "©2023 by Rapid Contributors.",
         "disqus": "",

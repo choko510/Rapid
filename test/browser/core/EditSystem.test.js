@@ -68,11 +68,26 @@ describe('EditSystem', () => {
   }
 
   class MockStorageSystem {
-    constructor() { }
-    initAsync()   { return Promise.resolve(); }
-    getItem()     { return ''; }
-    hasItem()     { return false; }
-    setItem()     { }
+    constructor() {
+      this._local = new Map();
+      this._async = new Map();
+    }
+    initAsync()          { return Promise.resolve(); }
+    hasItem(k)           { return this._local.has(k); }
+    getItem(k)           { return this._local.get(k) ?? null; }
+    setItem(k, v)        { this._local.set(k, v); return true; }
+    removeItem(k)        { this._local.delete(k); }
+    hasItemAsync(k)      { return Promise.resolve(this._async.has(k)); }
+    getItemAsync(k)      { return Promise.resolve(this._async.get(k) ?? null); }
+    setItemAsync(k, v)   { this._async.set(k, v); return Promise.resolve(true); }
+    removeItemAsync(k)   { this._async.delete(k); return Promise.resolve(true); }
+    migrateItemToAsync(k) {
+      const val = this.getItem(k);
+      if (val === null) return Promise.resolve(false);
+      this.removeItem(k);
+      this._async.set(k, val);
+      return Promise.resolve(true);
+    }
   }
 
   class MockContext {
@@ -89,6 +104,7 @@ describe('EditSystem', () => {
       this.services = {};
     }
     selectedIDs() { return []; }
+    resetAsync()  { return Promise.resolve(); }
   }
 
   const context = new MockContext();
@@ -747,6 +763,120 @@ describe('EditSystem', () => {
       expect(detail.created).to.eql([ stable.entity('n-1') ]);
       expect(detail.modified).to.eql([ stable.entity('n2') ]);
       expect(detail.deleted).to.eql([ base.entity('n3') ]);
+    });
+  });
+
+
+  describe('#saveBackup', () => {
+    it('throttles snapshot saves when backups are frequent and low-delta', () => {
+      _editor.perform(actionAddNode('n-1'));
+      _editor.commit({ annotation: 'added n-1', selectedIDs: ['n-1'] });
+
+      const lockStub = sinon.stub(_editor._mutex, 'locked').returns(true);
+      const toJSONStub = sinon.stub(_editor, 'toJSON').returns('{"version":3}');
+      const snapshotStub = sinon.stub(_editor, '_saveBackupSnapshotAsync').resolves(true);
+
+      _editor.saveBackup();
+      _editor.saveBackup();
+
+      return Promise.resolve()
+        .then(() => {
+          expect(snapshotStub.calledOnce).to.be.true;
+        })
+        .finally(() => {
+          lockStub.restore();
+          toJSONStub.restore();
+          snapshotStub.restore();
+        });
+    });
+  });
+
+
+  describe('#_shouldSaveBackupSnapshot', () => {
+    it('returns false for minor changes when a snapshot was saved recently', () => {
+      _editor._lastSnapshotAt = Date.now();
+      _editor._lastSnapshotChangeCount = 10;
+      expect(_editor._shouldSaveBackupSnapshot(12)).to.be.false;
+    });
+
+    it('returns true when change delta is large', () => {
+      _editor._lastSnapshotAt = Date.now();
+      _editor._lastSnapshotChangeCount = 10;
+      expect(_editor._shouldSaveBackupSnapshot(40)).to.be.true;
+    });
+  });
+
+
+  describe('#restoreBackup', () => {
+    it('restores backup from async storage first', () => {
+      const backupKey = _editor._backupKey();
+      const syncBackup = '{"version":3,"source":"local"}';
+      const asyncBackup = '{"version":3,"source":"async"}';
+
+      context.systems.storage.setItem(backupKey, syncBackup);
+
+      return context.systems.storage.setItemAsync(backupKey, asyncBackup)
+        .then(() => {
+          const lockStub = sinon.stub(_editor._mutex, 'locked').returns(true);
+          const resetStub = sinon.stub(context, 'resetAsync').resolves();
+          const fromJSONStub = sinon.stub(_editor, 'fromJSONAsync').resolves();
+
+          return _editor.restoreBackup()
+            .then(() => {
+              expect(resetStub.calledOnce).to.be.true;
+              expect(fromJSONStub.calledOnceWithExactly(asyncBackup)).to.be.true;
+            })
+            .finally(() => {
+              lockStub.restore();
+              resetStub.restore();
+              fromJSONStub.restore();
+            });
+        });
+    });
+
+    it('falls back to localStorage backup when async backup is missing', () => {
+      const backupKey = _editor._backupKey();
+      const syncBackup = '{"version":3,"source":"local"}';
+
+      context.systems.storage.setItem(backupKey, syncBackup);
+
+      const lockStub = sinon.stub(_editor._mutex, 'locked').returns(true);
+      const resetStub = sinon.stub(context, 'resetAsync').resolves();
+      const fromJSONStub = sinon.stub(_editor, 'fromJSONAsync').resolves();
+
+      return _editor.restoreBackup()
+        .then(() => {
+          expect(resetStub.calledOnce).to.be.true;
+          expect(fromJSONStub.calledOnceWithExactly(syncBackup)).to.be.true;
+        })
+        .finally(() => {
+          lockStub.restore();
+          resetStub.restore();
+          fromJSONStub.restore();
+        });
+    });
+  });
+
+
+  describe('#clearBackup', () => {
+    it('clears backup from both async storage and localStorage fallback', () => {
+      const backupKey = _editor._backupKey();
+      const lockStub = sinon.stub(_editor._mutex, 'locked').returns(true);
+
+      context.systems.storage.setItem(backupKey, '{"version":3}');
+
+      return context.systems.storage.setItemAsync(backupKey, '{"version":3}')
+        .then(() => {
+          _editor.clearBackup();
+          expect(context.systems.storage.hasItem(backupKey)).to.be.false;
+          return context.systems.storage.hasItemAsync(backupKey);
+        })
+        .then(hasAsyncBackup => {
+          expect(hasAsyncBackup).to.be.false;
+        })
+        .finally(() => {
+          lockStub.restore();
+        });
     });
   });
 

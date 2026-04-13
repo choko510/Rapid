@@ -85,10 +85,7 @@ export function uiSectionValidationOptions(context) {
     }
 
     storage.setItem(`validate-${d}`, val);
-
-    // I think this is just to get the list to update?
-    // Maybe we can have an `optionchanged` event to do this without interrupting the validator
-    validator.validateAsync();
+    validator.emit('optionchange');
   }
 
   return section;

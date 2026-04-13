@@ -159,9 +159,12 @@ export function uiSectionValidationStatus(context) {
   }
 
 
-  validator.on('validated', () => {
+  function rerenderValidationStatus() {
     window.requestIdleCallback(section.reRender);
-  });
+  }
+
+  validator.on('validated', rerenderValidationStatus);
+  validator.on('optionchange', rerenderValidationStatus);
 
   context.systems.map.on('draw', debounce(() => {
     window.requestIdleCallback(section.reRender);

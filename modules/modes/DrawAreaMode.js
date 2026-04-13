@@ -394,12 +394,6 @@ export class DrawAreaMode extends AbstractMode {
       loc = target.loc;
       node = target;
 
-    // Snap to a way
-//  } else if (target?.type === 'way' && choice) {
-//      const edge = [ target.nodes[choice.index - 1], target.nodes[choice.index] ];
-//      this._clickWay(choice.loc, edge);
-//      return;
-//    }
     } else if (target?.type === 'way') {
       const choice = geoChooseEdge(graph.childNodes(target), point, viewport, this.drawNodeID);
       const SNAP_DIST = 6;  // hack to avoid snap to fill, see #719

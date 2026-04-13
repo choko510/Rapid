@@ -111,37 +111,6 @@ export class HoverBehavior extends AbstractBehavior {
 
     // Handle situations where we don't want to hover a target way...
     let isActiveTarget = false;
-//    if (eventData?.target?.layerID === 'osm') {
-//      const mode = context.mode;
-//      const target = eventData?.target?.data || null;
-//      let activeID;
-//      if (mode?.id === 'draw-line') {
-//        activeID = mode.drawNode?.id;
-//      } else if (mode?.id === 'drag-node') {
-//        activeID = mode.dragNode?.id;
-//      }
-//
-//      // If a node being interacted with is on a way being tageted..
-//      if (activeID && target?.type === 'way') {
-//        const activeIndex = target.nodes.indexOf(activeID);
-//        if (activeIndex !== -1) {
-//          isActiveTarget = true;
-//          const graph = context.systems.editor.staging.graph;
-//          const viewport = context.viewport;
-//          const choice = geoChooseEdge(graph.childNodes(target), eventData.coord.map, viewport, activeID);
-//
-//          const SNAP_DIST = 6;  // hack to avoid snap to fill, see #719
-//          if (choice && choice.distance < SNAP_DIST) {
-//            // We should not target parts of the way that are adjacent ot the active node
-//            // but we can target segments of the way that are >2 segments away.
-//            if ((choice.index > activeIndex + 2) || (choice.index < activeIndex - 1)) {
-//              isActiveTarget = false;
-//              eventData.target.choice = choice;
-//            }
-//          }
-//        }
-//      }
-//    }
 
     // If a modifier key is down, or pointer is not over the renderer, discard the target..
     // (e.g. sidebar, out of browser window, over a button, toolbar, modal)
