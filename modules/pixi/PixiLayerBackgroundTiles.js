@@ -80,6 +80,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
     const base = imagery.baseLayerSource();
     const baseID = base?.key;   // note: use `key` here - for Wayback it will include the date
+    const baseFallbackSource = base ? imagery.chooseFallbackSource({ requireAvailable: true, excludeSourceID: base.id }) : null;
     if (base && baseID !== 'none') {
       showSources.set(baseID, base);
     }
@@ -106,7 +107,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       }
 
       const timestamp = window.performance.now();
-      this.renderSource(timestamp, viewport, source, sourceContainer, tileMap);
+      const fallbackSource = (source === base ? baseFallbackSource : null);
+      this.renderSource(timestamp, viewport, source, sourceContainer, tileMap, fallbackSource);
     }
 
     // Remove any sourceContainers and data not needed anymore
@@ -134,8 +136,9 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
    * @param source           Imagery tile source Object
    * @param sourceContainer  PIXI.Container to render the tiles to
    * @param tileMap          Map(tile.id -> Tile) for this tile source
+   * @param fallbackSource   Optional Imagery tile source used when tile requests fail
    */
-  renderSource(timestamp, viewport, source, sourceContainer, tileMap) {
+  renderSource(timestamp, viewport, source, sourceContainer, tileMap, fallbackSource = null) {
     const context = this.context;
     const textureManager = this.gfx.textures;
     const osm = context.services.osm;
@@ -194,8 +197,23 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
           if (osm.isDataLoaded(loc)) continue;
         }
 
-        tile.url = source.url(tile.xyz);
+        const sourceURL = source.url(tile.xyz);
+        const fallbackURL = fallbackSource?.url(tile.xyz);
+        const useFallback = !!fallbackURL && sourceURL !== fallbackURL;
+
+        tile.url = sourceURL;
+        tile.fallbackURL = useFallback ? fallbackURL : null;
+
+        if (!tile.url && tile.fallbackURL) {
+          tile.url = tile.fallbackURL;
+        }
+
         if (!tile.url || this._failed.has(tile.url)) {
+          if (tile.fallbackURL && tile.url !== tile.fallbackURL && !this._failed.has(tile.fallbackURL)) {
+            tile.url = tile.fallbackURL;
+            needTiles.set(tile.id, tile);
+            continue;
+          }
           hasHoles = true;   // url invalid or has failed in the past
         } else {
           needTiles.set(tile.id, tile);
@@ -220,31 +238,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       tileMap.set(tileID, tile);
 
       // Start loading the image
-      const image = new Image();
-      image.crossOrigin = 'anonymous';
-      image.src = tile.url;
-      tile.image = image;
       tile.loaded = false;
-
-      // After the image loads, allocate space for it in the texture atlas
-      image.onload = () => {
-        this._failed.delete(tile.url);
-        if (!tile.sprite || !tile.image) return;  // it's possible that the tile isn't needed anymore and got pruned
-
-        const w = tile.image.naturalWidth;
-        const h = tile.image.naturalHeight;
-        tile.sprite.texture = textureManager.allocate('tile', tile.sprite.label, w, h, tile.image);
-
-        tile.loaded = true;
-        tile.image = null;  // reference to `image` is held by the atlas, we can null it
-        this.gfx.deferredRedraw();
-      };
-
-      image.onerror = () => {
-        tile.image = null;
-        this._failed.add(tile.url);
-        this.gfx.deferredRedraw();
-      };
+      this.loadTile(tile, textureManager);
     }
 
 
@@ -308,6 +303,43 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       }
     }
 
+  }
+
+
+  loadTile(tile, textureManager) {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    tile.image = image;
+
+    // After the image loads, allocate space for it in the texture atlas
+    image.onload = () => {
+      this._failed.delete(tile.url);
+      if (!tile.sprite || !tile.image) return;  // it's possible that the tile isn't needed anymore and got pruned
+
+      const w = tile.image.naturalWidth;
+      const h = tile.image.naturalHeight;
+      tile.sprite.texture = textureManager.allocate('tile', tile.sprite.label, w, h, tile.image);
+
+      tile.loaded = true;
+      tile.image = null;  // reference to `image` is held by the atlas, we can null it
+      this.gfx.deferredRedraw();
+    };
+
+    image.onerror = () => {
+      const failedURL = tile.url;
+      this._failed.add(failedURL);
+
+      if (tile.fallbackURL && failedURL !== tile.fallbackURL && !this._failed.has(tile.fallbackURL)) {
+        tile.url = tile.fallbackURL;
+        this.loadTile(tile, textureManager);
+        return;
+      }
+
+      tile.image = null;
+      this.gfx.deferredRedraw();
+    };
+
+    image.src = tile.url;
   }
 
 
