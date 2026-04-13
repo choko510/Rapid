@@ -93,6 +93,7 @@ function buildDataAsync() {
 
       if (isDataBuildCached(signature)) {
         console.log(chalk.gray('↷   data build cache hit'));
+        clearGlobCache();
         return;
       }
 
@@ -174,6 +175,7 @@ function buildDataAsync() {
     .then(() => {
       console.timeEnd(END);
       console.log('');
+      clearGlobCache();
       _buildPromise = null;
     })
     .catch((err) => {
@@ -185,9 +187,27 @@ function buildDataAsync() {
 }
 
 
+// Cache for glob results to avoid repeated filesystem scans
+let _globCache = null;
+
+function getCachedGlob(pattern, options) {
+  if (!_globCache) {
+    _globCache = {};
+  }
+  const key = `${pattern}:${JSON.stringify(options || {})}`;
+  if (!_globCache[key]) {
+    _globCache[key] = globSync(pattern, options);
+  }
+  return _globCache[key];
+}
+
+function clearGlobCache() {
+  _globCache = null;
+}
+
 function getBuildSignature() {
   const files = new Set(signatureSourceFiles);
-  const dataFiles = globSync('data/**/*.json', {
+  const dataFiles = getCachedGlob('data/**/*.json', {
     ignore: [
       'data/languages.json',
       'data/territory_languages.json',
@@ -224,7 +244,7 @@ function isDataBuildCached(signature) {
   if (cachedSignature !== signature) return false;
 
   const expectedDistFiles = [];
-  for (const sourceFile of generatedSourceFiles.concat(globSync('data/**/*.json', {
+  for (const sourceFile of generatedSourceFiles.concat(getCachedGlob('data/**/*.json', {
     ignore: [
       'data/languages.json',
       'data/territory_languages.json',
@@ -245,7 +265,7 @@ function isDataBuildCached(signature) {
 
   if (!shell.test('-d', 'img') && !shell.test('-L', 'img')) return false;
 
-  return globSync('svg/fontawesome/*.svg').length > 0;
+  return getCachedGlob('svg/fontawesome/*.svg').length > 0;
 }
 
 

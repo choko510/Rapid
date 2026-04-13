@@ -18,7 +18,37 @@ if (process.argv[1].indexOf('build_css.js') > -1) {
   buildCSSAsync();
 }
 
-export function buildCSSAsync() {
+/**
+ * Get the maximum mtime from all CSS source files
+ */
+function getMaxSourceMtime(files) {
+  let max = 0;
+  for (const file of files) {
+    try {
+      const stat = fs.statSync(file);
+      if (stat.mtimeMs > max) max = stat.mtimeMs;
+    } catch {
+      // If file doesn't exist, force rebuild
+      return Infinity;
+    }
+  }
+  return max;
+}
+
+/**
+ * Check if CSS output is up-to-date compared to source files
+ */
+function isCSSUpToDate(sourceFiles, outputFile) {
+  try {
+    const outputStat = fs.statSync(outputFile);
+    const maxSourceMtime = getMaxSourceMtime(sourceFiles);
+    return outputStat.mtimeMs >= maxSourceMtime;
+  } catch {
+    return false;
+  }
+}
+
+export function buildCSSAsync(force = false) {
   if (_buildPromise) return _buildPromise;
 
   const START = '🏗   ' + chalk.yellow('Building css...');
@@ -29,13 +59,26 @@ export function buildCSSAsync() {
   console.time(END);
 
   return _buildPromise = glob('css/**/*.css')
-    .then(files => concatAsync(files.sort(), 'dist/rapid.css'))
-    .then(() => {
-      const css = fs.readFileSync('dist/rapid.css', 'utf8');
-      return postcss([ autoprefixer, prepend({ selector: '.ideditor ' }) ])
-        .process(css, { from: 'dist/rapid.css', to: 'dist/rapid.css' });
+    .then(files => {
+      const sortedFiles = files.sort();
+
+      // Skip if output is up-to-date and not forced
+      if (!force && isCSSUpToDate(sortedFiles, 'dist/rapid.css')) {
+        console.log(chalk.gray('↷   css is up-to-date'));
+        console.timeEnd(END);
+        console.log('');
+        _buildPromise = null;
+        return;
+      }
+
+      return concatAsync(sortedFiles, 'dist/rapid.css')
+        .then(() => {
+          const css = fs.readFileSync('dist/rapid.css', 'utf8');
+          return postcss([ autoprefixer, prepend({ selector: '.ideditor ' }) ])
+            .process(css, { from: 'dist/rapid.css', to: 'dist/rapid.css' });
+        })
+        .then(result => fs.writeFileSync('dist/rapid.css', result.css));
     })
-    .then(result => fs.writeFileSync('dist/rapid.css', result.css))
     .then(() => {
       console.timeEnd(END);
       console.log('');

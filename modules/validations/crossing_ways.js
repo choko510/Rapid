@@ -409,6 +409,8 @@ export function validationCrossingWays(context) {
    * @return {ValidationIssue}  The issue
    */
   function createIssue(crossing, graph) {
+    // Note: crossing.wayInfos order is deterministic - wayInfos[0] is always the
+    // way being validated, wayInfos[1] is the crossing way. No sorting needed.
     const entities = crossing.wayInfos.map(wayInfo => getTaggedEntityForWay(wayInfo.way, graph));
     const [entity1, entity2] = entities;
 

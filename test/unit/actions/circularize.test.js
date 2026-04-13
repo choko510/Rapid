@@ -14,11 +14,14 @@ describe('actionCircularize', () => {
     const centroid = Rapid.d3.polygonCentroid(points);
     const radius = Rapid.sdk.vecLength(centroid, points[0]);
     const pointCount = points.length - 1;
+    // Use regular polygon area formula (not πr²) since circularize creates
+    // a polygon with finite vertices, not a true circle.
+    // Formula: r² * n/2 * sin(2π/n) where n = vertex count
     const estArea = Math.pow(radius, 2) * pointCount / 2 * Math.sin(2 * Math.PI / pointCount);
     const trueArea = Math.abs(Rapid.d3.polygonArea(points));
     const pctDiff = Math.abs(estArea - trueArea) / estArea;
 
-    return pctDiff < 1e-3;
+    return pctDiff < 1e-3;  // within 0.1% of regular polygon area
   }
 
   function intersection(a, b) {
