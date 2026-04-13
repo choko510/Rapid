@@ -111,8 +111,9 @@ export function uiPresetList(context) {
 
     // update
     _list = listWrap.merge(listWrapEnter)
-      .selectAll('.preset-list-main')
-      .call(drawList, _defaultPresets);
+      .selectAll('.preset-list-main');
+
+    updateForSearch(_input.property('value') ?? '');
 
     // rebind event listener
     filters.off('filterchange', _checkFilteringRules);
@@ -169,8 +170,12 @@ export function uiPresetList(context) {
     }
 
     function inputevent() {
-      const val = _input.property('value');
-      _list.classed('filtered', val.length);
+      updateForSearch(_input.property('value'));
+    }
+
+    function updateForSearch(val) {
+      val = val ?? '';
+      _list.classed('filtered', !!val.length);
 
       const geometry = _geometries[0];
 
@@ -182,6 +187,7 @@ export function uiPresetList(context) {
         collection = _defaultPresets;
         messageText = l10n.t('inspector.choose');
       }
+
       _list.call(drawList, collection);
       message.text(messageText);
     }

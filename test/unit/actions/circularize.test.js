@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as Rapid from '../../../modules/headless.js';
+import { MAX_CIRCULARIZE_VERTICES, MIN_CIRCULARIZE_VERTICES } from '../../../modules/actions/circularize.js';
 
 
 describe('actionCircularize', () => {
@@ -8,15 +9,16 @@ describe('actionCircularize', () => {
   // https://github.com/d3/d3-geo#projection_translate
   const viewport = new Rapid.sdk.Viewport({ x: 480, y: 250, k: 150 });
 
-  function isCircular(id, graph) {
-    const points = graph.childNodes(graph.entity(id)).map(node => viewport.project(node.loc));
+  function isCircular(id, graph, testViewport = viewport) {
+    const points = graph.childNodes(graph.entity(id)).map(node => testViewport.project(node.loc));
     const centroid = Rapid.d3.polygonCentroid(points);
     const radius = Rapid.sdk.vecLength(centroid, points[0]);
-    const estArea = Math.PI * radius * radius;
+    const pointCount = points.length - 1;
+    const estArea = Math.pow(radius, 2) * pointCount / 2 * Math.sin(2 * Math.PI / pointCount);
     const trueArea = Math.abs(Rapid.d3.polygonArea(points));
-    const pctDiff = (estArea - trueArea) / estArea;
+    const pctDiff = Math.abs(estArea - trueArea) / estArea;
 
-    return (pctDiff < 0.025);   // within 2.5% of circular area..
+    return pctDiff < 1e-3;
   }
 
   function intersection(a, b) {
@@ -30,20 +32,6 @@ describe('actionCircularize', () => {
       delete seen[k];
       return exists;
     });
-  }
-
-  function angle(point1, point2, center) {
-    let vector1 = [point1[0] - center[0], point1[1] - center[1]];
-    let vector2 = [point2[0] - center[0], point2[1] - center[1]];
-    let distance;
-
-    distance = Rapid.sdk.vecLength(vector1, [0, 0]);
-    vector1 = [vector1[0] / distance, vector1[1] / distance];
-
-    distance = Rapid.sdk.vecLength(vector2, [0, 0]);
-    vector2 = [vector2[0] / distance, vector2[1] / distance];
-
-    return 180 / Math.PI * Math.acos(vector1[0] * vector2[0] + vector1[1] * vector2[1]);
   }
 
   function area(id, graph) {
@@ -71,7 +59,27 @@ describe('actionCircularize', () => {
     const result = Rapid.actionCircularize('-', viewport)(graph);
     assert.ok(result instanceof Rapid.Graph);
     assert.ok(isCircular('-', result));
-    assert.equal(result.entity('-').nodes.length, 20);
+    assert.equal(result.entity('-').nodes.length, MAX_CIRCULARIZE_VERTICES + 1);
+  });
+
+
+  it('creates fewer nodes for small features', () => {
+    //    d - c
+    //    |   |
+    //    a - b
+    const graph = new Rapid.Graph([
+      Rapid.osmNode({ id: 'a', loc: [0, 0] }),
+      Rapid.osmNode({ id: 'b', loc: [2e-5, 0] }),
+      Rapid.osmNode({ id: 'c', loc: [2e-5, 2e-5] }),
+      Rapid.osmNode({ id: 'd', loc: [0, 2e-5] }),
+      Rapid.osmWay({ id: '-', nodes: ['a', 'b', 'c', 'd', 'a'] })
+    ]);
+
+    const smallViewport = new Rapid.sdk.Viewport({ x: 480, y: 250, k: 150 * 1e5 });
+    const result = Rapid.actionCircularize('-', smallViewport)(graph);
+    assert.ok(result instanceof Rapid.Graph);
+    assert.ok(isCircular('-', result, smallViewport));
+    assert.equal(result.entity('-').nodes.length, MIN_CIRCULARIZE_VERTICES + 1);
   });
 
 
@@ -119,32 +127,6 @@ describe('actionCircularize', () => {
     assert.ok(isCircular('-', result));
     const dist = Rapid.sdk.vecLength(result.entity('d').loc, [2, -2]);
     assert.ok(dist < 0.5);
-  });
-
-
-  it('creates circle respecting min-angle limit', () => {
-    //    d ---- c
-    //    |      |
-    //    a ---- b
-    const graph = new Rapid.Graph([
-      Rapid.osmNode({id: 'a', loc: [0, 0]}),
-      Rapid.osmNode({id: 'b', loc: [2, 0]}),
-      Rapid.osmNode({id: 'c', loc: [2, 2]}),
-      Rapid.osmNode({id: 'd', loc: [0, 2]}),
-      Rapid.osmWay({id: '-', nodes: ['a', 'b', 'c', 'd', 'a']})
-    ]);
-
-    const result = Rapid.actionCircularize('-', viewport, 20)(graph);
-    assert.ok(result instanceof Rapid.Graph);
-    assert.ok(isCircular('-', result));
-
-    const points = result.childNodes(result.entity('-')).map(node => viewport.project(node.loc));
-    const centroid = Rapid.d3.polygonCentroid(points);
-
-    for (let i = 0; i < points.length - 1; i++) {
-      assert.ok(angle(points.at(i), points.at(i+1), centroid) <= 20);
-    }
-    assert.ok(angle(points.at(-2), points.at(0), centroid) <= 20);
   });
 
 
@@ -293,7 +275,7 @@ describe('actionCircularize', () => {
     assert.ok(result instanceof Rapid.Graph);
     assert.ok(isCircular('-', result));
     assert.equal(result.entity('-').isConvex(result), true);
-    assert.equal(result.entity('-').nodes.length, 20);
+    assert.equal(result.entity('-').nodes.length, MAX_CIRCULARIZE_VERTICES + 1);
   });
 
 
@@ -343,7 +325,7 @@ describe('actionCircularize', () => {
       ]);
       const result = Rapid.actionCircularize('-', viewport)(graph, 0);
       assert.equal(isCircular('-', result), false);
-      assert.equal(result.entity('-').nodes.length, 20);
+      assert.equal(result.entity('-').nodes.length, MAX_CIRCULARIZE_VERTICES + 1);
       assert.ok(closeTo(area('-', result), -4));
     });
 
@@ -357,8 +339,8 @@ describe('actionCircularize', () => {
       ]);
       const result = Rapid.actionCircularize('-', viewport)(graph, 0.5);
       assert.equal(isCircular('-', result), false);
-      assert.equal(result.entity('-').nodes.length, 20);
-      assert.ok(closeTo(area('-', result), -4.812));
+      assert.equal(result.entity('-').nodes.length, MAX_CIRCULARIZE_VERTICES + 1);
+      assert.ok(closeTo(area('-', result), -4.74));
     });
 
     it('circularize at t = 1', () => {
@@ -371,8 +353,8 @@ describe('actionCircularize', () => {
       ]);
       const result = Rapid.actionCircularize('-', viewport)(graph, 1);
       assert.ok(isCircular('-', result));
-      assert.equal(result.entity('-').nodes.length, 20);
-      assert.ok(closeTo(area('-', result), -6.168));
+      assert.equal(result.entity('-').nodes.length, MAX_CIRCULARIZE_VERTICES + 1);
+      assert.ok(closeTo(area('-', result), -6.24));
     });
   });
 

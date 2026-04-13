@@ -297,20 +297,38 @@ export function uiPopover(context, klass) {
 
         if (position) {
 
-            if (scrollNode && (placement === 'top' || placement === 'bottom')) {
+            if (scrollNode) {
+                var clipRect = scrollNode.getBoundingClientRect();
+                var popoverRect = popoverSelection.node().getBoundingClientRect();
+                var minMargin = 10;
 
-                var initialPosX = position.x;
-
-                if (position.x + popoverFrame.w > scrollNode.offsetWidth - 10) {
-                    position.x = scrollNode.offsetWidth - 10 - popoverFrame.w;
-                } else if (position.x < 10) {
-                    position.x = 10;
+                if (position.x + popoverRect.width > clipRect.width - minMargin) {
+                    position.x = clipRect.width - minMargin - popoverRect.width;
+                } else if (position.x < minMargin) {
+                    position.x = minMargin;
                 }
 
-                var arrow = anchor.selectAll('.popover-' + _id + ' > .popover-arrow');
-                // keep the arrow centered on the button, or as close as possible
-                var arrowPosX = Math.min(Math.max(popoverFrame.w / 2 - (position.x - initialPosX), 10), popoverFrame.w - 10);
-                arrow.style('left', ~~arrowPosX + 'px');
+                if (placement === 'top' || placement === 'bottom') {
+                    var initialPosX = anchorFrame.x + (anchorFrame.w - popoverRect.width) * alignFactor;
+                    var arrow = anchor.selectAll('.popover-' + _id + ' > .popover-arrow');
+                    // keep the arrow centered on the button, or as close as possible
+                    var arrowPosX = Math.min(Math.max(popoverRect.width / 2 - (position.x - initialPosX), minMargin), popoverRect.width - minMargin);
+                    arrow.style('left', ~~arrowPosX + 'px');
+                }
+
+                if (placement === 'left' || placement === 'right') {
+                    if (position.y + popoverRect.height > clipRect.height - minMargin) {
+                        position.y = clipRect.height - minMargin - popoverRect.height;
+                    } else if (position.y < minMargin) {
+                        position.y = minMargin;
+                    }
+
+                    var initialPosY = anchorFrame.y + (anchorFrame.h - popoverRect.height) * alignFactor;
+                    var arrowY = anchor.selectAll('.popover-' + _id + ' > .popover-arrow');
+                    // keep the arrow centered on the button, or as close as possible
+                    var arrowPosY = Math.min(Math.max(popoverRect.height / 2 - (position.y - initialPosY), minMargin), popoverRect.height - minMargin);
+                    arrowY.style('top', ~~arrowPosY + 'px');
+                }
             }
 
             popoverSelection.style('left', ~~position.x + 'px').style('top', ~~position.y + 'px');

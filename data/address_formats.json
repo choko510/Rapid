@@ -64,6 +64,21 @@
       ]
     },
     {
+      "countryCodes": ["md"],
+      "format": [
+        ["street", "housenumber"],
+        ["postcode", "city"]
+      ]
+    },
+    {
+      "countryCodes": ["ma"],
+      "format": [
+        ["housename"],
+        ["housenumber", "street+place"],
+        ["postcode", "city"]
+      ]
+    },
+    {
       "countryCodes": ["nz"],
       "format": [
         ["housenumber", "street"],

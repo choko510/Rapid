@@ -1,24 +1,36 @@
 import { ValidationIssue, ValidationFix } from '../core/lib/index.js';
 
 
+const incompatibleRules = [
+  {
+    id: 'amap',
+    regex: /(amap|autonavi|mapabc|高德)/i
+  }, {
+    id: 'baidu',
+    regex: /(baidu|mapbar|百度)/i
+  }, {
+    id: 'google',
+    regex: /google/i,
+    exceptRegex: /((books|drive)\.google|google\s?(books|drive|plus))|(esri\/google)/i
+  }
+];
+
+
+export function getIncompatibleSources(str) {
+  if (typeof str !== 'string' || !str.length) return [];
+
+  return incompatibleRules.filter(rule => {
+    if (!rule.regex.test(str)) return false;
+    if (rule.exceptRegex?.test(str)) return false;
+    return true;
+  });
+}
+
+
 export function validationIncompatibleSource(context) {
   const type = 'incompatible_source';
   const editor = context.systems.editor;
   const l10n = context.systems.l10n;
-
-  const incompatibleRules = [
-    {
-      id: 'amap',
-      regex: /(amap|autonavi|mapabc|高德)/i
-    }, {
-      id: 'baidu',
-      regex: /(baidu|mapbar|百度)/i
-    }, {
-      id: 'google',
-      regex: /google/i,
-      exceptRegex: /((books|drive)\.google|google\s?(books|drive|plus))|(esri\/google)/i
-    }
-  ];
 
 
   const validation = function checkIncompatibleSource(entity) {
@@ -28,16 +40,8 @@ export function validationIncompatibleSource(context) {
     const entityID = entity.id;
 
     return entitySources
-      .map(source => {
-        const matchRule = incompatibleRules.find(rule => {
-          if (!rule.regex.test(source)) return false;
-          if (rule.exceptRegex && rule.exceptRegex.test(source)) return false;
-          return true;
-        });
-
-        if (!matchRule) return null;
-
-        return new ValidationIssue(context, {
+      .flatMap(source => getIncompatibleSources(source)
+        .map(matchRule => new ValidationIssue(context, {
           type: type,
           severity: 'warning',
           message: () => {
@@ -56,9 +60,8 @@ export function validationIncompatibleSource(context) {
               new ValidationFix({ title: l10n.t('issues.fix.remove_proprietary_data.title') })
             ];
           }
-        });
-
-      }).filter(Boolean);
+        }))
+      );
 
 
       function getReference(id) {

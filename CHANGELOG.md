@@ -39,6 +39,57 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [id-tagging-schema#xxxx]: https://github.com/openstreetmap/id-tagging-schema/issues/xxxx
 [@xxxx]: https://github.com/xxxx
 -->
+# Unreleased
+
+#### :bug: Bugfixes
+* [iD#12070] Fix: Preserve non-preset tags when re-selecting the same preset.
+* [iD#12118] Fix: Stabilize crossing-ways feature ordering in validation issue data.
+* [iD#12139] Circularize now chooses vertex count dynamically for small and large features.
+* [iD#12141] Render `landuse=basin` with water styling.
+* [iD#12040] Assume `foot=yes` placeholder on `highway=living_street`.
+* [iD#12050] Fix: Preset list header message now updates correctly with search state changes.
+* [iD#11810] Fill recent preset defaults with location-valid entries before applying recent limits.
+* [iD#11965] Add Moldova (`md`) phone number format example.
+* [iD#11976] Add Moldova (`md`) address format.
+* [iD#11977] Simplify merge shortcut wording in keyboard shortcut help.
+* [iD#11881] Keep over-map popovers/tooltips clipped within horizontal and vertical map bounds.
+* [iD#9545] Increase visible recent presets to 8.
+* [iD#10904] Prefer territory-level phone hints, with country-level fallback.
+* [iD#11214] Show "Add new tag" placeholder on blank raw-tag rows.
+* [iD#11300] Preserve explicit `layer=0` when editing structure fields.
+* [iD#11319] Add Korean (`kr`) and North Korean (`kp`) phone number format examples.
+* [iD#11698] Add Morocco (`ma`) address format.
+* [iD#11865] Skip disconnected-way warnings for golf walking/cart paths.
+* [iD#11388] Block oversize uploads using API-reported maximum changeset elements.
+* [iD#11334] Expand incompatible-source warnings in the changeset editor and warning counters.
+* [iD#11431] Keep restriction editor icon/text colors consistent.
+* [iD#11590] Keep mismatched-geometry warning labels on the original target geometry.
+* [iD#11657] Let annotation icons inherit label color styling.
+
+[iD#9545]: https://github.com/openstreetmap/iD/pull/9545
+[iD#10904]: https://github.com/openstreetmap/iD/pull/10904
+[iD#11214]: https://github.com/openstreetmap/iD/pull/11214
+[iD#11300]: https://github.com/openstreetmap/iD/pull/11300
+[iD#11319]: https://github.com/openstreetmap/iD/pull/11319
+[iD#11334]: https://github.com/openstreetmap/iD/pull/11334
+[iD#11388]: https://github.com/openstreetmap/iD/pull/11388
+[iD#11431]: https://github.com/openstreetmap/iD/pull/11431
+[iD#11590]: https://github.com/openstreetmap/iD/pull/11590
+[iD#11657]: https://github.com/openstreetmap/iD/pull/11657
+[iD#11698]: https://github.com/openstreetmap/iD/pull/11698
+[iD#11810]: https://github.com/openstreetmap/iD/pull/11810
+[iD#11881]: https://github.com/openstreetmap/iD/pull/11881
+[iD#11865]: https://github.com/openstreetmap/iD/pull/11865
+[iD#11965]: https://github.com/openstreetmap/iD/pull/11965
+[iD#11976]: https://github.com/openstreetmap/iD/pull/11976
+[iD#11977]: https://github.com/openstreetmap/iD/pull/11977
+[iD#12040]: https://github.com/openstreetmap/iD/pull/12040
+[iD#12050]: https://github.com/openstreetmap/iD/issues/12050
+[iD#12070]: https://github.com/openstreetmap/iD/issues/12070
+[iD#12118]: https://github.com/openstreetmap/iD/pull/12118
+[iD#12139]: https://github.com/openstreetmap/iD/pull/12139
+[iD#12141]: https://github.com/openstreetmap/iD/pull/12141
+
 # [2.5.6](https://github.com/facebook/Rapid/releases/tag/rapid-2.5.6)
 #### 2026-Feb-03
 

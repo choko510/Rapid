@@ -175,8 +175,17 @@ export function uiFieldText(context, uifield) {
     if (input.empty() || !Object.keys(_phoneFormats).length) return;
 
     const extent = uifield.entityExtent;
-    const countryCode = extent && iso1A2Code(extent.center());
-    const format = countryCode && _phoneFormats[countryCode.toLowerCase()];
+    const countryCode = extent && iso1A2Code(extent.center(), { level: 'territory' });
+    if (!countryCode) return;
+
+    let format = _phoneFormats[countryCode.toLowerCase()];
+    if (!format) {
+      const sovereignCountryCode = iso1A2Code(extent.center());
+      if (sovereignCountryCode && sovereignCountryCode !== countryCode) {
+        format = _phoneFormats[sovereignCountryCode.toLowerCase()];
+      }
+    }
+
     if (format) input.attr('placeholder', format);
   }
 

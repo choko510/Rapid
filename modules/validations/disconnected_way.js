@@ -155,6 +155,11 @@ export function validationDisconnectedWay(context) {
 
 
     function isRoutableWay(way, ignoreInnerWays) {
+      if (way.tags.golf === 'path' || way.tags.golf === 'cartpath') {
+        // Golf walking/cart paths are often intentionally disconnected.
+        return false;
+      }
+
       if (isTaggedAsHighway(way) || way.tags.route === 'ferry') return true;
 
       return graph.parentRelations(way).some(parentRelation => {

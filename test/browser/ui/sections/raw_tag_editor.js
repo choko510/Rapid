@@ -66,6 +66,13 @@ describe('uiSectionRawTagEditor', () => {
   });
 
 
+  it('shows "Add new tag" placeholder on the blank key row', () => {
+    wrap.remove();
+    render({});
+    expect(wrap.select('.tag-list').select('input.key').attr('placeholder')).to.eql('inspector.add_tag');
+  });
+
+
   it('adds tags when clicking the add button', done => {
     happen.click(wrap.selectAll('button.add-tag').node());
     window.setTimeout(() => {

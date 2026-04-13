@@ -37,6 +37,7 @@ export class OsmService extends AbstractSystem {
 
     // Some defaults that we will replace with whatever we fetch from the OSM API capabilities result.
     this._maxWayNodes = 2000;
+    this._maxChangesetElements = 10000;
     this._imageryBlocklists = [/.*\.google(apis)?\..*\/(vt|kh)[\?\/].*([xyz]=.*){3}.*/];
     this._wwwroot = 'https://www.openstreetmap.org';
     this._apiroot = 'https://api.openstreetmap.org';
@@ -247,6 +248,11 @@ export class OsmService extends AbstractSystem {
   // Returns the maximum number of nodes a single way can have
   get maxWayNodes() {
     return this._maxWayNodes;
+  }
+
+  // Returns the maximum number of elements a changeset can contain
+  get maxChangesetElements() {
+    return this._maxChangesetElements;
   }
 
 
@@ -1841,6 +1847,12 @@ export class OsmService extends AbstractSystem {
       this._maxWayNodes = maxWayNodes;
     }
 
+    // Update max elements per changeset
+    const maxChangesetElements = json.api?.changesets?.maximum_elements;
+    if (maxChangesetElements && isFinite(maxChangesetElements)) {
+      this._maxChangesetElements = maxChangesetElements;
+    }
+
     // Return status
     const apiStatus = json.api.status.api;  // 'online', 'readonly', or 'offline'
     return apiStatus;
@@ -1869,6 +1881,13 @@ export class OsmService extends AbstractSystem {
     const maxWayNodes = waynodes.length && parseInt(waynodes[0].getAttribute('maximum'), 10);
     if (maxWayNodes && isFinite(maxWayNodes)) {
       this._maxWayNodes = maxWayNodes;
+    }
+
+    // Update max elements per changeset
+    const changesets = xml.getElementsByTagName('changesets');
+    const maxChangesetElements = changesets.length && parseInt(changesets[0].getAttribute('maximum_elements'), 10);
+    if (maxChangesetElements && isFinite(maxChangesetElements)) {
+      this._maxChangesetElements = maxChangesetElements;
     }
 
     // Return status

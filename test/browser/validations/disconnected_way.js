@@ -160,4 +160,16 @@ describe('validationDisconnectedWay', () => {
     expect(issues).to.have.lengthOf(0);
   });
 
+  it('ignores disconnected golf walking path', () => {
+    createDisconnectedWay({ highway: 'footway', golf: 'path' });
+    const issues = validate();
+    expect(issues).to.have.lengthOf(0);
+  });
+
+  it('ignores disconnected golf cartpath', () => {
+    createDisconnectedWay({ highway: 'path', golf: 'cartpath' });
+    const issues = validate();
+    expect(issues).to.have.lengthOf(0);
+  });
+
 });

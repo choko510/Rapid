@@ -11,6 +11,7 @@ import { uiSectionChanges } from './sections/changes.js';
 import { uiCommitWarnings } from './commit_warnings.js';
 import { uiSectionRawTagEditor } from './sections/raw_tag_editor.js';
 import { utilDetect, utilRebind } from '../util/index.js';
+import { getIncompatibleSources } from '../validations/incompatible_source.js';
 
 
 const readOnlyTags = [
@@ -59,7 +60,6 @@ export function uiCommit(context) {
     // Initialize changeset if one does not exist yet.
     if (!uploader.changeset) initChangeset();
 
-    updateSessionChangesetTags();
     selection.call(render);
   }
 
@@ -293,6 +293,10 @@ export function uiCommit(context) {
       .warning
       .filter(issue => issue.type !== 'help_request');    // exclude 'fixme' and similar - iD#8603
 
+    // also include "incompatible_source" warnings caused by changeset tags
+    [ ...getIncompatibleSources(tags.comment), ...getIncompatibleSources(tags.source) ]
+      .forEach(() => warnings.push({ type: 'incompatible_source' }));
+
     _addIssueCounts(warnings, 'warnings');
 
     // add counts of issues resolved by the user's edits
@@ -325,6 +329,7 @@ export function uiCommit(context) {
   function render(selection) {
     const osm = context.services.osm;
     if (!osm) return;
+    updateSessionChangesetTags();
 
     let header = selection.selectAll('.header')
       .data([0]);
@@ -565,6 +570,19 @@ export function uiCommit(context) {
 
 
   function getUploadBlockerMessage() {
+    const osm = context.services.osm;
+    const maxChangesetElements = osm?.maxChangesetElements;
+    if (isFinite(maxChangesetElements)) {
+      const changes = editor.changes();
+      const changesetElements = changes.created.length + changes.modified.length + changes.deleted.length;
+      if (changesetElements > maxChangesetElements) {
+        return l10n.t('commit.max_changeset_elements_message', {
+          changesetElements: changesetElements,
+          maxChangesetElements: maxChangesetElements
+        });
+      }
+    }
+
     const errors = validator
       .getIssuesBySeverity({ what: 'edited', where: 'all' }).error;
 

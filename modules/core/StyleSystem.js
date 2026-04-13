@@ -373,6 +373,7 @@ export class StyleSystem extends AbstractSystem {
         unclassified_link: 'unclassified'
       },
       landuse: {
+        basin: 'blue',
         cemetery: 'lightgreen',
         commercial: 'orange',
         construction: 'gold',

@@ -4,14 +4,39 @@ import {
     polygonHull as d3_polygonHull,
     polygonCentroid as d3_polygonCentroid
 } from 'd3-polygon';
-import { vecInterp, vecLength, vecLengthSquare } from '@rapid-sdk/math';
+import { geoSphericalDistance, vecInterp, vecLength } from '@rapid-sdk/math';
 import { utilArrayUniq } from '@rapid-sdk/util';
 
 import { osmNode } from '../osm/node.js';
 
 
+const MAX_SEGMENT_LENGTH = 4;
+export const MIN_CIRCULARIZE_VERTICES = 12;
+export const MAX_CIRCULARIZE_VERTICES = 32;
+
+
 export function actionCircularize(wayId, viewport, maxAngle) {
-    maxAngle = (maxAngle || 20) * Math.PI / 180;
+    const hasMaxAngleOverride = Number.isFinite(maxAngle);
+    const maxAngleOverride = hasMaxAngleOverride ? maxAngle * Math.PI / 180 : null;
+
+    function getMaxAngle(centroid, radius) {
+        if (hasMaxAngleOverride) {
+            return maxAngleOverride;
+        }
+
+        const centroidLoc = viewport.unproject(centroid);
+        const radiusLoc = viewport.unproject([centroid[0] + radius, centroid[1]]);
+        const radiusMeters = geoSphericalDistance(centroidLoc, radiusLoc);
+        const vertexCount = Math.min(
+            MAX_CIRCULARIZE_VERTICES,
+            Math.max(
+                MIN_CIRCULARIZE_VERTICES,
+                Math.round((radiusMeters * Math.PI) / MAX_SEGMENT_LENGTH) * 2
+            )
+        );
+
+        return (Math.PI * 2) / (vertexCount - 1);
+    }
 
 
     var action = function(graph, t) {
@@ -35,6 +60,7 @@ export function actionCircularize(wayId, viewport, maxAngle) {
         var keyPoints = keyNodes.map(function(n) { return viewport.project(n.loc); });
         var centroid = (points.length === 2) ? vecInterp(points[0], points[1], 0.5) : d3_polygonCentroid(points);
         var radius = d3_median(points, function(p) { return vecLength(centroid, p); });
+        var maxAngleForWay = getMaxAngle(centroid, radius);
         var sign = d3_polygonArea(points) > 0 ? 1 : -1;
         var ids, i, j, k;
 
@@ -98,7 +124,7 @@ export function actionCircularize(wayId, viewport, maxAngle) {
             do {
                 numberNewPoints++;
                 eachAngle = totalAngle / (indexRange + numberNewPoints);
-            } while (Math.abs(eachAngle) > maxAngle);
+            } while (Math.abs(eachAngle) > maxAngleForWay);
 
 
             // move existing nodes
@@ -238,17 +264,18 @@ export function actionCircularize(wayId, viewport, maxAngle) {
             return false;
         }
         var centroid = d3_polygonCentroid(points);
-        var radius = vecLengthSquare(centroid, points[0]);
+        var radius = d3_median(points, function(p) { return vecLength(centroid, p); });
+        var maxAngleForWay = getMaxAngle(centroid, radius);
 
         var i, actualPoint;
 
         // compare distances between centroid and points
         for (i = 0; i < hull.length; i++){
             actualPoint = hull[i];
-            var actualDist = vecLengthSquare(actualPoint, centroid);
+            var actualDist = vecLength(actualPoint, centroid);
             var diff = Math.abs(actualDist - radius);
             //compare distances with epsilon-error (5%)
-            if (diff > 0.05*radius) {
+            if (diff > 0.05 * radius) {
                 return false;
             }
         }
@@ -267,7 +294,7 @@ export function actionCircularize(wayId, viewport, maxAngle) {
                 angle = (2*Math.PI - angle);
             }
 
-            if (angle > maxAngle + epsilonAngle) {
+            if (angle > maxAngleForWay + epsilonAngle) {
                 return false;
             }
         }

@@ -40,4 +40,24 @@ describe('actionChangePreset', () => {
     assert.ok(result instanceof Rapid.Graph);
     assert.deepEqual(result.entity(entity.id).tags, {});
   });
+
+  it('preserves non-preset tags when re-selecting the same preset', () => {
+    const entity = Rapid.osmNode({ tags: { building: 'yes', name: 'The Frog House' } });
+    const graph = new Rapid.Graph([entity]);
+
+    let unsetCalled = false;
+    const samePreset = {
+      id: 'building/yes',
+      addTags: { building: 'yes' },
+      unsetTags: () => {
+        unsetCalled = true;
+        return {};
+      },
+      setTags: tags => ({ ...tags, building: 'yes' })
+    };
+
+    const result = Rapid.actionChangePreset(entity.id, samePreset, samePreset)(graph);
+    assert.equal(unsetCalled, false);
+    assert.deepEqual(result.entity(entity.id).tags, { building: 'yes', name: 'The Frog House' });
+  });
 });

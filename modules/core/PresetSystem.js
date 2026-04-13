@@ -7,7 +7,7 @@ import { uiFields } from '../ui/fields/index.js';
 
 const VERBOSE = true;        // warn about v6 preset features we don't support currently
 const MAXRECENTS = 30;       // how many recents to store in localstorage
-const MAXRECENTS_SHOW = 6;   // how many recents to show on the preset list
+const MAXRECENTS_SHOW = 8;   // how many recents to show on the preset list
 
 
 /**
@@ -488,12 +488,15 @@ if (c.icon) c.icon = c.icon.replace(/^iD-/, 'rapid-');
    */
   defaults(geometry, limit = 10, startWithRecents = true, loc = null) {
     let results = new Map();   // Map (itemID -> item)  (may be a Preset or a Category)
+    const locations = this.context.systems.locations;
+    const validHere = Array.isArray(loc) ? locations.locationSetsAt(loc) : null;
 
     if (startWithRecents) {
       for (const preset of this.getRecents()) {
-        if (results.size < MAXRECENTS_SHOW && preset.matchGeometry(geometry)) {
-          results.set(preset.id, preset);
-        }
+        if (results.size >= MAXRECENTS_SHOW) break;
+        if (!preset.matchGeometry(geometry)) continue;
+        if (validHere && preset.locationSetID && !validHere[preset.locationSetID]) continue;
+        results.set(preset.id, preset);
       }
     }
 
@@ -520,9 +523,7 @@ if (c.icon) c.icon = c.icon.replace(/^iD-/, 'rapid-');
 
     // If a location was provided, filter results to only those valid here.
     let arr = [...results.values()];
-    if (Array.isArray(loc)) {
-      const locations = this.context.systems.locations;
-      const validHere = locations.locationSetsAt(loc);
+    if (validHere) {
       arr = arr.filter(item => !item.locationSetID || validHere[item.locationSetID]);
     }
 

@@ -284,4 +284,74 @@ describe('PresetSystem', () => {
     });
   });
 
+
+  describe('#defaults', () => {
+    it('fills recents with location-valid presets before applying recent limits', () => {
+      const presets = new Rapid.PresetSystem(context);
+
+      const makePreset = (id, locationSetID) => ({
+        id: id,
+        locationSetID: locationSetID,
+        matchGeometry: (geometry) => geometry === 'point'
+      });
+
+      presets.getRecents = () => [
+        makePreset('recents-1-blocked', 'blocked_1'),
+        makePreset('recents-2-blocked', 'blocked_2'),
+        makePreset('recents-3-valid', 'allowed_1'),
+        makePreset('recents-4-valid', 'allowed_2'),
+        makePreset('recents-5-global', undefined)
+      ];
+
+      presets._defaults.point = [];
+      presets.fallback = () => null;
+
+      const locations = context.systems.locations;
+      const originalLocationSetsAt = locations.locationSetsAt;
+      locations.locationSetsAt = () => ({ allowed_1: true, allowed_2: true });
+
+      try {
+        const resultIDs = presets.defaults('point', Infinity, true, [0, 0]).array.map(item => item.id);
+        expect(resultIDs).to.eql(['recents-3-valid', 'recents-4-valid', 'recents-5-global']);
+      } finally {
+        locations.locationSetsAt = originalLocationSetsAt;
+      }
+    });
+
+    it('shows up to 8 recent presets', () => {
+      const presets = new Rapid.PresetSystem(context);
+      const makePreset = id => ({
+        id: id,
+        matchGeometry: geometry => geometry === 'point'
+      });
+
+      presets.getRecents = () => [
+        makePreset('recent-1'),
+        makePreset('recent-2'),
+        makePreset('recent-3'),
+        makePreset('recent-4'),
+        makePreset('recent-5'),
+        makePreset('recent-6'),
+        makePreset('recent-7'),
+        makePreset('recent-8'),
+        makePreset('recent-9')
+      ];
+
+      presets._defaults.point = [];
+      presets.fallback = () => null;
+
+      const resultIDs = presets.defaults('point', Infinity, true, null).array.map(item => item.id);
+      expect(resultIDs).to.eql([
+        'recent-1',
+        'recent-2',
+        'recent-3',
+        'recent-4',
+        'recent-5',
+        'recent-6',
+        'recent-7',
+        'recent-8'
+      ]);
+    });
+  });
+
 });

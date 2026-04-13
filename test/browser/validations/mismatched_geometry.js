@@ -4,13 +4,18 @@ describe('validationMismatchedGeometry', () => {
 
   class MockLocalizationSystem {
     constructor() {}
-    displayLabel(entity)  { return entity.id; }
-    t(id)                 { return id; }
+    displayLabel(entity, geometry)  { return geometry || entity.id; }
+    t(id, replacements)             { return replacements?.feature || id; }
   }
 
   class MockStorageSystem {
     constructor() { }
     getItem() { return ''; }
+  }
+
+  class MockEditorSystem {
+    constructor() {}
+    get staging() { return { graph: graph }; }
   }
 
   class MockUrlSystem {
@@ -25,6 +30,7 @@ describe('validationMismatchedGeometry', () => {
     constructor() {
       this.systems = {
         assets:     new Rapid.AssetSystem(this),
+        editor:     new MockEditorSystem(),
         l10n:       new MockLocalizationSystem(),
         locations:  new Rapid.LocationSystem(this),
         presets:    new Rapid.PresetSystem(this),
@@ -45,6 +51,10 @@ describe('validationMismatchedGeometry', () => {
       building: {
         tags: { building: '*' },
         geometry: ['area']
+      },
+      chicane: {
+        tags: { traffic_calming: 'chicane' },
+        geometry: ['vertex']
       },
       desert_library: {
         tags: { amenity: 'library' },
@@ -179,6 +189,13 @@ describe('validationMismatchedGeometry', () => {
       const issues = validate();
       expect(issues).to.have.lengthOf(0);
     });
+  });
+
+  it('uses the original target geometry in the warning label for vertex-only presets', () => {
+    createOpenWay({ traffic_calming: 'chicane' });
+    const issues = validate();
+    expect(issues).to.have.lengthOf(1);
+    expect(issues[0].message()).to.eql('vertex');
   });
 
   it('flags open way with both area and line tags', () => {

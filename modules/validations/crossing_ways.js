@@ -409,20 +409,6 @@ export function validationCrossingWays(context) {
    * @return {ValidationIssue}  The issue
    */
   function createIssue(crossing, graph) {
-    // use the entities with the tags that define the feature type
-    crossing.wayInfos.sort((way1Info, way2Info) => {
-      const type1 = way1Info.featureType;
-      const type2 = way2Info.featureType;
-      if (type1 === type2) {
-        return l10n.displayLabel(way1Info.way, graph) > l10n.displayLabel(way2Info.way, graph);
-      } else if (type1 === 'waterway') {
-        return true;
-      } else if (type2 === 'waterway') {
-        return false;
-      }
-      return type1 < type2;
-    });
-
     const entities = crossing.wayInfos.map(wayInfo => getTaggedEntityForWay(wayInfo.way, graph));
     const [entity1, entity2] = entities;
 

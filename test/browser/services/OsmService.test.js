@@ -826,5 +826,14 @@ describe('OsmService', () => {
       });
     });
 
+    describe('#maxChangesetElements', () => {
+      it('updates max changeset elements from capabilities', done => {
+        _osm.status(() => {
+          expect(_osm.maxChangesetElements).to.eql(10000);
+          done();
+        });
+      });
+    });
+
   });
 });

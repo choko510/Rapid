@@ -241,7 +241,11 @@ export function uiSectionRawTagEditor(context, id) {
         }
 
         row.select('.inner-wrap')      // propagate bound data
-          .call(reference.button);
+          .call(reference.button)
+          .select('.tag-reference-button')
+          .attr('tabindex', -1)
+          .classed('disabled', d => d.key === '')
+          .attr('disabled', d => d.key === '' ? 'disabled' : null);
 
         row.call(reference.body);
 
@@ -250,6 +254,7 @@ export function uiSectionRawTagEditor(context, id) {
 
     items.selectAll('input.key')
       .attr('title', d => d.key)
+      .attr('placeholder', d => d.key === '' ? l10n.t('inspector.add_tag') : null)
       .attr('readonly', d => isReadOnlyTag(d) || isMultiValueTag(d) || null)
       .call(utilGetSetValue, d => d.key);
 

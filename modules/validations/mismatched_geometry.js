@@ -244,7 +244,7 @@ export function validationMismatchedGeometry(context) {
 
         var asSource = presets.match(entity, graph);
 
-        var targetGeom = targetGeoms.find(nodeGeom => {
+        const originalTargetGeom = targetGeoms.find(nodeGeom => {
             var asTarget = presets.matchTags(entity.tags, nodeGeom, loc);
             // sometimes there are two presets with the same tags for different geometries
             if (!asSource || !asTarget || asSource === asTarget || deepEqual(asSource.tags, asTarget.tags)) return false;
@@ -261,6 +261,7 @@ export function validationMismatchedGeometry(context) {
             return asSource.isFallback() || asSource.tags[primaryKey] === '*';
         });
 
+        let targetGeom = originalTargetGeom;
         if (!targetGeom) return null;
 
         var subtype = targetGeom + '_as_' + sourceGeom;
@@ -286,7 +287,7 @@ export function validationMismatchedGeometry(context) {
                 const graph = editor.staging.graph;
                 const entity = graph.hasEntity(this.entityIds[0]);
                 return entity ? l10n.t('issues.' + referenceId + '.message', {
-                    feature: l10n.displayLabel(entity, targetGeom, true /* verbose */)
+                    feature: l10n.displayLabel(entity, originalTargetGeom, true /* verbose */)
                 }) : '';
             },
             reference: function showReference(selection) {

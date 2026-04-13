@@ -121,7 +121,8 @@ export function uiEditMenu(context) {
           .attr('class', 'label');
       }
 
-      const tooltip = uiTooltip(context);
+      const tooltip = uiTooltip(context)
+        .scrollContainer(context.container().select('.over-map'));
       _tooltips.set(d.id, tooltip);
       buttonEnter
         .call(tooltip);

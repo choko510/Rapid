@@ -60,7 +60,7 @@ describe('uiFieldAccess', () => {
   });
 
 
-  it('sets foot placeholder to "yes" for steps and pedestrian', () => {
+  it('sets foot placeholder to "yes" for steps, pedestrian, and living_street', () => {
     const access = Rapid.uiFieldAccess(context, field);
     selection.call(access);
 
@@ -68,6 +68,9 @@ describe('uiFieldAccess', () => {
     expect(selection.selectAll('.preset-input-access-foot').attr('placeholder')).to.equal('yes');
 
     access.tags({ highway: 'pedestrian' });
+    expect(selection.selectAll('.preset-input-access-foot').attr('placeholder')).to.equal('yes');
+
+    access.tags({ highway: 'living_street' });
     expect(selection.selectAll('.preset-input-access-foot').attr('placeholder')).to.equal('yes');
   });
 

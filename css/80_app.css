@@ -1339,7 +1339,6 @@ a.hide-toggle {
 
 .label-text .label-textannotation svg.icon {
     margin: 0 8px;
-    color: #333;
     opacity: 0.5;
     width: 14px;
     height: 14px;
@@ -2056,6 +2055,7 @@ a.hide-toggle {
 
 .form-field-input-restrictions .restriction-container {
     position: relative;
+    color: #333;
     height: 370px;
 }
 /* zero width space, so container takes up space */

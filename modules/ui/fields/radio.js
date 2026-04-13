@@ -223,9 +223,6 @@ export function uiFieldRadio(context, uifield) {
 
 
     function changeLayer(t, onInput) {
-        if (t.layer === '0') {
-            t.layer = undefined;
-        }
         dispatch.call('change', this, t, onInput);
     }
 

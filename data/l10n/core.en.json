@@ -941,10 +941,14 @@
       "created": "Created",
       "outstanding_errors_message": "Please resolve all errors first. {count} remaining.",
       "comment_needed_message": "Please add a changeset comment first.",
+      "max_changeset_elements_message": "You've edited {changesetElements} elements in this changeset, but the maximum allowed is {maxChangesetElements}. Export your changes as an osmChange file and upload them with another editor.",
       "about_changeset_comments": "About changeset comments",
       "about_changeset_comments_link": "//wiki.openstreetmap.org/wiki/Good_changeset_comments",
-      "google_warning": "You mentioned Google in this comment: remember that copying from Google Maps is strictly forbidden.",
-      "google_warning_link": "https://www.openstreetmap.org/copyright"
+      "changeset_incompatible_source": {
+        "comment": "You mentioned \"{value}\" in this changeset comment.",
+        "source": "You mentioned \"{value}\" as a source of this changeset.",
+        "link": "https://www.openstreetmap.org/copyright"
+      }
     },
     "contributors": {
       "list": "Edits by {users}",
@@ -1041,6 +1045,7 @@
       "features": "Features",
       "title_count": "{title} ({count})",
       "add_to_relation": "Add to a relation",
+      "add_tag": "Add new tag",
       "new_relation": "New relation...",
       "choose_relation": "Choose a parent relation",
       "role": "Role",
@@ -3465,7 +3470,7 @@
           "key": "A"
         },
         "merge": {
-          "label": "Combine (merge) selected features",
+          "label": "Merge selected features",
           "key": "C"
         },
         "disconnect": {

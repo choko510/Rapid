@@ -78,6 +78,7 @@ export function uiPane(context, id) {
     if (!_paneTooltip) {
       const isRTL = l10n.isRTL();
       _paneTooltip = uiTooltip(context)
+        .scrollContainer(context.container().select('.over-map'))
         .placement(isRTL ? 'right' : 'left')
         .title(_description)
         .shortcut(_key);

@@ -1,4 +1,5 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
+import { select as d3_select } from 'd3-selection';
 import { utilArrayUniqBy } from '@rapid-sdk/util';
 
 import { uiIcon } from './icon.js';
@@ -6,6 +7,7 @@ import { uiCombobox} from './combobox.js';
 import { UiField } from './UiField.js';
 import { uiFormFields } from './form_fields.js';
 import { utilRebind, utilTriggerEvent } from '../util/index.js';
+import { getIncompatibleSources } from '../validations/incompatible_source.js';
 
 
 export function uiChangesetEditor(context) {
@@ -86,34 +88,73 @@ export function uiChangesetEditor(context) {
             }
         }
 
-        // Add warning if comment mentions Google
-        var hasGoogle = _tags.comment.match(/google/i);
-        var commentWarning = selection.select('.form-field-comment').selectAll('.comment-warning')
-            .data(hasGoogle ? [0] : []);
+        renderWarnings(
+            findIncompatibleSources(_tags.comment, 'comment'),
+            selection.select('.form-field-comment'),
+            'comment-warning'
+        );
 
-        commentWarning.exit()
-            .transition()
-            .duration(200)
-            .style('opacity', 0)
-            .remove();
+        renderWarnings(
+            findIncompatibleSources(_tags.source, 'source'),
+            selection.select('.form-field-source'),
+            'source-warning'
+        );
 
-        var commentEnter = commentWarning.enter()
-            .insert('div', '.tag-reference-body')
-            .attr('class', 'field-warning comment-warning')
-            .style('opacity', 0);
+        function findIncompatibleSources(str, which) {
+            return getIncompatibleSources(str).map(rule => {
+                const match = rule.regex.exec(str);
+                const value = match?.[1] || match?.[0] || '';
+                return {
+                    id: `incompatible_source.${which}.${rule.id}.${value.toLowerCase()}`,
+                    msg: (selection) => {
+                        selection
+                            .append('span')
+                            .text(l10n.t(`commit.changeset_incompatible_source.${which}`, { value: value }));
 
-        commentEnter
-            .append('a')
-            .attr('target', '_blank')
-            .call(uiIcon('#rapid-icon-alert', 'inline'))
-            .attr('href', l10n.t('commit.google_warning_link'))
-            .append('span')
-            .text(l10n.t('commit.google_warning'));
+                        selection
+                            .append('br');
 
-        commentEnter
-            .transition()
-            .duration(200)
-            .style('opacity', 1);
+                        selection
+                            .append('a')
+                            .attr('target', '_blank')
+                            .attr('href', l10n.t('commit.changeset_incompatible_source.link'))
+                            .text(l10n.t(`issues.incompatible_source.reference.${rule.id}`));
+                    }
+                };
+            });
+        }
+
+        function renderWarnings(warnings, $selection, klass) {
+            var entries = $selection.selectAll('.' + klass)
+                .data(warnings, d => d.id);
+
+            entries.exit()
+                .transition()
+                .duration(200)
+                .style('opacity', 0)
+                .remove();
+
+            var enter = entries.enter()
+                .insert('div', '.tag-reference-body')
+                .attr('class', `field-warning ${klass}`)
+                .style('opacity', 0);
+
+            enter
+                .call(uiIcon('#rapid-icon-alert', 'inline'))
+                .append('span');
+
+            enter
+                .transition()
+                .duration(200)
+                .style('opacity', 1);
+
+            entries.merge(enter)
+                .selectAll('div > span')
+                .text('')
+                .each(function(d) {
+                    d3_select(this).call(d.msg);
+                });
+        }
     }
 
 
