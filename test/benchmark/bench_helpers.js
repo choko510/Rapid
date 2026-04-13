@@ -1,14 +1,16 @@
 /* eslint no-extend-native:off */
 
-// Disable things that use the network
-for (var k in Rapid.services) { delete Rapid.services[k]; }
+// Keep service registry intact; benchmark harness now relies on normal context initialization.
 
 // Try not to load imagery
 window.location.hash = '#background=none';
 
 // Run without data for speed (tests which need data can set it up themselves)
-Rapid.fileFetcher.assetPath('../../dist/');
-var cached = Rapid.fileFetcher.cache();
+const fileFetcher = Rapid.fileFetcher;
+if (fileFetcher?.assetPath) {
+  fileFetcher.assetPath('../../dist/');
+}
+const cached = fileFetcher?.cache ? fileFetcher.cache() : {};
 
 // Initializing `coreContext` will try loading the locale data and English locale strings:
 cached.locales = { en: { rtl: false, pct: 1 } };
@@ -29,6 +31,6 @@ cached.deprecated = [];
 cached.discarded = {};
 
 
-window.d3 = Rapid.d3;   // Remove this if we can avoid exporting all of d3.js
+window.d3 = window.d3 || Rapid.d3;   // Keep a preloaded d3 if available
 window.sdk = Rapid.sdk;
 delete window.PointerEvent;  // force the browser to use mouse events

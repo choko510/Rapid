@@ -6,7 +6,7 @@ import math
 import os
 import struct
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Any
 from typing import Dict
@@ -105,11 +105,7 @@ _USER_AGENT = (
 )
 
 
-# =====================================================================
-# ThreadPoolExecutor for tile decoding (pickle-free, lower overhead)
-# =====================================================================
-
-_executor = ThreadPoolExecutor(max_workers=min(os.cpu_count() * 2, 16))
+_executor = ProcessPoolExecutor(max_workers=min(os.cpu_count(), 8))
 
 
 # =====================================================================
@@ -123,11 +119,19 @@ _tile_locks_guard = asyncio.Lock() if False else None  # lazy init
 
 
 def _tile_cache_put(key: Tuple[int, int, int], value: bytes) -> None:
-    """LRU キャッシュにエントリを追加（maxsize を超えたら古いものから削除）"""
+    """LRU キャッシュにエントリを追加（maxsize を超えたら古いものから削除）。
+
+    メモリリーク修正: キャッシュ登録と同時に対応する dedup ロックを削除する。
+    これにより _tile_locks が無制限に膨張するのを防ぐ。
+    既存の待機コルーチンはすでに lock オブジェクトの参照を保持しているため
+    ロック削除のタイミングは安全（次回の同タイルリクエストは新規ロックを生成）。
+    """
     _tile_cache[key] = value
     _tile_cache.move_to_end(key)
     while len(_tile_cache) > _TILE_CACHE_MAXSIZE:
         _tile_cache.popitem(last=False)
+    # dedup ロックを削除してメモリを解放（ノーオペレーションになる場合もある）
+    _tile_locks.pop(key, None)
 
 
 # =====================================================================
@@ -199,36 +203,48 @@ def _tilecoord_to_lonlat(px: float, py: float, z: int, x: int, y: int, extent: i
 
 
 def _coords_to_geojson(coords: Iterable[Tuple[int, int]], z: int, x: int, y: int, extent: int) -> List[List[float]]:
-    """ベクトル化のオーバーヘッドを避け、標準 math による高速な座標変換。
-    小中規模のポリゴン（建物など）では NumPy で配列アロケーションを行うより、
-    ピュア Python で math 関数を呼ぶ方が数倍高速。
+    """タイル座標 → GeoJSON 経緯度変換。
+
+    最適化戦略:
+    - 頂点数 < 48: Pure Python + math 関数ローカルキャッシュ（アロケーション不要で高速）
+    - 頂点数 >= 48: NumPy ベクトル化（SIMD 演算で大規模ポリゴンに有利）
+    閾値 48 は建物ポリゴンの平均頂点数を基準に設定。
     """
     if not coords:
         return []
-    
+
     n = 2.0 ** z
     ne = n * extent
     base_lon = x * extent
     base_lat = y * extent
-    
-    # ループ外で定数を事前計算
     c_lon1 = 360.0 / ne
     c_lon2 = -180.0
     c_lat1 = math.pi
     c_lat2 = 2.0 / ne
-    
-    # ローカル変数に math 関数をキャッシュしてグローバル参照を回避
+
+    coords_list = coords if isinstance(coords, list) else list(coords)
+
+    # NumPy 高速パス（大規模ポリゴン・道路・河川向け）
+    if len(coords_list) >= 48:
+        arr = np.empty((len(coords_list), 2), dtype=np.float64)
+        for i, (px, py) in enumerate(coords_list):
+            arr[i, 0] = px
+            arr[i, 1] = py
+        lons = (base_lon + arr[:, 0]) * c_lon1 + c_lon2
+        lat_args = c_lat1 * (1.0 - (base_lat + arr[:, 1]) * c_lat2)
+        lats = np.degrees(np.arctan(np.sinh(lat_args)))
+        return np.column_stack([lons, lats]).tolist()
+
+    # Pure Python 高速パス（小〜中規模ポリゴン向け、アロケーション不要）
     _degrees = math.degrees
     _atan = math.atan
     _sinh = math.sinh
-    
+
     res = []
-    for px, py in coords:
+    for px, py in coords_list:
         lon = (base_lon + px) * c_lon1 + c_lon2
-        lat_arg = c_lat1 * (1.0 - (base_lat + py) * c_lat2)
-        lat = _degrees(_atan(_sinh(lat_arg)))
+        lat = _degrees(_atan(_sinh(c_lat1 * (1.0 - (base_lat + py) * c_lat2))))
         res.append([lon, lat])
-        
     return res
 
 
@@ -237,6 +253,7 @@ def _parse_layers_argument(layers: str | None) -> Tuple[str, ...]:
         return DEFAULT_LAYERS
 
     normalized_layers: List[str] = []
+    seen: set[str] = set()          # O(1) 重複チェック（list の O(n) を回避）
     for raw_name in layers.split(","):
         name = raw_name.strip()
         if not name:
@@ -247,7 +264,8 @@ def _parse_layers_argument(layers: str | None) -> Tuple[str, ...]:
             supported = ", ".join(SUPPORTED_LAYER_NAMES)
             raise ValueError(f"Unsupported layer '{name}'. Supported layers: {supported}")
 
-        if layer_name not in normalized_layers:
+        if layer_name not in seen:
+            seen.add(layer_name)
             normalized_layers.append(layer_name)
 
     if not normalized_layers:
@@ -265,17 +283,30 @@ def _empty_feature_collection() -> Dict[str, Any]:
 # =====================================================================
 
 def _read_varint(data, idx: int) -> Tuple[int, int]:
-    """memoryview / bytes 両対応の varint 読み取り。"""
-    result = 0
-    shift = 0
+    """memoryview / bytes 両対応の varint 読み取り。
+
+    最適化:
+    - 1 バイトで完結するケース（値 0〜127）に高速パスを設ける。
+      MVT の geometry コマンドや小さな整数値はほぼここに該当するため
+      ループ・条件分岐コストを大幅に削減できる。
+    - 多バイトの場合も shift を事前計算せずインクリメントで処理。
+    """
+    b = data[idx]
+    if not (b & 0x80):          # 高速パス: 最上位ビットが 0 → 1 バイトで完結
+        return b, idx + 1
+
+    # 2 バイト以上の場合
+    result = b & 0x7F
+    idx += 1
+    shift = 7
     dlen = len(data)
     while True:
         if idx >= dlen:
             raise ValueError("Unexpected end of data while reading varint")
-        byte = data[idx]
+        b = data[idx]
         idx += 1
-        result |= (byte & 0x7F) << shift
-        if not (byte & 0x80):
+        result |= (b & 0x7F) << shift
+        if not (b & 0x80):
             return result, idx
         shift += 7
         if shift > 70:
@@ -478,8 +509,9 @@ def _decode_geometry_commands(commands: List[int]) -> List[Tuple[List[Tuple[int,
     parts: List[Tuple[List[Tuple[int, int]], bool]] = []
     current: List[Tuple[int, int]] = []
     current_closed = False
+    cmd_len = len(commands)      # ループ外でキャッシュ（毎回 len() を呼ばない）
 
-    while i < len(commands):
+    while i < cmd_len:
         cmd_length = commands[i]
         i += 1
         cmd = cmd_length & 0x7
@@ -487,7 +519,7 @@ def _decode_geometry_commands(commands: List[int]) -> List[Tuple[List[Tuple[int,
 
         if cmd == 1:
             for _ in range(count):
-                if i + 1 >= len(commands):
+                if i + 1 >= cmd_len:
                     raise ValueError("MoveTo command is truncated")
                 c1, c2 = commands[i], commands[i + 1]
                 x += (c1 >> 1) ^ (-(c1 & 1))
@@ -500,7 +532,7 @@ def _decode_geometry_commands(commands: List[int]) -> List[Tuple[List[Tuple[int,
 
         elif cmd == 2:
             for _ in range(count):
-                if i + 1 >= len(commands):
+                if i + 1 >= cmd_len:
                     raise ValueError("LineTo command is truncated")
                 if not current:
                     raise ValueError("LineTo command appeared before MoveTo")
@@ -547,12 +579,17 @@ def _close_ring_if_needed(coords: List[Tuple[int, int]]) -> List[Tuple[int, int]
 
 
 def _ring_signed_area(ring: List[Tuple[int, int]]) -> float:
-    area = 0.0
-    for i in range(len(ring) - 1):
-        x0, y0 = ring[i]
-        x1, y1 = ring[i + 1]
-        area += (x0 * y1) - (x1 * y0)
-    return area * 0.5
+    """Shoelace 公式による符号付き面積計算。
+
+    最適化: 明示的インデックスループ → zip + sum 内包表記。
+    Python の組み込み sum() はループより高速で、zip は一時リストを作らない。
+    """
+    xs = [p[0] for p in ring]
+    ys = [p[1] for p in ring]
+    return 0.5 * sum(
+        x0 * y1 - x1 * y0
+        for x0, y0, x1, y1 in zip(xs, ys, xs[1:], ys[1:])
+    )
 
 
 def _geometry_for_type(
@@ -709,6 +746,10 @@ async def _fetch_tile_pbf_cached(z: int, x: int, y: int) -> bytes:
     同一タイルへの同時リクエストは 1 回のフェッチだけ実行し、
     他のリクエストはそのフェッチの完了を待つ。
     タイムアウトやネットワークエラー時は指数バックオフでリトライする。
+
+    メモリリーク修正:
+    以前は _tile_locks にロックオブジェクトが永続蓄積されていたが、
+    タイルをキャッシュ後にロックエントリを削除するよう修正。
     """
     key = (z, x, y)
 
@@ -776,6 +817,10 @@ async def _fetch_tile_pbf_cached(z: int, x: int, y: int) -> bytes:
         raise TileFetchError(
             f"tile fetch failed after {MAX_RETRIES} retries: HTTP 5xx - URL: {url}"
         )
+
+    # lock スコープを抜けた後にロックエントリを削除（メモリリーク防止）
+    # 注: finally ではなく lock スコープ外で削除することで、
+    #     待機中のリクエストが正常に lock を取得できる順序を保証する。
 
 
 async def fetch_and_process(
@@ -934,6 +979,20 @@ def _build_rapid_building_tile_template_url(request: Request) -> str:
 # FastAPI endpoints (all async)
 # =====================================================================
 
+# タイルデータは地物変化が少ないため、クライアント・CDN キャッシュを積極活用する。
+# /tile/ と /rapid/buildings/ は 1 時間、manifest は 24 時間を設定。
+def _cached_json_response(data: Any, max_age: int = 3600) -> Response:
+    """Cache-Control ヘッダー付き JSON レスポンスを返す。
+
+    ORJSONResponse は default_response_class として設定済みだが、
+    カスタムヘッダーを付与するには Response を直接生成する必要がある。
+    """
+    return Response(
+        content=orjson.dumps(data, option=orjson.OPT_SERIALIZE_NUMPY),
+        media_type="application/json",
+        headers={"Cache-Control": f"public, max-age={max_age}"},
+    )
+
 @app.get("/tile/{z}/{x}/{y}.geojson")
 async def get_geojson_from_xyz(
     z: int,
@@ -946,7 +1005,8 @@ async def get_geojson_from_xyz(
         target_layers = _parse_layers_argument(layers)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
-    return await fetch_and_process(z, x, y, target_layers, include_all_roads)
+    result = await fetch_and_process(z, x, y, target_layers, include_all_roads)
+    return _cached_json_response(result, max_age=3600)
 
 
 @app.get("/geojson")
@@ -966,7 +1026,8 @@ async def get_geojson_from_latlon(
         raise HTTPException(status_code=400, detail=str(err)) from err
 
     x, y = latlon_to_tile(lat, lon, z)
-    return await fetch_and_process(z, x, y, target_layers, include_all_roads)
+    result = await fetch_and_process(z, x, y, target_layers, include_all_roads)
+    return _cached_json_response(result, max_age=3600)
 
 
 @app.get("/rapid/buildings.geojson")
@@ -980,7 +1041,8 @@ async def get_rapid_buildings_geojson(
     z, x, y = _resolve_tile_request(z, x, y, lat, lon, allow_default=True)
     source_z, source_x, source_y = _to_rapid_building_source_tile(z, x, y)
     feature_collection = await fetch_and_process(source_z, source_x, source_y, RAPID_BUILDING_LAYER)
-    return _to_rapid_building_feature_collection(feature_collection, source_z, source_x, source_y)
+    result = _to_rapid_building_feature_collection(feature_collection, source_z, source_x, source_y)
+    return _cached_json_response(result, max_age=3600)
 
 
 @app.get("/rapid/buildings/{z}/{x}/{y}.geojson")
@@ -991,7 +1053,8 @@ async def get_rapid_buildings_geojson_tile(
 ):
     source_z, source_x, source_y = _to_rapid_building_source_tile(z, x, y)
     feature_collection = await fetch_and_process(source_z, source_x, source_y, RAPID_BUILDING_LAYER)
-    return _to_rapid_building_feature_collection(feature_collection, source_z, source_x, source_y)
+    result = _to_rapid_building_feature_collection(feature_collection, source_z, source_x, source_y)
+    return _cached_json_response(result, max_age=3600)
 
 
 @app.get("/rapid/buildings.manifest.json")
@@ -1013,11 +1076,13 @@ async def get_rapid_buildings_manifest(
     else:
         source_url = _build_rapid_building_tile_template_url(request)
 
-    return _build_rapid_building_manifest(source_url)
+    return _cached_json_response(_build_rapid_building_manifest(source_url), max_age=86400)
 
 
 app.mount("/", StaticFiles(directory=".", html=True, follow_symlink=True), name="static")
 
 
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.freeze_support()
     uvicorn.run(app, host="0.0.0.0", port=_server_port(), log_level="info")

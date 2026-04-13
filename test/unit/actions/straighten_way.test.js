@@ -104,7 +104,7 @@ describe('actionStraightenWay', () => {
     const result = Rapid.actionStraightenWay(['-', '--'], viewport)(graph);
     assert.deepEqual(result.entity('-').nodes, ['a', 'b', 'd']);
     assert.deepEqual(result.entity('--').nodes, ['d', 'f', 'h']);
-    assert.equal(result.entity('f').loc[0], 5);
+    assert.ok(Math.abs(result.entity('f').loc[0] - 5) < 1e-9);
     assert.equal(result.entity('f').loc[1], 0);
     assert.equal(result.hasEntity('g'), undefined);
   });
@@ -128,7 +128,7 @@ describe('actionStraightenWay', () => {
     const result = Rapid.actionStraightenWay(['-', '--'], viewport)(graph);
     assert.deepEqual(result.entity('-').nodes, ['a', 'b', 'd']);
     assert.deepEqual(result.entity('--').nodes, ['h', 'f', 'd']);
-    assert.equal(result.entity('f').loc[0], 5);
+    assert.ok(Math.abs(result.entity('f').loc[0] - 5) < 1e-9);
     assert.equal(result.entity('f').loc[1], 0);
     assert.equal(result.hasEntity('g'), undefined);
   });

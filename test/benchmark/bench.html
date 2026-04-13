@@ -8,6 +8,7 @@
 
 <body>
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-selection@3/dist/d3-selection.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/benchmark@2.1.4/benchmark.min.js"></script>
     <!-- <script src="bench.js"></script> -->
 
@@ -45,6 +46,7 @@
                 for (var i = 0; i < window.executionErrors.length; i++) {
                     console.log('[Execution error] ' + window.executionErrors[i]);
                 }
+                console.log('Benchmark suite failed.');
                 console.log('\n Disposing mocha. Expect mocha dispose log like: \'Uncaught error outside test suite\'... \n');
             }
             return;

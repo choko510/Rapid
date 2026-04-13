@@ -48,6 +48,7 @@
     "start:server": "dotenvx run --quiet -- python scripts/server.py",
     "start:watch:css": "dotenvx run --quiet -- node scripts/watch_css.js",
     "test": "npm-run-all -s lint build test:unit test:browser",
+    "test:gap-report": "node scripts/report_test_gaps.js",
     "test:benchmark": "pnpm run test:unzip-benchmark-data && pnpm exec playwright test --workers=1 --config=test/benchmark/playwright.config.mjs && pnpm run test:cleanup-benchmark-data",
     "test:browser": "karma start karma.conf.cjs",
     "test:unit": "dotenvx run --quiet -- c8 node --test-reporter spec --test test/unit/**/*.test.js",
@@ -113,6 +114,7 @@
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.61.0",
+    "@eslint/js": "^10.0.1",
     "@fortawesome/fontawesome-svg-core": "^7.2.0",
     "@fortawesome/free-brands-svg-icons": "^7.2.0",
     "@fortawesome/free-regular-svg-icons": "^7.2.0",

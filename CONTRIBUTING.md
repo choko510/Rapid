@@ -26,6 +26,34 @@ We actively welcome your pull requests.
 5. Make sure your code lints.
 6. If you haven't already, complete the Contributor License Agreement ("CLA").
 
+## Testing workflow
+Rapid uses three complementary test layers:
+
+1. `pnpm run test:unit` for fast logic and data-model checks.
+2. `pnpm run test:browser` for integration behavior in a real browser runtime.
+3. `pnpm run test:benchmark` for renderer/performance scenarios.
+
+When running a full local gate, use `pnpm run test`.
+
+### Commit-history gap scan
+To identify feature commits that touched `modules/` without corresponding test updates:
+
+```bash
+pnpm run test:gap-report -- --oldest <commit> --newest HEAD --output test-results/feature-test-gaps.json
+```
+
+Use this report when planning which features need additional or stronger tests.
+
+### Benchmark expectations
+The benchmark harness now emits machine-readable lines:
+
+- `BENCHMARK_RESULT {...}`
+- `BENCHMARK_SUMMARY {...}`
+
+and reports `Benchmark suite failed.` if script execution errors occur or a performance budget is missed.
+
+In GitHub Actions, `.github/workflows/benchmark.yml` runs in report-only mode on `main`/PRs and remains strict on the `benchmarking` branch.
+
 ## Forking, cloning, and running Rapid
 This section suggests a toolset and method to start contributing to Rapid. However, you are welcome to use your own tools for the job. Here's what you could use:
 

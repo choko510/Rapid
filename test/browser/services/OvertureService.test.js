@@ -14,7 +14,82 @@ describe('OvertureService', () => {
   }
 
   beforeEach(() => {
+    fetchMock.removeRoutes().clearHistory();
     overture = new Rapid.OvertureService(new MockContext());
+  });
+
+  afterEach(() => {
+    fetchMock.removeRoutes().clearHistory();
+  });
+
+
+  describe('#_loadStacCatalogAsync', () => {
+    it('loads latest release PMTiles URLs for wanted themes', async () => {
+      fetchMock.route('https://stac.overturemaps.org/catalog.json', {
+        body: {
+          links: [
+            { rel: 'child', href: './2026-01-21.0/catalog.json', latest: true }
+          ]
+        },
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      fetchMock.route('https://stac.overturemaps.org/2026-01-21.0/catalog.json', {
+        body: {
+          id: '2026-01-21.0',
+          links: [
+            { rel: 'child', title: 'buildings', href: './buildings/catalog.json' },
+            { rel: 'child', title: 'places', href: './places/catalog.json' },
+            { rel: 'child', title: 'transportation', href: './transportation/catalog.json' },
+            { rel: 'child', title: 'administrative', href: './administrative/catalog.json' }
+          ]
+        },
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      fetchMock.route('https://stac.overturemaps.org/2026-01-21.0/buildings/catalog.json', {
+        body: { id: 'buildings', links: [{ rel: 'pmtiles', href: './buildings.pmtiles' }] },
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      fetchMock.route('https://stac.overturemaps.org/2026-01-21.0/places/catalog.json', {
+        body: { id: 'places', links: [{ rel: 'pmtiles', href: './places.pmtiles' }] },
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      fetchMock.route('https://stac.overturemaps.org/2026-01-21.0/transportation/catalog.json', {
+        body: { id: 'transportation', links: [{ rel: 'pmtiles', href: './transportation.pmtiles' }] },
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      await overture._loadStacCatalogAsync();
+
+      expect(overture._releaseId).to.eql('2026-01-21.0');
+      expect(overture._pmtilesUrls.get('buildings')).to.eql('https://stac.overturemaps.org/2026-01-21.0/buildings/buildings.pmtiles');
+      expect(overture._pmtilesUrls.get('places')).to.eql('https://stac.overturemaps.org/2026-01-21.0/places/places.pmtiles');
+      expect(overture._pmtilesUrls.get('transportation')).to.eql('https://stac.overturemaps.org/2026-01-21.0/transportation/transportation.pmtiles');
+      expect(overture._pmtilesUrls.has('administrative')).to.be.false;
+    });
+
+    it('keeps catalog empty when latest release link is missing', async () => {
+      fetchMock.route('https://stac.overturemaps.org/catalog.json', {
+        body: {
+          links: [{ rel: 'child', href: './2026-01-21.0/catalog.json' }]
+        },
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      await overture._loadStacCatalogAsync();
+
+      expect(overture._releaseId).to.eql('');
+      expect([...overture._pmtilesUrls.entries()]).to.eql([]);
+    });
   });
 
 
