@@ -196,6 +196,10 @@ export function uiSectionBackgroundList(context) {
     fallbackItemEnter
       .append('label')
       .attr('class', 'background-fallback-label')
+      .call(uiTooltip(context)
+        .title(l10n.t('background.fallback.tooltip'))
+        .placement('top')
+      )
       .text(l10n.t('background.fallback.label'));
 
     fallbackItemEnter

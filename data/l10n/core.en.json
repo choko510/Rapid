@@ -1124,7 +1124,8 @@
       "switch": "Switch back to this background",
       "custom": "Custom",
       "fallback": {
-        "label": "Fallback when unavailable"
+        "label": "Fallback when unavailable",
+        "tooltip": "Use this imagery for only the tiles that fail to load (for example 401, 403, or 404 errors)."
       },
       "overlays": "Overlays",
       "grid": {
