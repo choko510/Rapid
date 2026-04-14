@@ -29,6 +29,7 @@ export class Field {
     this.orig.default = fieldData.default;
     this.orig.geometry = fieldData.geometry;
     this.orig.icon = fieldData.icon;
+    this.orig.icons = fieldData.icons ?? fieldData.iconsCrossReference;
     this.orig.increment = fieldData.increment ?? 1;
     this.orig.key = fieldData.key;
     this.orig.keys = fieldData.keys ?? [fieldData.key];
@@ -107,7 +108,9 @@ export class Field {
   }
 
   _resolveReference(prop) {
-    const val = this.orig[prop] || '';    // always lookup original properties, don't use the functions
+    const val = this.orig[prop];    // always lookup original properties, don't use the functions
+    if (typeof val !== 'string') return this;
+
     const match = val.match(/^\{(.*)\}$/);
     if (match) {
       const field = this.allFields[match[1]];

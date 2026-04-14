@@ -1,5 +1,6 @@
 export { utilCmd } from './cmd.js';
 export { utilDetect } from './detect.js';
+export { uploadFile } from './dom.js';
 export { utilFetchResponse, FetchError } from './fetch_response.js';
 export { utilFunctor } from './util.js';
 export { utilGetDimensions } from './dimensions.js';

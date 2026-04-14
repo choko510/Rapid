@@ -50,6 +50,7 @@ export class UploaderSystem extends AbstractSystem {
     this._loadedIDs = new Set();
     this._conflicts = [];
     this._errors = [];
+    this._anyConflictsAutomaticallyResolved = false;
     this._initPromise = null;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
@@ -146,6 +147,7 @@ export class UploaderSystem extends AbstractSystem {
     this._loadedIDs = new Set();
     this._conflicts = [];
     this._errors = [];
+    this._anyConflictsAutomaticallyResolved = false;
 
     // Prepare current changes once for the fast upload path.
     const editor = context.systems.editor;
@@ -296,7 +298,10 @@ export class UploaderSystem extends AbstractSystem {
       editor.perform(actionSafe);
 
       const mergeConflicts = actionSafe.conflicts();
-      if (!mergeConflicts.length) continue;  // merged safely
+      if (!mergeConflicts.length) {
+        this._anyConflictsAutomaticallyResolved = true;
+        continue;  // merged safely
+      }
 
       // present options for destructive merging
       const actionForceLocal = actionMergeRemoteChanges(entityID, {
@@ -375,16 +380,50 @@ export class UploaderSystem extends AbstractSystem {
       this._didResultInErrors();
 
     } else {
-      const editor = context.systems.editor;
-      const changes = preparedChanges || editor.changes(actionDiscardTags(editor.difference(), this._discardTags));
-      if (changes.modified.length || changes.created.length || changes.deleted.length) {
-        this.emit('willAttemptUpload');
-        osm.sendChangeset(this.changeset, changes, this._uploadCallback);
+      if (this._anyConflictsAutomaticallyResolved) {
+        this._updateMergeConflictTag('automatically', () => this._sendUpload(preparedChanges));
       } else {
-        // changes were insignificant or reverted by user
-        this._didResultInNoChanges();
+        this._sendUpload(preparedChanges);
       }
     }
+  }
+
+
+  _sendUpload(preparedChanges) {
+    const context = this.context;
+    const osm = context.services.osm;
+    if (!osm) return;
+
+    const editor = context.systems.editor;
+    const changes = preparedChanges || editor.changes(actionDiscardTags(editor.difference(), this._discardTags));
+    if (changes.modified.length || changes.created.length || changes.deleted.length) {
+      this.emit('willAttemptUpload');
+      osm.sendChangeset(this.changeset, changes, this._uploadCallback);
+    } else {
+      // changes were insignificant or reverted by user
+      this._didResultInNoChanges();
+    }
+  }
+
+
+  _updateMergeConflictTag(tagValue, done = () => {}) {
+    const osm = this.context.services.osm;
+    const changeset = this.changeset;
+    if (!osm || !changeset?.id) {
+      done();
+      return;
+    }
+
+    if (changeset.tags?.merge_conflict_resolved === tagValue) {
+      done();
+      return;
+    }
+
+    this.changeset = changeset.update({
+      tags: { ...changeset.tags, merge_conflict_resolved: tagValue }
+    });
+
+    osm.updateChangesetTags(this.changeset, () => done());
   }
 
 
@@ -427,6 +466,7 @@ export class UploaderSystem extends AbstractSystem {
 
 
   _didResultInConflicts() {
+    this._updateMergeConflictTag('manually', () => {});
     this._conflicts.sort((a, b) => b.id.localeCompare(a.id));
     this.emit('resultConflicts', this.changeset, this._conflicts, this._origChanges);
     this._endSave();

@@ -94,6 +94,7 @@ export class Context extends EventEmitter {
     this._preauth = null;
     this._apiConnections = null;
     this._prelocale = null;
+    this._defaultChangesetTags = {};
 
     // Copy/Paste
     this._copyGraph = null;
@@ -291,6 +292,8 @@ export class Context extends EventEmitter {
   resetAsync() {
     if (this._resetPromise) return this._resetPromise;
 
+    this._defaultChangesetTags = {};
+
     const allSystems = Object.values(this.systems);
     const allServices = Object.values(this.services);
 
@@ -323,6 +326,12 @@ export class Context extends EventEmitter {
 // and both of _those_ should be made dynamic so locale can switch while Rapid is running
   get locale()     { return this._prelocale; }
   set locale(val)  { this._prelocale = val; }    // remember for init time
+
+  defaultChangesetTags(val) {
+    if (val === undefined) return this._defaultChangesetTags;
+    this._defaultChangesetTags = Object.assign({}, val);
+    return this;
+  }
 
 
   _afterLoad(cid, callback) {
@@ -381,13 +390,19 @@ export class Context extends EventEmitter {
 
 
   // Download the full entity and its parent relations. The callback may be called multiple times.
-  loadEntity(entityID, callback) {
+  async loadEntity(entityID, callback) {
     const osm = this.services.osm;
     if (!osm) return;
 
     const cid = osm.connectionID;
-    osm.loadEntity(entityID, this._afterLoad(cid, callback));
-    osm.loadEntityRelations(entityID, this._afterLoad(cid, callback));
+    try {
+      await Promise.all([
+        osm.loadEntity(entityID, this._afterLoad(cid, callback)),
+        osm.loadEntityRelations(entityID, this._afterLoad(cid, callback))
+      ]);
+    } catch (err) {
+      if (typeof callback !== 'function') throw err;
+    }
   }
 
 

@@ -12,6 +12,7 @@ export { validationCurbNodes } from './curb_nodes.js';
 export { validationMismatchedGeometry } from './mismatched_geometry.js';
 export { validationMissingRole } from './missing_role.js';
 export { validationMissingTag } from './missing_tag.js';
+export { validationOneLaneWithNoOneway } from './oneway_onelane.js';
 export { validationOutdatedTags } from './outdated_tags.js';
 export { validationPrivateData } from './private_data.js';
 // export { validationShortRoad } from './short_road.js';

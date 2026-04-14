@@ -704,6 +704,9 @@ export class ImagerySourceEsriWayback extends ImagerySourceEsri {
     const [x, y] = new Viewport({ k: k }).project([lon, lat]);
     const viewport = new Viewport({ k: k, x: -x, y: -y });
     const tile = this._tiler.zoomRange(TILEZOOM).getTiles(viewport).tiles[0];
+    if (!tile?.wgs84Extent?.bbox) {
+      return Promise.resolve(new Set());
+    }
 
     return this._refreshPromise = new Promise(resolve => {
       Wayback.getWaybackItemsWithLocalChanges({ latitude: lat, longitude: lon }, TILEZOOM)

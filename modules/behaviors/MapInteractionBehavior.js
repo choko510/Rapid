@@ -156,6 +156,14 @@ export class MapInteractionBehavior extends AbstractBehavior {
         delta = panMore ? [0, h / 2] : [0, PAN_AMOUNT];
       } else if (e.key === 'ArrowDown') {
         delta = panMore ? [0, -h / 2] : [0, -PAN_AMOUNT];
+      } else if (e.key === 'Home') {
+        delta = [w, 0];
+      } else if (e.key === 'PageUp') {
+        delta = [0, h];
+      } else if (e.key === 'End') {
+        delta = [-w, 0];
+      } else if (e.key === 'PageDown') {
+        delta = [0, -h];
       }
 
       if (delta) {

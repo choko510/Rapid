@@ -13,6 +13,7 @@ export {
 
 export { Field } from './Field.js';
 export { Graph } from './Graph.js';
+export { getRadiusInPixels, getRadiusTag, parseDistanceWithUnit } from './Planar.js';
 export { Preset } from './Preset.js';
 export { Tree } from './Tree.js';
 export { RapidDataset } from './RapidDataset.js';

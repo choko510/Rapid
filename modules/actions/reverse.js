@@ -1,5 +1,3 @@
-import { presetManager } from '../presets';
-
 /*
 Order the nodes of a way in reverse order and reverse any direction dependent tags
 other than `oneway`. (We assume that correcting a backwards oneway is the primary
@@ -119,11 +117,15 @@ export function actionReverse(entityID, options) {
 
     /** @returns {false | string} - returns false or the name of the direction key */
     function supportsDirectionField(node, graph) {
-        const preset = presetManager.match(node, graph);
-        const loc = node.extent(graph).center();
+        const presets = options?.presets;
+        if (!presets) return false;
+
+        const preset = presets.match(node, graph);
+        if (!preset) return false;
+
         const geometry = node.geometry(graph);
 
-        const fields = [...preset.fields(loc), ...preset.moreFields(loc)];
+        const fields = [...preset.fields(), ...preset.moreFields()];
 
         const maybeDirectionField = fields.find(field => {
             const isDirectionField = field.key && (field.key === 'direction' || field.key.endsWith(':direction'));
@@ -162,9 +164,11 @@ export function actionReverse(entityID, options) {
 
             // for features whose presets have a direction field,
             // the first flip just adds the direction tag.
-            const directionKey = supportsDirectionField(node, graph);
-            if (node.id === entityID && !anyChanges && directionKey) {
-                tags[directionKey] = 'forward';
+            if (node.id === entityID && !anyChanges) {
+                const directionKey = supportsDirectionField(node, graph);
+                if (directionKey) {
+                    tags[directionKey] = 'forward';
+                }
             }
 
             graph = graph.replace(node.update({tags: tags}));

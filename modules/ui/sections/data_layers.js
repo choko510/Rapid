@@ -3,6 +3,7 @@ import { select as d3_select } from 'd3-selection';
 import { uiTooltip } from '../tooltip.js';
 import { uiIcon } from '../icon.js';
 import { uiSection } from '../section.js';
+import { uiSectionImportFile } from './import_file.js';
 import { uiSettingsCustomData } from '../settings/custom_data.js';
 import { utilCmd } from '../../util/cmd.js';
 
@@ -43,6 +44,7 @@ export function uiSectionDataLayers(context) {
     .label(l10n.t('map_data.data_layers'))
     .disclosureContent(render);
 
+  const drawImportItems = uiSectionImportFile(context);
   const settingsCustomData = uiSettingsCustomData(context)
     .on('change', customChanged);
 
@@ -115,7 +117,8 @@ export function uiSectionDataLayers(context) {
       .call(drawBaseItems)
       .call(drawQAItems)
       .call(drawCustomDataItems)
-      .call(drawPanelItems);
+      .call(drawPanelItems)
+      .call(drawImportItems);
   }
 
 

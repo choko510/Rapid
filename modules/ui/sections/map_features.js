@@ -1,10 +1,14 @@
-import { uiTooltip } from '../tooltip.js';
 import { uiSection } from '../section.js';
+import { uiSettingsCustomFeatures } from '../settings/custom_features.js';
+import { uiTooltip } from '../tooltip.js';
 
 
 export function uiSectionMapFeatures(context) {
   const filters = context.systems.filters;
   const l10n = context.systems.l10n;
+
+  const customSettings = uiSettingsCustomFeatures(context)
+    .on('change', customChanged);
 
   const section = uiSection(context, 'filters')
     .label(l10n.t('filters.title'))
@@ -15,7 +19,7 @@ export function uiSectionMapFeatures(context) {
     let container = selection.selectAll('.layer-feature-list-container')
       .data([0]);
 
-    let containerEnter = container.enter()
+    const containerEnter = container.enter()
       .append('div')
       .attr('class', 'layer-feature-list-container');
 
@@ -23,7 +27,7 @@ export function uiSectionMapFeatures(context) {
       .append('ul')
       .attr('class', 'layer-list layer-feature-list');
 
-    let footer = containerEnter
+    const footer = containerEnter
       .append('div')
       .attr('class', 'feature-list-links section-footer');
 
@@ -47,6 +51,16 @@ export function uiSectionMapFeatures(context) {
         filters.enableAll();
       });
 
+    footer
+      .append('a')
+      .attr('class', 'feature-list-link')
+      .attr('href', '#')
+      .text(l10n.t('settings.custom_features.tooltip'))
+      .on('click', d3_event => {
+        d3_event.preventDefault();
+        context.container().call(customSettings);
+      });
+
     // Update
     container = container
       .merge(containerEnter);
@@ -65,14 +79,14 @@ export function uiSectionMapFeatures(context) {
       .remove();
 
     // Enter
-    let enter = items.enter()
+    const enter = items.enter()
       .append('li')
       .call(uiTooltip(context)
         .title(d => l10n.t(`filters.${d}.tooltip`))
         .placement('top')
       );
 
-    let label = enter
+    const label = enter
       .append('label');
 
     label
@@ -101,6 +115,17 @@ export function uiSectionMapFeatures(context) {
 
   function clickFeature(d3_event, d) {
     filters.toggle(d);
+  }
+
+  function customChanged(setting) {
+    const template = (setting?.template ?? '').trim();
+    filters.setCustomFilter(template);
+
+    if (filters.hasCustomFilter()) {
+      filters.enable('custom');
+    } else {
+      filters.disable('custom');
+    }
   }
 
   filters.on('filterchange', section.reRender);

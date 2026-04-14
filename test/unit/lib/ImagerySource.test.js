@@ -1,6 +1,7 @@
 import { afterEach, describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as Rapid from '../../../modules/headless.js';
+import { ImagerySourceEsriWayback } from '../../../modules/core/lib/ImagerySource.js';
 import { geoArea as d3_geoArea } from 'd3-geo';
 
 
@@ -356,6 +357,29 @@ describe('ImagerySource', () => {
       assert.strictEqual(source.zoomExtent[1], 22);
     });
   });
+
+
+  describe('ImagerySourceEsriWayback', () => {
+    it('returns an empty set if no tile extent is available', async () => {
+      const localContext = new MockContext();
+      localContext.viewport = { centerLoc: () => [0, 0] };
+
+      const source = new ImagerySourceEsriWayback(localContext, {
+        id: 'EsriWayback',
+        name: 'Esri Wayback',
+        template: 'http://example.com/tile/{zoom}/{x}/{y}'
+      });
+
+      source._tiler = {
+        zoomRange: () => ({
+          getTiles: () => ({ tiles: [{}] })
+        })
+      };
+
+      const result = await source.refreshLocalReleaseDatesAsync();
+      assert.deepEqual(result, new Set());
+    });
+  });
 });
 
 
@@ -404,5 +428,4 @@ describe('ImagerySourceCustom', () => {
     });
   });
 });
-
 

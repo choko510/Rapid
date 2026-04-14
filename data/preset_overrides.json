@@ -39,6 +39,62 @@
       "key": "crossing:signals",
       "type": "check",
       "label": "Crossing Signals"
+    },
+    "capacity_hgv": {
+      "key": "capacity:hgv",
+      "type": "number",
+      "label": "HGV Capacity",
+      "minValue": 0
+    },
+    "name_etymology": {
+      "key": "name:etymology",
+      "type": "text",
+      "label": "Name Etymology",
+      "universal": true
+    },
+    "name_etymology_wikidata": {
+      "key": "name:etymology:wikidata",
+      "type": "identifier",
+      "label": "Name Etymology Wikidata",
+      "placeholder": "Q123",
+      "universal": true
+    },
+    "railway/signal/form": {
+      "key": "railway:signal:form",
+      "type": "combo",
+      "label": "Signal Form",
+      "options": ["light", "semaphore", "mechanical", "electric"],
+      "customValues": true
+    },
+    "local_ref": {
+      "key": "local_ref",
+      "type": "text",
+      "label": "Local Reference"
+    },
+    "culvert_type": {
+      "key": "culvert",
+      "type": "combo",
+      "label": "Culvert Type",
+      "options": ["yes", "box", "pipe", "arch", "multiple"],
+      "customValues": true
+    },
+    "opening_hours": {
+      "key": "opening_hours",
+      "type": "schedule",
+      "label": "Hours",
+      "placeholder": "Unknown",
+      "snake_case": false,
+      "caseSensitive": true
+    },
+    "service_times": {
+      "key": "service_times",
+      "type": "schedule",
+      "label": "Service Times"
+    },
+    "collection_times": {
+      "key": "collection_times",
+      "type": "schedule",
+      "label": "Collection Times"
     }
 
   },
@@ -600,6 +656,110 @@
       "fields": ["height", "layer"],
       "moreFields": ["colour"],
       "tags": { "roller_coaster": "track" }
+    },
+
+    "highway/turning_circle": {
+      "icon": "maki-circle",
+      "geometry": ["vertex"],
+      "fields": ["turning_circle", "diameter"],
+      "tags": {
+        "highway": "turning_circle"
+      },
+      "terms": ["cul-de-sac"],
+      "name": "Turning Circle"
+    },
+    "amenity/parking_space": {
+      "icon": "temaki-parking_space",
+      "fields": ["parking_space", "capacity", "capacity_hgv", "access_simple"],
+      "geometry": ["area", "point", "vertex"],
+      "tags": {
+        "amenity": "parking_space"
+      },
+      "terms": ["parking spot", "parking stall"],
+      "matchScore": 0.95,
+      "name": "Parking Space"
+    },
+    "public_transport/stop_position": {
+      "icon": "temaki-transit",
+      "fields": ["name", "ref_stop_position", "local_ref", "network", "operator", "vehicles"],
+      "geometry": ["vertex"],
+      "tags": {
+        "public_transport": "stop_position"
+      },
+      "terms": ["public transit", "public transportation", "transit", "transportation"],
+      "name": "Transit Stopping Location",
+      "matchScore": 0.2
+    },
+    "railway/signal": {
+      "icon": "temaki-railway_signals",
+      "geometry": ["point", "vertex"],
+      "fields": ["railway/position", "railway/signal/direction", "railway/signal/position", "railway/signal/form", "ref"],
+      "tags": {
+        "railway": "signal"
+      },
+      "terms": ["lights", "signal"],
+      "name": "Railway Signal"
+    },
+    "natural/fumarole": {
+      "name": "Fumarole",
+      "icon": "maki-circle-stroked",
+      "geometry": ["point", "vertex"],
+      "tags": { "natural": "fumarole" },
+      "terms": ["steam vent", "volcanic vent"]
+    },
+    "highway/proposed": {
+      "name": "Proposed Road",
+      "icon": "maki-circle-stroked",
+      "geometry": ["line"],
+      "tags": { "highway": "proposed" }
+    },
+    "proposed/paper_road": {
+      "name": "Paper Road",
+      "icon": "maki-circle-stroked",
+      "geometry": ["line"],
+      "tags": { "proposed": "paper_road" }
+    },
+    "highway/expressway": {
+      "name": "Expressway",
+      "icon": "maki-circle-stroked",
+      "geometry": ["line"],
+      "tags": { "expressway": "yes" }
+    },
+    "natural/soakhole": {
+      "name": "Soakhole",
+      "icon": "maki-circle-stroked",
+      "geometry": ["point", "vertex"],
+      "tags": { "natural": "soakhole" }
+    },
+    "landuse/stockyard": {
+      "name": "Stockyard",
+      "icon": "maki-circle-stroked",
+      "geometry": ["area"],
+      "tags": { "farmyard": "stockyard" }
+    },
+    "building/container": {
+      "name": "Container",
+      "icon": "maki-circle-stroked",
+      "geometry": ["area"],
+      "tags": { "building": "container" }
+    },
+    "power/outlet": {
+      "name": "Electrical Socket",
+      "icon": "maki-circle-stroked",
+      "geometry": ["point", "vertex"],
+      "tags": { "power": "outlet" }
+    },
+    "railway/hirail_access": {
+      "name": "Hi-Rail Access Point",
+      "icon": "maki-circle-stroked",
+      "geometry": ["point", "vertex"],
+      "tags": { "railway": "hirail_access" }
+    },
+    "railway/platform_edge": {
+      "name": "Platform Edge",
+      "icon": "maki-circle-stroked",
+      "geometry": ["line"],
+      "tags": { "railway": "platform_edge" }
     }
 
   }

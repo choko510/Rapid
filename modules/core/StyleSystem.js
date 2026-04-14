@@ -681,9 +681,13 @@ export class StyleSystem extends AbstractSystem {
     // Apply casing/stroke overrides
     const bridge = getTag(tags, 'bridge');
     const building = getTag(tags, 'building');
+    const bicycle = getTag(tags, 'bicycle');
     const cutting = getTag(tags, 'cutting');
     const embankment = getTag(tags, 'embankment');
+    const expressway = getTag(tags, 'expressway');
+    const foot = getTag(tags, 'foot');
     const highway = getTag(tags, 'highway');
+    const segregated = getTag(tags, 'segregated');
     const tracktype = getTag(tags, 'tracktype');
     const tunnel = getTag(tags, 'tunnel');
     let surface = getTag(tags, 'surface');
@@ -701,6 +705,17 @@ export class StyleSystem extends AbstractSystem {
     }
     if (tunnel) {
       style.stroke.alpha = 0.5;
+    }
+
+    // Dedicated style for shared cycle+foot paths.
+    if (highway === 'path' && bicycle === 'designated' && foot === 'designated' && segregated !== 'yes') {
+      style.stroke.color = 0x8f7ce2;
+    }
+
+    // Slightly emphasize roads tagged as expressways.
+    if (expressway === 'yes' && roadVals.has(highway)) {
+      style.casing.width += 1;
+      style.stroke.width += 1;
     }
 
     // Bumpy casing for roads with unpaved surface

@@ -74,6 +74,8 @@ export class FilterSystem extends AbstractSystem {
     this._forceVisible = new Set();   // Set(entityIDs) to show
     this._cache = {};                 // Cache of entity.key to matched filterIDs
     this._cacheByEntityID = new Map();  // Map(entityID -> Set(cache keys))
+    this._customFilterTemplate = '';
+    this._customFilter = null;        // { key, value } parsed from "key=value"
     this._initPromise = null;
 //    this._deferred = new Set();
 
@@ -96,6 +98,7 @@ export class FilterSystem extends AbstractSystem {
     this._filters.set('aerialways',      new Filter(this._isAerialway.bind(this)));
     this._filters.set('power',           new Filter(this._isPower.bind(this)));
     this._filters.set('past_future',     new Filter(this._isPastFuture.bind(this)));
+    this._filters.set('custom',          new Filter(this._isCustom.bind(this)));
     this._filters.set('others',          new Filter(this._isOther.bind(this)));
   }
 
@@ -156,9 +159,15 @@ export class FilterSystem extends AbstractSystem {
     const storage = context.systems.storage;
     const urlhash = context.systems.urlhash;
 
+    // Take custom filter from urlhash first, localstorage second.
+    this._customFilterTemplate = (urlhash.getParam('custom_features') ?? storage.getItem('custom-features') ?? '').trim();
+    this._customFilter = this._parseCustomFilter(this._customFilterTemplate);
+
     // Take filter values from urlhash first, localstorage second,
-    // Default to having boundaries hidden
-    const toHide = urlhash.getParam('disable_features') ?? storage.getItem('disabled-features') ?? 'boundaries';
+    // Default to having boundaries and custom hidden.
+    // If a custom filter is configured, keep custom enabled by default.
+    const defaultHidden = this._customFilter ? 'boundaries' : 'boundaries,custom';
+    const toHide = urlhash.getParam('disable_features') ?? storage.getItem('disabled-features') ?? defaultHidden;
     const filterIDs = toHide.replace(/;/g, ',').split(',').map(s => s.trim()).filter(Boolean);
     for (const filterID of filterIDs) {
       this._hidden.add(filterID);
@@ -203,6 +212,43 @@ export class FilterSystem extends AbstractSystem {
    */
   get hidden() {
     return this._hidden;
+  }
+
+
+  /**
+   * customFilterTemplate
+   * @return {string}
+   */
+  get customFilterTemplate() {
+    return this._customFilterTemplate;
+  }
+
+
+  /**
+   * hasCustomFilter
+   * @return {boolean}
+   */
+  hasCustomFilter() {
+    return !!this._customFilter;
+  }
+
+
+  /**
+   * setCustomFilter
+   * Sets and parses the custom filter template `key=value`.
+   * `value=*` means "key has any value".
+   * @param {string} template
+   */
+  setCustomFilter(template = '') {
+    const normalized = (template ?? '').trim();
+    if (normalized === this._customFilterTemplate) return;
+
+    this._customFilterTemplate = normalized;
+    this._customFilter = this._parseCustomFilter(normalized);
+
+    this._cache = {};
+    this._cacheByEntityID.clear();
+    this._update();
   }
 
 
@@ -729,6 +775,13 @@ export class FilterSystem extends AbstractSystem {
         this._update();
       }
     }
+
+    // custom_features
+    const newCustom = (currParams.get('custom_features') ?? '').trim();
+    const oldCustom = (prevParams.get('custom_features') ?? '').trim();
+    if (newCustom !== oldCustom) {
+      this.setCustomFilter(newCustom);
+    }
   }
 
 
@@ -753,9 +806,11 @@ export class FilterSystem extends AbstractSystem {
 
     // update url hash
     urlhash.setParam('disable_features', filterIDs.length ? filterIDs : null);
+    urlhash.setParam('custom_features', this._customFilterTemplate || null);
 
     // update localstorage
     storage.setItem('disabled-features', filterIDs);
+    storage.setItem('custom-features', this._customFilterTemplate);
 
     this.emit('filterchange');
   }
@@ -860,6 +915,14 @@ export class FilterSystem extends AbstractSystem {
     return !!tags.power && !this._isPastFuture(tags);
   }
 
+  _isCustom(tags) {
+    if (!this._customFilter) return false;
+    const { key, value } = this._customFilter;
+    const tagValue = tags[key];
+    if (value === '*') return tagValue !== undefined && tagValue !== '';
+    return tagValue === value;
+  }
+
   // contains a past/future tag, but not in active use as a road/path/cycleway/etc..
   _isPastFuture(tags) {
     if (traffic_roads[tags.highway] || service_roads[tags.highway] || paths[tags.highway] ) {
@@ -882,5 +945,18 @@ export class FilterSystem extends AbstractSystem {
   // so that code in getMatches can skip this test if someting else was matched.
   _isOther(tags, geometry) {
     return (geometry === 'line' || geometry === 'area');
+  }
+
+
+  _parseCustomFilter(template) {
+    if (!template) return null;
+    const index = template.indexOf('=');
+    if (index <= 0) return null;
+
+    const key = template.slice(0, index).trim();
+    const value = template.slice(index + 1).trim();
+    if (!key || !value) return null;
+
+    return { key, value };
   }
 }

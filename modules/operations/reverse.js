@@ -18,7 +18,7 @@ export function operationReverse(context, selectedIDs) {
     const geometry = entity.geometry(graph);
     if (entity.type !== 'node' && geometry !== 'line') return null;
 
-    const action = actionReverse(entityID);
+    const action = actionReverse(entityID, { presets: context.systems.presets });
     if (action.disabled(graph)) return null;
 
     return action;

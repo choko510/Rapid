@@ -90,7 +90,7 @@ export class KeyOperationBehavior extends AbstractBehavior {
         operation.point(null);  // copy-paste detail 😕
       }
 
-      operation();  // do the thing
+      operation(e);  // do the thing (pass event for ops that read modifier keys)
     }
   }
 

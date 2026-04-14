@@ -199,24 +199,10 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
         const sourceURL = source.url(tile.xyz);
         const fallbackURL = fallbackSource?.url(tile.xyz);
-        const useFallback = !!fallbackURL && sourceURL !== fallbackURL;
-
-        tile.url = sourceURL;
-        tile.fallbackURL = useFallback ? fallbackURL : null;
-
-        if (!tile.url && tile.fallbackURL) {
-          tile.url = tile.fallbackURL;
-        }
-
-        if (!tile.url || this._failed.has(tile.url)) {
-          if (tile.fallbackURL && tile.url !== tile.fallbackURL && !this._failed.has(tile.fallbackURL)) {
-            tile.url = tile.fallbackURL;
-            needTiles.set(tile.id, tile);
-            continue;
-          }
-          hasHoles = true;   // url invalid or has failed in the past
-        } else {
+        if (this._setTileURLs(tile, sourceURL, fallbackURL)) {
           needTiles.set(tile.id, tile);
+        } else {
+          hasHoles = true;   // url invalid or has failed in the past
         }
       }
       covered = !hasHoles;
@@ -306,6 +292,26 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
   }
 
 
+  _setTileURLs(tile, sourceURL, fallbackURL) {
+    const hasFallback = !!fallbackURL && sourceURL !== fallbackURL;
+    tile.fallbackURL = hasFallback ? fallbackURL : null;
+    tile.url = sourceURL || tile.fallbackURL;
+
+    if (tile.url && this._failed.has(tile.url)) {
+      tile.url = this._nextFallbackURL(tile, tile.url);
+    }
+
+    return !!tile.url;
+  }
+
+
+  _nextFallbackURL(tile, failedURL) {
+    if (!tile.fallbackURL || failedURL === tile.fallbackURL) return null;
+    if (this._failed.has(tile.fallbackURL)) return null;
+    return tile.fallbackURL;
+  }
+
+
   loadTile(tile, textureManager) {
     const image = new Image();
     image.crossOrigin = 'anonymous';
@@ -329,8 +335,10 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       const failedURL = tile.url;
       this._failed.add(failedURL);
 
-      if (tile.fallbackURL && failedURL !== tile.fallbackURL && !this._failed.has(tile.fallbackURL)) {
-        tile.url = tile.fallbackURL;
+      const fallbackURL = this._nextFallbackURL(tile, failedURL);
+      if (fallbackURL) {
+        tile.image = null;
+        tile.url = fallbackURL;
         this.loadTile(tile, textureManager);
         return;
       }

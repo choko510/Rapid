@@ -631,6 +631,28 @@ export class LocalizationSystem extends AbstractSystem {
       return this.t('inspector.display_name.' + keyComponents.join('_'), props);
     }
 
+    const alternativeNameKeys = [
+      'alt_name',
+      'official_name',
+      'loc_name',
+      'loc_ref',
+      'unsigned_ref',
+      'seamark:name',
+      'sector:name',
+      'lock_name'
+    ];
+
+    if (tags.highway === 'milestone' || tags.railway === 'milestone') {
+      // Only meaningful on milestones.
+      alternativeNameKeys.push('distance', 'railway:position');
+    }
+
+    for (const key of alternativeNameKeys) {
+      if (typeof tags[key] === 'string' && tags[key]) {
+        return tags[key];
+      }
+    }
+
     // bhousel 3/28/22 - no labels for addresses for now
     // // if there's still no name found, try addr:housename
     // if (tags['addr:housename']) {

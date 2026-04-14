@@ -100,6 +100,7 @@ export function uiCommit(context) {
 
     const detected = utilDetect();
     const tags = {
+      ...context.defaultChangesetTags(),
       comment:     storage.getItem('comment') || '',
       created_by:  context.cleanTagValue('customRapid'),
       host:        context.cleanTagValue(detected.host),

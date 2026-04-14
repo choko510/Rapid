@@ -43,6 +43,9 @@ export class DrawLineMode extends AbstractMode {
     // _insertIndex determines where new nodes get added (see `osmWay.addNode()`)
     // `0` = beginning, `undefined` = end
     this._insertIndex = undefined;
+    // `_offsetFromEnd` makes insertion index dynamic from end of way.
+    // It is used when continuing from a non-endpoint.
+    this._offsetFromEnd = undefined;
 
     // The history index when we start drawing
     this._editIndex = null;
@@ -73,6 +76,8 @@ export class DrawLineMode extends AbstractMode {
    * Draw a new line, or optionally continue an existing line.
    * @param  {Object?}  options - Optional `Object` of options passed to the new mode
    * @param  {Object}   options.continueNodeID - an OSM node to continue from
+   * @param  {number}   options.continueNodeIndex - index within the way to continue from
+   * @param  {string}   options.continueFromAffix - optional affix ('prefix' or 'suffix')
    * @param  {Object}   options.continueWayID - an OSM way to continue from
    * @return {boolean}  `true` if the mode can be entered, `false` if not
    */
@@ -82,14 +87,18 @@ export class DrawLineMode extends AbstractMode {
     const graph = editor.staging.graph;
 
     const continueNodeID = options.continueNodeID;
+    const continueNodeIndex = Number.isInteger(options.continueNodeIndex) ? options.continueNodeIndex : null;
+    const continueFromAffix = options.continueFromAffix;
     const continueWayID = options.continueWayID;
     const continueNode = continueNodeID && graph.hasEntity(continueNodeID);
     const continueWay = continueWayID && graph.hasEntity(continueWayID);
 
-    // If either parameter is present, make sure they are both valid
-    if (continueNode || continueWay) {
-      if (!(continueNode instanceof osmNode)) return false;
+    // If either parameter is present, make sure they are valid
+    if (continueWay || continueNodeID || continueNodeIndex !== null) {
       if (!(continueWay instanceof osmWay)) return false;
+      if (continueNodeID && !(continueNode instanceof osmNode)) return false;
+      if (continueNode && !continueWay.contains(continueNode.id)) return false;
+      if (continueNodeIndex !== null && (continueNodeIndex < 0 || continueNodeIndex >= continueWay.nodes.length)) return false;
 
       if (DEBUG) {
         console.log(`DrawLineMode: entering, continuing line ${continueWay.id}`);  // eslint-disable-line no-console
@@ -108,6 +117,7 @@ export class DrawLineMode extends AbstractMode {
     this.lastNodeID = null;
     this.firstNodeID = null;
     this._insertIndex = undefined;
+    this._offsetFromEnd = undefined;
     this._lastPoint = null;
     this._selectedData.clear();
 
@@ -137,13 +147,28 @@ export class DrawLineMode extends AbstractMode {
     this._editIndex = editor.index;
 
     // If we are continuing, the drawWay is the way being continued..
-    if (continueNode && continueWay) {
-      const continueFromStart = (continueWay.affix(continueNode.id) === 'prefix');
-      const oppositeNodeID = (continueFromStart ? continueWay.last() : continueWay.first());
-      this._insertIndex = (continueFromStart ? 0 : undefined);
+    if (continueWay) {
+      if (continueNodeIndex !== null) {
+        this._offsetFromEnd = continueWay.nodes.length - continueNodeIndex - 1;
+        const insertionIndex = this._insertionIndex(continueWay);
+        const previousIndex = Math.max(0, insertionIndex - 1);
+        this._insertIndex = insertionIndex;
+        this.lastNodeID = continueWay.nodes[previousIndex];
+        this.firstNodeID = continueWay.first();
+
+      } else if (continueNode) {
+        const continueAffix = continueFromAffix || continueWay.affix(continueNode.id);
+        const continueFromStart = (continueAffix === 'prefix');
+        const oppositeNodeID = (continueFromStart ? continueWay.last() : continueWay.first());
+        this._insertIndex = (continueFromStart ? 0 : undefined);
+        this.lastNodeID = continueNodeID;
+        this.firstNodeID = oppositeNodeID;
+
+      } else {
+        return false;
+      }
+
       this.drawWayID = continueWayID;
-      this.lastNodeID = continueNodeID;
-      this.firstNodeID = oppositeNodeID;
       this._addDrawNode();
       this._refreshEntities();
     }
@@ -211,6 +236,7 @@ export class DrawLineMode extends AbstractMode {
     this.lastNodeID = null;
     this.firstNodeID = null;
     this._insertIndex = undefined;
+    this._offsetFromEnd = undefined;
     this._editIndex = null;
     this._lastPoint = null;
 
@@ -328,7 +354,6 @@ export class DrawLineMode extends AbstractMode {
     // Calculate snap, if any..
     // Allow snapping only for OSM Entities in the current graph (i.e. not Rapid features)
     const datum = eventData?.target?.data;
-    const choice = eventData?.target?.choice;
     const target = datum && graph.hasEntity(datum.id);
 
     // Snap to a node
@@ -407,7 +432,6 @@ export class DrawLineMode extends AbstractMode {
     eventManager.setCursor('crosshair');
 
     let graph = editor.staging.graph;
-    let drawNode = this.drawNodeID && graph.hasEntity(this.drawNodeID);
 
     // Start transaction now - if we are making a draw node, we want it included.
     editor.beginTransaction();
@@ -415,15 +439,14 @@ export class DrawLineMode extends AbstractMode {
     // If draw node has gone missing (probably due to undo/redo), replace it.
     // Note that we don't need the distance checking code here that we have in `_move()`.
     // If we receive a 'click', we really do need a draw node now!
-    if (this.drawWayID && !drawNode) {
-      drawNode = this._addDrawNode();
+    if (this.drawWayID && !graph.hasEntity(this.drawNodeID)) {
+      this._addDrawNode();
       graph = editor.staging.graph;
     }
 
     // Calculate snap, if any..
     // Allow snapping only for OSM Entities in the current graph (i.e. not Rapid features)
     const datum = eventData?.target?.data;
-    const choice = eventData?.target?.choice;
     const target = datum && graph.hasEntity(datum.id);
     let node, edge;
 
@@ -626,7 +649,7 @@ export class DrawLineMode extends AbstractMode {
 
       editor.perform(
         this._actionRemoveDrawNode(drawWay, drawNode),                 // Remove the draw node from the draw way
-        actionAddVertex(drawWay.id, targetNode.id, this._insertIndex)  // Add target node to draw way
+        actionAddVertex(drawWay.id, targetNode.id, this._insertionIndex(drawWay))  // Add target node to draw way
       );
 
       // If the line has enough segments, commit the work in progress so we can undo/redo to it.
@@ -646,7 +669,7 @@ export class DrawLineMode extends AbstractMode {
         this.lastNodeID = targetNode.id;
         editor.perform(
           actionAddEntity(drawNode),
-          actionAddVertex(drawWay.id, drawNode.id, this._insertIndex)
+          actionAddVertex(drawWay.id, drawNode.id, this._insertionIndex(drawWay))
         );
       }
 
@@ -695,10 +718,13 @@ export class DrawLineMode extends AbstractMode {
 
     const drawNode = osmNode({ loc: loc ?? map.mouseLoc() });
     this.drawNodeID = drawNode.id;
+    const graph = editor.staging.graph;
+    const drawWay = graph.hasEntity(this.drawWayID);
+    const insertionIndex = this._insertionIndex(drawWay);
 
     editor.perform(
       actionAddEntity(drawNode),                                        // Create new draw node
-      actionAddVertex(this.drawWayID, drawNode.id, this._insertIndex)   // Add new draw node to draw way
+      actionAddVertex(this.drawWayID, drawNode.id, insertionIndex)      // Add new draw node to draw way
     );
 
     return drawNode;
@@ -758,6 +784,7 @@ export class DrawLineMode extends AbstractMode {
     const snapshot = {
       drawWayID:   this.drawWayID,
       insertIndex: this._insertIndex,
+      offsetFromEnd: this._offsetFromEnd,
       firstNodeID: firstNodeID,
       lastNodeID:  lastNodeID
     };
@@ -783,6 +810,7 @@ export class DrawLineMode extends AbstractMode {
     // restore the state and stay in `DrawLineMode`.
     if (snapshot && snapshot.drawWayID === this.drawWayID) {
       this._insertIndex = snapshot.insertIndex;
+      this._offsetFromEnd = snapshot.offsetFromEnd;
       this.firstNodeID = snapshot.firstNodeID;
       this.lastNodeID = snapshot.lastNodeID;
       this.drawNodeID = null;   // will be recreated after the user moves the pointer
@@ -797,6 +825,15 @@ export class DrawLineMode extends AbstractMode {
         context.enter('browse');
       }
     }
+  }
+
+
+  _insertionIndex(way) {
+    if (!way) return this._insertIndex;
+    if (typeof this._offsetFromEnd === 'number') {
+      return way.nodes.length - this._offsetFromEnd - 1;
+    }
+    return this._insertIndex;
   }
 
   /**

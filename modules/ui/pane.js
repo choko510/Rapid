@@ -76,10 +76,27 @@ export function uiPane(context, id) {
 
   pane.renderToggleButton = function(selection) {
     if (!_paneTooltip) {
-      const isRTL = l10n.isRTL();
+      const tooltipPlacement = function() {
+        const overMap = context.container().select('.over-map').node();
+        const buttonRect = this.getBoundingClientRect();
+        const clipRect = overMap?.getBoundingClientRect?.();
+        const fallback = l10n.isRTL() ? 'right' : 'left';
+        if (!clipRect) return fallback;
+
+        const spaceLeft = buttonRect.left - clipRect.left;
+        const spaceRight = clipRect.right - buttonRect.right;
+        const needed = 250;   // tooltip max-width + margins
+
+        if (fallback === 'left') {
+          return (spaceLeft < needed && spaceRight > spaceLeft) ? 'right' : 'left';
+        } else {
+          return (spaceRight < needed && spaceLeft > spaceRight) ? 'left' : 'right';
+        }
+      };
+
       _paneTooltip = uiTooltip(context)
         .scrollContainer(context.container().select('.over-map'))
-        .placement(isRTL ? 'right' : 'left')
+        .placement(tooltipPlacement)
         .title(_description)
         .shortcut(_key);
     }

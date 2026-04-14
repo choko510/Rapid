@@ -128,6 +128,17 @@ describe('LocalizationSystem', () => {
       const tags5 = { network: 'BART', ref: 'Yellow', from: 'Antioch', to: 'Millbrae', via: 'Pittsburg/Bay Point;San Francisco International Airport', route: 'subway' };
       expect(_l10n.displayName(tags5)).to.eql('BART Yellow from Antioch to Millbrae via Pittsburg/Bay Point;San Francisco International Airport');
     });
+
+    it('falls back to alternative name-like tags', () => {
+      const tags = { ref: 'A-1', alt_name: 'Old Road Name' };
+      expect(_l10n.displayName(tags)).to.eql('A-1');
+      expect(_l10n.displayName({ alt_name: 'Old Road Name' })).to.eql('Old Road Name');
+    });
+
+    it('can use milestone distance when no other label is present', () => {
+      const tags = { highway: 'milestone', distance: '12' };
+      expect(_l10n.displayName(tags)).to.eql('12');
+    });
   });
 
   describe('dmsMatcher', () => {

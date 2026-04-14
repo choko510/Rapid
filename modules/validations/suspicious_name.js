@@ -15,6 +15,18 @@ export function validationSuspiciousName(context) {
   let _waitingForNsi = false;
 
 
+  function getMatchedPreset(entity, graph) {
+    if (!presets || !graph) return null;
+    return presets.match(entity, graph);
+  }
+
+
+  function getPresetName(entity) {
+    const graph = editor?.staging?.graph;
+    return getMatchedPreset(entity, graph)?.name() ?? '';
+  }
+
+
   // Attempt to match a generic record in the name-suggestion-index.
   function isGenericMatchInNsi(tags) {
     const nsi = context.services.nsi;
@@ -64,13 +76,14 @@ export function validationSuspiciousName(context) {
       subtype: 'generic_name',
       severity: 'warning',
       message: function() {
-        const graph = editor.staging.graph;
-        const entity = graph.hasEntity(this.entityIds[0]);
+        const graph = editor?.staging?.graph;
+        const entity = graph?.hasEntity?.(this.entityIds[0]);
         if (!entity) return '';
-        const preset = presets.match(entity, graph);
+        const preset = getMatchedPreset(entity, graph);
+        const feature = preset?.name() ?? l10n.displayLabel(entity, graph);
         const langName = langCode && l10n.languageName(langCode);
         return l10n.t('issues.generic_name.message' + (langName ? '_language' : ''),
-          { feature: preset.name(), name: genericName, language: langName }
+          { feature: feature, name: genericName, language: langName }
         );
       },
       reference: showReference,
@@ -114,13 +127,14 @@ export function validationSuspiciousName(context) {
       subtype: 'not_name',
       severity: 'warning',
       message: function() {
-        const graph = editor.staging.graph;
-        const entity = graph.hasEntity(this.entityIds[0]);
+        const graph = editor?.staging?.graph;
+        const entity = graph?.hasEntity?.(this.entityIds[0]);
         if (!entity) return '';
-        const preset = presets.match(entity, graph);
+        const preset = getMatchedPreset(entity, graph);
+        const feature = preset?.name() ?? l10n.displayLabel(entity, graph);
         const langName = langCode && l10n.languageName(langCode);
         return l10n.t('issues.incorrect_name.message' + (langName ? '_language' : ''),
-          { feature: preset.name(), name: incorrectName, language: langName }
+          { feature: feature, name: incorrectName, language: langName }
         );
       },
       reference: showReference,
@@ -169,7 +183,7 @@ export function validationSuspiciousName(context) {
     let issues = [];
     const notNames = new Set((tags['not:name'] ?? '').split(';').map(s => s.trim()).filter(Boolean));
 
-    const presetName = presets.match(entity, editor.staging.graph).name();
+    const presetName = getPresetName(entity);
 
     for (const [k, v] of Object.entries(tags)) {
       if (!v) continue;   // no value

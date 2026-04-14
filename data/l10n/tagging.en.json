@@ -4974,6 +4974,25 @@
         },
         "crossing2/signals": {
           "label": "Crossing Signals"
+        },
+        "capacity_hgv": {
+          "label": "HGV Capacity"
+        },
+        "name_etymology": {
+          "label": "Name Etymology"
+        },
+        "name_etymology_wikidata": {
+          "label": "Name Etymology Wikidata",
+          "placeholder": "Q123"
+        },
+        "railway/signal/form": {
+          "label": "Signal Form"
+        },
+        "local_ref": {
+          "label": "Local Reference"
+        },
+        "culvert_type": {
+          "label": "Culvert Type"
         }
       },
       "presets": {
@@ -11599,6 +11618,37 @@
         },
         "highway/crossing2/signals": {
           "name": "Signalized Crossing"
+        },
+        "natural/fumarole": {
+          "name": "Fumarole",
+          "terms": "steam vent,volcanic vent"
+        },
+        "highway/proposed": {
+          "name": "Proposed Road"
+        },
+        "proposed/paper_road": {
+          "name": "Paper Road"
+        },
+        "highway/expressway": {
+          "name": "Expressway"
+        },
+        "natural/soakhole": {
+          "name": "Soakhole"
+        },
+        "landuse/stockyard": {
+          "name": "Stockyard"
+        },
+        "building/container": {
+          "name": "Container"
+        },
+        "power/outlet": {
+          "name": "Electrical Socket"
+        },
+        "railway/hirail_access": {
+          "name": "Hi-Rail Access Point"
+        },
+        "railway/platform_edge": {
+          "name": "Platform Edge"
         }
       }
     }

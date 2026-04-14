@@ -79,32 +79,39 @@ export function uiFieldCycleway(context, uifield) {
         var newValue = context.cleanTagValue(utilGetSetValue(d3_select(this)));
 
         // don't override multiple values with blank string
-        if (!newValue && (Array.isArray(_tags.cycleway) || Array.isArray(_tags[key]))) return;
+        if (!newValue && (Array.isArray(_tags.cycleway) || Array.isArray(_tags['cycleway:both']) || Array.isArray(_tags[key]))) return;
 
         if (newValue === 'none' || newValue === '') { newValue = undefined; }
 
         var otherKey = key === 'cycleway:left' ? 'cycleway:right' : 'cycleway:left';
-        var otherValue = typeof _tags.cycleway === 'string' ? _tags.cycleway : _tags[otherKey];
+        var commonValue = (typeof _tags.cycleway === 'string') ? _tags.cycleway :
+            (typeof _tags['cycleway:both'] === 'string') ? _tags['cycleway:both'] : undefined;
+        var otherValue = commonValue ?? _tags[otherKey];
         if (otherValue && Array.isArray(otherValue)) {
             // we must always have an explicit value for comparison
             otherValue = otherValue[0];
         }
         if (otherValue === 'none' || otherValue === '') { otherValue = undefined; }
 
-        var tag = {};
+        let tag;
 
         // If the left and right tags match, use the cycleway tag to tag both
         // sides the same way
         if (newValue === otherValue) {
+            // Preserve whichever common key already exists when possible.
+            const commonKey = ('cycleway:both' in _tags && !('cycleway' in _tags)) ? 'cycleway:both' : 'cycleway';
             tag = {
-                cycleway: newValue,
+                [commonKey]: newValue,
+                cycleway: commonKey === 'cycleway' ? newValue : undefined,
+                'cycleway:both': commonKey === 'cycleway:both' ? newValue : undefined,
                 'cycleway:left': undefined,
                 'cycleway:right': undefined
             };
         } else {
             // Always set both left and right as changing one can affect the other
             tag = {
-                cycleway: undefined
+                cycleway: undefined,
+                'cycleway:both': undefined
             };
             tag[key] = newValue;
             tag[otherKey] = otherValue;
@@ -128,17 +135,21 @@ export function uiFieldCycleway(context, uifield) {
         _tags = tags;
 
         // If cycleway is set, use that instead of individual values
-        var commonValue = typeof tags.cycleway === 'string' && tags.cycleway;
+        var commonValue = typeof tags.cycleway === 'string' ? tags.cycleway :
+            (typeof tags['cycleway:both'] === 'string' ? tags['cycleway:both'] : undefined);
 
         utilGetSetValue(items.selectAll('.preset-input-cycleway'), function(d) {
                 if (commonValue) return commonValue;
                 return !tags.cycleway && typeof tags[d] === 'string' ? tags[d] : '';
             })
             .attr('title', function(d) {
-                if (Array.isArray(tags.cycleway) || Array.isArray(tags[d])) {
+                if (Array.isArray(tags.cycleway) || Array.isArray(tags['cycleway:both']) || Array.isArray(tags[d])) {
                     var vals = [];
                     if (Array.isArray(tags.cycleway)) {
                         vals = vals.concat(tags.cycleway);
+                    }
+                    if (Array.isArray(tags['cycleway:both'])) {
+                        vals = vals.concat(tags['cycleway:both']);
                     }
                     if (Array.isArray(tags[d])) {
                         vals = vals.concat(tags[d]);
@@ -148,13 +159,13 @@ export function uiFieldCycleway(context, uifield) {
                 return null;
             })
             .attr('placeholder', function(d) {
-                if (Array.isArray(tags.cycleway) || Array.isArray(tags[d])) {
+                if (Array.isArray(tags.cycleway) || Array.isArray(tags['cycleway:both']) || Array.isArray(tags[d])) {
                     return l10n.t('inspector.multiple_values');
                 }
                 return uifield.placeholder;
             })
             .classed('mixed', function(d) {
-                return Array.isArray(tags.cycleway) || Array.isArray(tags[d]);
+                return Array.isArray(tags.cycleway) || Array.isArray(tags['cycleway:both']) || Array.isArray(tags[d]);
             });
     };
 

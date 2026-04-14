@@ -9,6 +9,7 @@
       "copy": "copy",
       "view_on": "view on {domain}",
       "visit_website": "visit website",
+      "edit_in": "edit in {tool}",
       "favorite": "favorite",
       "list": "list",
       "text": "text",
@@ -78,13 +79,30 @@
         }
       },
       "continue": {
-        "title": "Continue",
-        "description": "Continue this line.",
-        "not_eligible": "No line can be continued here.",
-        "multiple": "Several lines can be continued here. Add one to the selection to continue.",
+        "title": "Draw",
+        "description": {
+          "line": "Continue drawing this line.",
+          "area": "Continue drawing this area."
+        },
+        "not_eligible": "No line or area can be continued here.",
+        "multiple": "Several lines or areas are connected here. Add one to the selection to continue drawing it.",
         "annotation": {
-          "line": "Continued a line.",
-          "area": "Continued an area."
+          "line": "Continued drawing a line.",
+          "area": "Continued drawing an area."
+        }
+      },
+      "import_from_file": {
+        "title": "Load edits from file",
+        "tooltip": "Import an osmChange file or osmPatch file into the editor.",
+        "loading": "Importing file…",
+        "error": {
+          "title": "Failed to import file",
+          "unknown": "An unknown error occurred.",
+          "conflicts": "Some features in the osmChange file have been edited by other users, causing a conflict."
+        },
+        "annotation": {
+          "osmChange": "Imported an osmChange file",
+          "osmPatch": "Imported an osmPatch file"
         }
       },
       "cancel_draw": {
@@ -161,6 +179,23 @@
         "already_circular": {
           "one": "This can't be made more circular than it already is.",
           "other": "These can't be made more circular than they already are."
+        }
+      },
+      "divide": {
+        "title": "Divide",
+        "key": "K",
+        "annotation": "Divided an area into a grid of smaller areas.",
+        "tooltip": "Divide this area into a grid of smaller areas.",
+        "disabled": {
+          "not_closed": "This can't be divided because it's not an area.",
+          "more_than_four_nodes": "This area can't be divided because it has more than 4 corners.",
+          "less_than_four_nodes": "This area can't be divided because it has less than 4 corners.",
+          "too_large": "This area can't be divided because not enough of it is currently visible.",
+          "connected_to_hidden": "This area can't be divided because it is connected to a hidden feature.",
+          "not_downloaded": "This area can't be divided because parts of it have not yet been downloaded."
+        },
+        "error": {
+          "too_big": "Areas can't be divided into more than {limit} sections."
         }
       },
       "orthogonalize": {
@@ -1124,8 +1159,7 @@
       "switch": "Switch back to this background",
       "custom": "Custom",
       "fallback": {
-        "label": "Fallback when unavailable",
-        "tooltip": "Use this imagery for only the tiles that fail to load (for example 401, 403, or 404 errors)."
+        "label": "Fallback when unavailable"
       },
       "overlays": "Overlays",
       "grid": {
@@ -1351,6 +1385,10 @@
       "others": {
         "description": "Other Features",
         "tooltip": "Everything Else"
+      },
+      "custom": {
+        "description": "Custom Filter",
+        "tooltip": "Show only features matching a key=value tag filter."
       }
     },
     "area_fill": {
@@ -1418,6 +1456,17 @@
           "example_xyz": "https://example.com/{z}/{x}/{y}.mvt?access_token=123",
           "example_pmtiles": "https://example.com/buildings.pmtiles",
           "placeholder": "Enter a url"
+        }
+      },
+      "custom_features": {
+        "tooltip": "Edit custom feature filter",
+        "header": "Custom Feature Filter",
+        "template": {
+          "placeholder": "Enter key=value"
+        },
+        "instructions": {
+          "info": "Enter an OpenStreetMap tag filter, for example:",
+          "additional_info": "Use `*` to match any value for a key, for example `highway=*`."
         }
       }
     },
@@ -2331,10 +2380,11 @@
         "simplify": "{simplify_icon} **{simplify}** removes unnecessary nodes from areas and lines while preserving their shape.",
         "orthogonalize": "{orthogonalize_icon} **{orthogonalize}** snaps the corners of areas and lines to 90°. You can square individual corners or entire features.",
         "circularize": "{circularize_icon} **{circularize}** turns areas and closed lines into circles.",
+        "divide": "{divide_icon} **{divide}** splits areas into a grid of smaller areas.",
         "move": "{move_icon} **{move}** lets you drag features around the map.",
         "rotate": "{rotate_icon} **{rotate}** lets you swivel features around their center points.",
         "reflect": "{reflect_short_icon} **{reflect_short}** and {reflect_long_icon} **{reflect_long}** reflect features over their short and long axes.",
-        "continue": "{continue_icon} **{continue}** lets you extend existing lines from their endpoints.",
+        "continue": "{continue_icon} **{continue}** lets you extend an existing line or area starting from a point along it.",
         "reverse": "{reverse_icon} **{reverse}** changes the direction of features. The direction matters for things like one-way roads, traffic signs, waterways, and cliffs.",
         "disconnect": "{disconnect_icon} **{disconnect}** separates connected lines and areas from each other. You can disconnect entire features or just selected points.",
         "merge": "{merge_icon} **{merge}** combines multiple features into one. You can merge areas together to create multipolygons, merge lines together to create longer lines, and merge points into anything to transfer their tags.",
@@ -2756,6 +2806,11 @@
         "title": "Suspicious Names",
         "tip": "Find features with generic or suspicious names"
       },
+      "oneway_onelane": {
+        "title": "One lane without one-way",
+        "message": "{feature} has lanes=1 with oneway=no",
+        "reference": "Roads with a single lane are usually one-way, alternating, reversible, or lack painted lane markings."
+      },
       "tag_suggests_area": {
         "message": "{feature} should be a closed area based on the tag \"{tag}\"",
         "reference": "Areas must have connected endpoints."
@@ -2830,6 +2885,9 @@
         "address_the_concern": {
           "title": "Address the concern"
         },
+        "change_lane_tag": {
+          "title": "Increase the number of lanes"
+        },
         "set_both_as_marked": {
           "title": "Set line and point to marked",
           "title_use_marking": "Use '{marking}' marking",
@@ -2880,6 +2938,9 @@
         },
         "ignore_issue": {
           "title": "Ignore this issue"
+        },
+        "ignore_suggestion": {
+          "title": "Ignore this suggestion"
         },
         "merge_close_vertices": {
           "annotation": "Merged very close points in a way."
@@ -2960,6 +3021,22 @@
         "tag_as_unsquare": {
           "title": "Tag as physically unsquare",
           "annotation": "Tagged a way as having unsquare corners."
+        },
+        "tag_as_oneway_yes": {
+          "title": "Tag as one-way",
+          "annotation": "Marked a way as one-way."
+        },
+        "tag_as_oneway_alternating": {
+          "title": "Tag as alternating one-way",
+          "annotation": "Marked a way as alternating one-way."
+        },
+        "tag_as_oneway_reversible": {
+          "title": "Tag as reversible",
+          "annotation": "Marked a way as reversible."
+        },
+        "tag_as_oneway_no_markings": {
+          "title": "There are no painted lanes",
+          "annotation": "Tagged lane_markings=no and removed lanes=1."
         },
         "tag_this_as_higher": {
           "title": "Tag this as higher"
@@ -3467,7 +3544,7 @@
           "key": "K"
         },
         "continue_line": {
-          "label": "Continue a line at the selected endpoint",
+          "label": "Continue drawing a line or area from the selected point",
           "key": "A"
         },
         "merge": {
@@ -3509,6 +3586,10 @@
         "circularize": {
           "label": "Circularize a closed line or area",
           "key": "O"
+        },
+        "divide": {
+          "label": "Split an area into a grid",
+          "key": "K"
         },
         "reflect_long": {
           "label": "Flip features across the longer axis",

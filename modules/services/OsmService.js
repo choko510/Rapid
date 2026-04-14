@@ -392,16 +392,21 @@ export class OsmService extends AbstractSystem {
   // GET /api/0.6/node/#id
   // GET /api/0.6/[way|relation]/#id/full
   loadEntity(id, callback) {
-    const type = osmEntity.id.type(id);    // 'node', 'way', 'relation'
-    const osmID = osmEntity.id.toOSM(id);
-    const options = { skipSeen: false };
-    const full = (type !== 'node' ? '/full' : '');
+    return new Promise((resolve, reject) => {
+      const type = osmEntity.id.type(id);    // 'node', 'way', 'relation'
+      const osmID = osmEntity.id.toOSM(id);
+      const options = { skipSeen: false };
+      const full = (type !== 'node' ? '/full' : '');
 
-    this.loadFromAPI(
-      `/api/0.6/${type}/${osmID}${full}.json`,
-      callback,
-      options
-    );
+      this.loadFromAPI(
+        `/api/0.6/${type}/${osmID}${full}.json`,
+        (err, result) => {
+          if (callback) callback(err, result);
+          return err ? reject(err) : resolve(result);
+        },
+        options
+      );
+    });
   }
 
 
@@ -423,15 +428,20 @@ export class OsmService extends AbstractSystem {
   // Load the relations of a single entity with the given.
   // GET /api/0.6/[node|way|relation]/#id/relations
   loadEntityRelations(id, callback) {
-    const type = osmEntity.id.type(id);
-    const osmID = osmEntity.id.toOSM(id);
-    const options = { skipSeen: false };
+    return new Promise((resolve, reject) => {
+      const type = osmEntity.id.type(id);
+      const osmID = osmEntity.id.toOSM(id);
+      const options = { skipSeen: false };
 
-    this.loadFromAPI(
-      `/api/0.6/${type}/${osmID}/relations.json`,
-      callback,
-      options
-    );
+      this.loadFromAPI(
+        `/api/0.6/${type}/${osmID}/relations.json`,
+        (err, result) => {
+          if (callback) callback(err, result);
+          return err ? reject(err) : resolve(result);
+        },
+        options
+      );
+    });
   }
 
 
@@ -582,6 +592,48 @@ export class OsmService extends AbstractSystem {
     const options = {
       method: 'PUT',
       headers: { 'Content-Type': 'text/xml' },
+      signal: controller.signal
+    };
+
+    this._oauth.fetch(resource, options)
+      .then(utilFetchResponse)
+      .then(result => errback(null, result))
+      .catch(err => {
+        this._changeset.inflight = null;
+        if (err.name === 'AbortError') return;  // ok
+        if (err.name === 'FetchError') {
+          errback(err);
+          return;
+        }
+      });
+
+    this._changeset.inflight = controller;
+  }
+
+
+  // Update tags on an existing unclosed changeset.
+  // PUT /api/0.6/changeset/#id
+  updateChangesetTags(changeset, callback = () => {}) {
+    if (this._changeset.inflight) {
+      return callback({ message: 'Changeset already inflight', status: -2 }, changeset);
+    } else if (!this.authenticated()) {
+      return callback({ message: 'Not Authenticated', status: -3 }, changeset);
+    } else if (!changeset?.id) {
+      return callback({ message: 'Missing Changeset ID', status: -4 }, changeset);
+    }
+
+    const updatedChangeset = (err, /*result*/) => {
+      this._changeset.inflight = null;
+      callback(err, changeset);
+    };
+
+    const errback = this._wrapcb(updatedChangeset);
+    const resource = this._apiroot + `/api/0.6/changeset/${changeset.id}`;
+    const controller = new AbortController();
+    const options = {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/xml' },
+      body: JXON.stringify(changeset.asJXON()),
       signal: controller.signal
     };
 

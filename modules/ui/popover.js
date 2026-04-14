@@ -302,13 +302,13 @@ export function uiPopover(context, klass) {
                 var popoverRect = popoverSelection.node().getBoundingClientRect();
                 var minMargin = 10;
 
-                if (position.x + popoverRect.width > clipRect.width - minMargin) {
-                    position.x = clipRect.width - minMargin - popoverRect.width;
-                } else if (position.x < minMargin) {
-                    position.x = minMargin;
-                }
-
                 if (placement === 'top' || placement === 'bottom') {
+                    if (position.x + popoverRect.width > clipRect.width - minMargin) {
+                        position.x = clipRect.width - minMargin - popoverRect.width;
+                    } else if (position.x < minMargin) {
+                        position.x = minMargin;
+                    }
+
                     var initialPosX = anchorFrame.x + (anchorFrame.w - popoverRect.width) * alignFactor;
                     var arrow = anchor.selectAll('.popover-' + _id + ' > .popover-arrow');
                     // keep the arrow centered on the button, or as close as possible

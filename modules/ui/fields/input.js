@@ -9,9 +9,12 @@ export {
   uiFieldText as uiFieldUrl,
   uiFieldText as uiFieldIdentifier,
   uiFieldText as uiFieldNumber,
+  uiFieldText as uiFieldSchedule,
   uiFieldText as uiFieldTel,
   uiFieldText as uiFieldEmail
 };
+
+const yoHoursURLFormat = 'https://projets.pavie.info/yohours/?oh={value}';
 
 
 export function uiFieldText(context, uifield) {
@@ -150,6 +153,25 @@ export function uiFieldText(context, uifield) {
         })
         .merge(outlinkButton);
 
+    } else if (uifield.type === 'schedule') {
+      input.attr('type', 'text');
+
+      outlinkButton = wrap.selectAll('.foreign-id-permalink')
+        .data([0]);
+
+      outlinkButton.enter()
+        .append('button')
+        .call(uiIcon('#rapid-icon-out-link'))
+        .attr('class', 'form-field-button foreign-id-permalink')
+        .attr('title', () => l10n.t('icons.edit_in', { tool: 'YoHours' }))
+        .on('click', function(d3_event) {
+          d3_event.preventDefault();
+          const value = validIdentifierValueForLink();
+          const url = yoHoursURLFormat.replace(/{value}/, encodeURIComponent(value || ''));
+          window.open(url, '_blank');
+        })
+        .merge(outlinkButton);
+
     } else if (uifield.type === 'url') {
       input.attr('type', 'text');
 
@@ -197,6 +219,9 @@ export function uiFieldText(context, uifield) {
     if (uifield.type === 'url' && /^https?:\/\//i.test(value)) return value;
     if (uifield.type === 'identifier' && pattern) {
       return value && value.match(new RegExp(pattern));
+    }
+    if (uifield.type === 'schedule') {
+      return value;
     }
     return null;
   }
@@ -260,7 +285,7 @@ export function uiFieldText(context, uifield) {
       .classed('mixed', isMixed);
 
     if (outlinkButton && !outlinkButton.empty()) {
-      const disabled = !validIdentifierValueForLink();
+      const disabled = !validIdentifierValueForLink() && uifield.type !== 'schedule';
       outlinkButton.classed('disabled', disabled);
     }
   };

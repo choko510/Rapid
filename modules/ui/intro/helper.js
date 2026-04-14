@@ -54,6 +54,7 @@ export function helpHtml(context, stringID, replacements) {
 
       // operation icons
       circularize_icon: icon('#rapid-operation-circularize', 'operation'),
+      divide_icon: icon('#rapid-operation-divide', 'operation'),
       continue_icon: icon('#rapid-operation-continue', 'operation'),
       copy_icon: icon('#rapid-operation-copy', 'operation'),
       delete_icon: icon('#rapid-operation-delete', 'operation'),
@@ -117,6 +118,7 @@ export function helpHtml(context, stringID, replacements) {
       note: l10n.t('modes.add_note.title'),
 
       circularize: l10n.t('operations.circularize.title'),
+      divide: l10n.t('operations.divide.title'),
       continue: l10n.t('operations.continue.title'),
       copy: l10n.t('operations.copy.title'),
       delete: l10n.t('operations.delete.title'),

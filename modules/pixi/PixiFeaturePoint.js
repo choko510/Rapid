@@ -13,6 +13,7 @@ import { normalizeRect } from './helpers.js';
  *   `geometry`    PixiGeometry() class containing all the information about the geometry
  *   `style`       Object containing styling data
  *   `container`   PIXI.Container containing the display objects used to draw the point
+ *   `radius`      PIXI.Graphics for optional radius/diameter visualization
  *   `marker`      PIXI.Sprite for the marker
  *   `icon`        PIXI.Sprite for the icon
  *   `viewfields`  PIXI.Container containing the viewfields (or null if none)
@@ -35,6 +36,13 @@ export class PixiFeaturePoint extends AbstractFeature {
 
     this._isCircular = false;   // set true to use a circular halo and hit area
 
+    const radius = new PIXI.Graphics();
+    radius.label = 'radius';
+    radius.eventMode = 'none';
+    radius.sortableChildren = false;
+    radius.visible = false;
+    this.radius = radius;
+
     const marker = new PIXI.Sprite();
     marker.label = 'marker';
     marker.eventMode = 'none';
@@ -51,7 +59,7 @@ export class PixiFeaturePoint extends AbstractFeature {
 
     this.viewfields = null;   // add later only if needed
 
-    this.container.addChild(marker, icon);
+    this.container.addChild(radius, marker, icon);
   }
 
 
@@ -64,6 +72,10 @@ export class PixiFeaturePoint extends AbstractFeature {
     if (this.marker) {
       this.marker.destroy();
       this.marker = null;
+    }
+    if (this.radius) {
+      this.radius.destroy();
+      this.radius = null;
     }
     if (this.icon) {
       this.icon.destroy();
@@ -154,6 +166,29 @@ export class PixiFeaturePoint extends AbstractFeature {
       marker.visible = true;
     } else {  // No marker
       marker.visible = false;
+    }
+
+    const radiusPixels = style.radiusPixels ?? 0;
+    if (radiusPixels > 0) {
+      this.radius.clear()
+        .circle(0, 0, radiusPixels);
+
+      if (!wireframeMode) {
+        this.radius.fill({
+          color: style.radiusTint ?? 0x333333,
+          alpha: style.radiusAlpha ?? 0.6
+        });
+      }
+
+      this.radius.stroke({
+        color: style.radiusStrokeTint ?? 0xffffff,
+        width: style.radiusStrokeWidth ?? 0.5,
+        alpha: style.radiusStrokeAlpha ?? 0.75
+      });
+      this.radius.visible = true;
+    } else {
+      this.radius.clear();
+      this.radius.visible = false;
     }
 
     // Show icon, if any..

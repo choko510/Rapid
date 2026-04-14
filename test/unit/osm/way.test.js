@@ -407,6 +407,12 @@ describe('osmWay', () => {
             assert.equal(way.isOneWay(), true, 'stream');
             way = Rapid.osmWay({tags: { highway: 'motorway' }});
             assert.equal(way.isOneWay(), true, 'motorway');
+            way = Rapid.osmWay({tags: { conveying: 'forward' }});
+            assert.equal(way.isOneWay(), true, 'conveying forward');
+            way = Rapid.osmWay({tags: { conveying: 'backward' }});
+            assert.equal(way.isOneWay(), true, 'conveying backward');
+            way = Rapid.osmWay({tags: { 'railway:preferred_direction': 'forward' }});
+            assert.equal(way.isOneWay(), true, 'railway preferred_direction forward');
             way = Rapid.osmWay({tags: { junction: 'roundabout' }});
             assert.equal(way.isOneWay(), true, 'roundabout');
             way = Rapid.osmWay({tags: { junction: 'circular' }});
@@ -445,6 +451,8 @@ describe('osmWay', () => {
             assert.equal(way.isOneWay(), false, 'track');
             way = Rapid.osmWay({tags: { highway: 'path' }});
             assert.equal(way.isOneWay(), false, 'path');
+            way = Rapid.osmWay({tags: { conveying: 'no' }});
+            assert.equal(way.isOneWay(), false, 'conveying no');
         });
 
 

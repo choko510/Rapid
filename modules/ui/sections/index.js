@@ -7,6 +7,7 @@ export { uiSectionColorblindModeOptions } from './colorblind_mode_options.js';
 export { uiSectionDataLayers } from './data_layers.js';
 export { uiSectionEntityIssues } from './entity_issues.js';
 export { uiSectionFeatureType } from './feature_type.js';
+export { uiSectionImportFile } from './import_file.js';
 export { uiSectionMapFeatures } from './map_features.js';
 export { uiSectionMapInteractionOptions } from './map_interaction_options.js';
 export { uiSectionMapStyleOptions } from './map_style_options.js';

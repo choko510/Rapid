@@ -191,7 +191,7 @@ export function uiEditMenu(context) {
             .label(operation.annotation() || operation.title)();
         }
 
-        operation();
+        operation(d3_event);
         editMenu.close();
       }
       _lastPointerUpType = null;

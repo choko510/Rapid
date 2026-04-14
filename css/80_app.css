@@ -119,19 +119,28 @@ em {
 strong {
   font-weight: bold;
 }
+.button-link,
 a,
 a:visited,
 a:active {
   color: #7092ff;
 }
+.button-link:focus,
 a:focus {
   color: #597be7;
 }
 @media (hover: hover) {
+  .button-link:hover,
   a:hover {
     color: #597be7;
   }
 }
+
+.button-link {
+  display: flex;
+  align-items: center;
+}
+
 kbd {
   display: inline-block;
   text-align: center;
@@ -1610,11 +1619,42 @@ a.hide-toggle {
     font-style: italic;
 }
 
-.form-field-input-multicombo li.chip span {
+.form-field-input-multicombo li.chip span.chip-label {
     display: block;
     flex: 1 1 auto;
     overflow: hidden;
     word-wrap: break-word;
+}
+
+.form-field-input-multicombo li.chip span.chip-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+}
+.ideditor[dir='ltr'] .form-field-input-multicombo li.chip span.chip-icon {
+    margin-right: 5px;
+}
+.ideditor[dir='rtl'] .form-field-input-multicombo li.chip span.chip-icon {
+    margin-left: 5px;
+}
+.form-field-input-multicombo li.chip span.chip-icon:empty {
+    display: none;
+}
+.form-field-input-multicombo li.chip span.chip-icon svg.icon,
+.form-field-input-multicombo li.chip span.chip-icon img.combo-option-image {
+    width: 14px;
+    height: 14px;
+}
+.form-field-input-multicombo li.chip span.chip-icon svg.icon {
+    color: currentColor;
+}
+.form-field-input-multicombo li.chip span.chip-icon img.combo-option-image {
+    border-radius: 2px;
+    object-fit: contain;
 }
 
 .form-field-input-multicombo a {
@@ -2146,6 +2186,55 @@ div.combobox {
     border-top: 1px solid #ccc;
     line-height: 0.95rem;
     break: all;
+}
+
+.combobox a.combobox-option.with-icon {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.combobox .combo-option-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+}
+
+.combobox .combo-option-icon svg.icon,
+.combobox .combo-option-icon img.combo-option-image {
+    width: 16px;
+    height: 16px;
+}
+
+.combobox .combo-option-icon img.combo-option-image {
+    border-radius: 2px;
+    object-fit: contain;
+}
+
+.combobox .combo-option-label {
+    display: block;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+form.divide-modal {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    margin: 8px;
+}
+form.divide-modal input {
+    width: 4em;
+    text-align: center;
+}
+.divide-modal-error {
+    min-height: 1.2em;
+    text-align: center;
 }
 
 .combobox a.selected,

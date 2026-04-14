@@ -479,6 +479,15 @@ export function uiSectionBackgroundList(context) {
     }
     storage.setItem('background-last-used', sourceID);
     imagery.setSourceByID(sourceID);
+
+    // OpenStreetMap Standard already contains labels.
+    // Hide the locator overlay to avoid stacked, unreadable labels.
+    if (sourceID === 'MAPNIK') {
+      const locatorOverlay = imagery.overlayLayerSources().find(overlay => overlay.isLocatorOverlay());
+      if (locatorOverlay) {
+        window.setTimeout(() => imagery.toggleOverlayLayer(locatorOverlay), 0);
+      }
+    }
   }
 
 

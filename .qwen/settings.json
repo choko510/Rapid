@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(select-object *)",
+      "Bash(pnpm add *)",
+      "Bash(select-string *)",
+      "Bash(node *)",
+      "Bash(out-file *)",
+      "Bash(del *)",
+      "Bash(yarn add *)",
+      "Bash(ren *)",
+      "Bash(findstr *)"
+    ]
+  },
+  "$version": 3
+}

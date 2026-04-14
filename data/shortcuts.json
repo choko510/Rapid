@@ -20,6 +20,10 @@
               "text": "shortcuts.command.pan_more.label"
             },
             {
+              "shortcuts": ["↖", "↘", "⇞", "⇟"],
+              "text": "shortcuts.command.pan_more.label"
+            },
+            {
               "shortcuts": ["{interaction-mouse-wheel}", "{interaction-twofinger-zoom}", ["+", "-"]],
               "text": "shortcuts.command.zoom.label"
             },
@@ -240,6 +244,10 @@
             {
               "shortcuts": ["shortcuts.command.circularize.key"],
               "text": "shortcuts.command.circularize.label"
+            },
+            {
+              "shortcuts": ["shortcuts.command.divide.key"],
+              "text": "shortcuts.command.divide.label"
             },
             {
               "shortcuts": ["shortcuts.command.continue_line.key"],

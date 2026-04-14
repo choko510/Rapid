@@ -6,6 +6,7 @@ import { iso1A2Code } from '@rapideditor/country-coder';
 
 import { osmEntity } from '../../osm/entity.js';
 import { uiCombobox } from '../combobox.js';
+import { uiIcon } from '../icon.js';
 import { utilKeybinding } from '../../util/keybinding.js';
 import { utilGetSetValue, utilNoAuto, utilRebind } from '../../util/index.js';
 
@@ -22,6 +23,7 @@ export function uiFieldCombo(context, uifield) {
   const assets = context.systems.assets;
   const editor = context.systems.editor;
   const l10n = context.systems.l10n;
+  const storage = context.systems.storage;
   const dispatch = d3_dispatch('change');
   const presetField = uifield.presetField;
 
@@ -44,6 +46,7 @@ export function uiFieldCombo(context, uifield) {
     var _tags;
     var _countryCode;
     var _staticPlaceholder;
+    var _optionIcons = null;
 
     // initialize deprecated tags array
     var _dataDeprecated = [];
@@ -56,6 +59,7 @@ export function uiFieldCombo(context, uifield) {
     if (_isMulti && uifield.key && /[^:]$/.test(uifield.key)) {
         uifield.key += ':';
     }
+    initOptionIcons();
 
 
     function snake(s) {
@@ -64,6 +68,62 @@ export function uiFieldCombo(context, uifield) {
 
     function clean(s) {
         return s.split(';').map(s => s.trim()).join(';');
+    }
+
+
+    function initOptionIcons() {
+        const field = (typeof presetField._resolveReference === 'function') ? presetField._resolveReference('icons') : presetField;
+        const icons = field?.icons;
+        _optionIcons = (icons && typeof icons === 'object') ? icons : null;
+    }
+
+
+    function showThirdPartyIcons() {
+        return (storage?.getItem('preferences.privacy.thirdpartyicons') ?? 'true') === 'true';
+    }
+
+
+    function iconForOption(optionKey) {
+        if (!_optionIcons || !optionKey) return null;
+
+        const iconValue = _optionIcons[optionKey];
+        if (typeof iconValue !== 'string' || !iconValue) return null;
+
+        if (/^(https?:)?\/\//i.test(iconValue)) {
+            return showThirdPartyIcons() ? { imageURL: iconValue } : null;
+        }
+
+        return { iconName: iconValue.replace(/^#/, '') };
+    }
+
+
+    function renderOptionIcon(selection, icon) {
+        selection.selectAll('*').remove();
+        if (!icon) return;
+
+        if (icon.imageURL) {
+            selection.append('img')
+                .attr('class', 'combo-option-image')
+                .attr('src', icon.imageURL)
+                .attr('alt', '');
+        } else if (icon.iconName) {
+            selection.call(uiIcon(`#${icon.iconName}`));
+        }
+    }
+
+
+    function displayWithOptionalIcon(labelHTML, icon) {
+        if (!icon) return labelHTML;
+
+        return function(selection) {
+            selection.classed('with-icon', true);
+            selection.append('span')
+                .attr('class', 'combo-option-icon')
+                .call(renderOptionIcon, icon);
+            selection.append('span')
+                .attr('class', 'combo-option-label')
+                .html(labelHTML);
+        };
     }
 
 
@@ -136,11 +196,14 @@ export function uiFieldCombo(context, uifield) {
         if (!_optarray) return;
 
         _comboData = _optarray.map(function(v) {
+            const display = uifield.tHtml(`options.${v}`, { default: v });
+            const icon = iconForOption(v);
             return {
                 key: v,
                 value: uifield.t(`options.${v}`, { default: v }),
                 title: v,
-                display: uifield.tHtml(`options.${v}`, { default: v }),
+                display: displayWithOptionalIcon(display, icon),
+                icon: icon,
                 klass: uifield.hasTextForStringID(`options.${v}`) ? '' : 'raw-option'
             };
         });
@@ -211,10 +274,13 @@ export function uiFieldCombo(context, uifield) {
                 var k = d.value;
                 if (_isMulti) k = k.replace(uifield.key, '');
                 var label = uifield.t(`options.${k}`, { default: k });
+                var display = uifield.tHtml(`options.${k}`, { default: k });
+                var icon = iconForOption(k);
                 return {
                     key: k,
                     value: label,
-                    display: uifield.tHtml(`options.${k}`, { default: k }),
+                    display: displayWithOptionalIcon(display, icon),
+                    icon: icon,
                     title: d.title || label,
                     klass: uifield.hasTextForStringID(`options.${k}`) ? '' : 'raw-option'
                 };
@@ -443,14 +509,12 @@ export function uiFieldCombo(context, uifield) {
                     _multiData.push({
                         key: k,
                         value: displayValue(suffix),
-                        isMixed: Array.isArray(v)
+                        isMixed: Array.isArray(v),
+                        icon: iconForOption(suffix)
                     });
                 }
 
                 if (key) {
-                    // Set keys for form-field modified (needed for undo and reset buttons)..
-                    keys = _multiData.map(function(d) { return d.key; });
-
                     // limit the input length so it fits after prepending the key prefix
                     maxLength = context.maxCharsForTagKey - utilUnicodeCharsCount(key);
                 } else {
@@ -483,7 +547,8 @@ export function uiFieldCombo(context, uifield) {
                     return {
                         key: v,
                         value: displayValue(v),
-                        isMixed: !commonValues.includes(v)
+                        isMixed: !commonValues.includes(v),
+                        icon: iconForOption(v)
                     };
                 });
 
@@ -526,7 +591,8 @@ export function uiFieldCombo(context, uifield) {
                 .insert('li', '.input-wrap')
                 .attr('class', 'chip');
 
-            enter.append('span');
+            enter.append('span').attr('class', 'chip-icon');
+            enter.append('span').attr('class', 'chip-label');
             enter.append('a');
 
             chips = chips.merge(enter)
@@ -548,8 +614,13 @@ export function uiFieldCombo(context, uifield) {
                 registerDragAndDrop(chips);
             }
 
-            chips.select('span')
+            chips.select('.chip-label')
                 .text(d => d.value);
+
+            chips.select('.chip-icon')
+                .each(function(d) {
+                    d3_select(this).call(renderOptionIcon, d.icon);
+                });
 
             // Don't show delete '×' on the source chip for rapid features
             if (!(uifield.key === 'source' && _isRapidFeature())) {

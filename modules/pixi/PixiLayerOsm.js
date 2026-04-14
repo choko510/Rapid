@@ -6,6 +6,7 @@ import { AbstractLayer } from './AbstractLayer.js';
 import { PixiFeatureLine } from './PixiFeatureLine.js';
 import { PixiFeaturePoint } from './PixiFeaturePoint.js';
 import { PixiFeaturePolygon } from './PixiFeaturePolygon.js';
+import { getRadiusInPixels } from '../core/lib/Planar.js';
 
 const MINZOOM = 12;
 
@@ -459,7 +460,7 @@ export class PixiLayerOsm extends AbstractLayer {
       if (!geojson) {
         geojson = entity.asGeoJSON(graph);
         geojson.v = version;
-        if (geojson.type === 'LineString' && entity.tags.oneway === '-1') {
+        if (geojson.type === 'LineString' && shouldReverseForDirectionTags(entity.tags)) {
           geojson.coordinates.reverse();
         }
         this._resolved.set(entityID, geojson);
@@ -605,6 +606,7 @@ export class PixiLayerOsm extends AbstractLayer {
         const preset = presets.match(node, graph);
         const iconName = preset?.icon;
         const directions = node.directions(graph, context.viewport);
+        const radiusPixels = feature.hasClass('select') ? getRadiusInPixels(node, viewport) : 0;
 
         // set marker style
         let markerStyle = {
@@ -613,6 +615,7 @@ export class PixiLayerOsm extends AbstractLayer {
           labelTint: 0xeeeeee,
           markerName: 'smallCircle',
           markerTint: 0xffffff,
+          radiusPixels: radiusPixels,
           viewfieldAngles: directions,
           viewfieldName: 'viewfieldDark',
           viewfieldTint: 0xffffff
@@ -703,6 +706,7 @@ export class PixiLayerOsm extends AbstractLayer {
       if (feature.dirty) {
         let preset = presets.match(node, graph);
         let iconName = preset?.icon;
+        const radiusPixels = feature.hasClass('select') ? getRadiusInPixels(node, viewport) : 0;
 
         // If we matched a generic preset without an icon, try matching it as a 'vertex'
         // This is just to choose a better icon for an otherwise empty-looking pin.
@@ -719,6 +723,7 @@ export class PixiLayerOsm extends AbstractLayer {
           iconTint: 0x111111,
           markerName: 'pin',
           markerTint: 0xffffff,
+          radiusPixels: radiusPixels,
           viewfieldAngles: directions,
           viewfieldName: 'viewfieldDark',
           viewfieldTint: 0xffffff
@@ -918,5 +923,15 @@ function hasWikidata(entity) {
     entity.tags['brand:wikidata'] ||
     entity.tags['network:wikidata'] ||
     entity.tags['operator:wikidata']
+  );
+}
+
+
+function shouldReverseForDirectionTags(tags = {}) {
+  return (
+    tags.oneway === '-1' ||
+    tags.conveying === 'backward' ||
+    tags['railway:preferred_direction'] === 'backward' ||
+    tags['railway:prefered_direction'] === 'backward'
   );
 }
