@@ -1,354 +1,420 @@
 {
   "zh-TW": {
-    "icons": {
-      "download": "下載",
-      "information": "資訊",
-      "undo": "復原",
-      "zoom_to": "縮放至",
-      "view_on": "在 {domain} 上檢視",
-      "favorite": "最愛",
-      "text": "文字"
-    },
-    "toolbar": {
-      "inspect": "檢查",
-      "undo_redo": "復原／重做",
-      "recent": "最近",
-      "favorites": "最愛",
-      "add_feature": "新增圖徽"
-    },
-    "title": {
-      "labeled_and_more": "{labeled} 與 {count} 個"
-    },
-    "modes": {
-      "add_area": {
-        "title": "區域",
-        "description": "新增建築、公園、湖泊，或是其他區域到地圖上。"
-      },
-      "add_line": {
-        "title": "線"
-      },
-      "add_point": {
-        "title": "點"
-      },
-      "add_note": {
-        "title": "註記",
-        "description": "發現了問題？讓其他製圖者知道。"
-      },
-      "add_preset": {
-        "title": "新增 {feature}"
-      },
-      "browse": {
-        "title": "瀏覽",
-        "description": "平移及縮放地圖。"
-      },
-      "drag_node": {
-        "connected_to_hidden": "這個沒辦法被編輯，因其與其他隱藏的圖徵相連"
-      }
-    },
-    "operations": {
-      "add": {
-        "annotation": {
-          "point": "已新增一點。",
-          "vertex": "已新增一節點至路徑上。",
-          "relation": "已新增一項關係。",
-          "note": "已新增註記。"
-        }
-      },
-      "start": {
-        "annotation": {
-          "line": "開始繪製一線段。",
-          "area": "開始繪製一塊區域。"
-        }
-      },
-      "continue": {
-        "description": "繼續繪製此線段",
-        "not_eligible": "無法在此繼續繪製線段",
-        "annotation": {
-          "line": "繼續繪製一線段。",
-          "area": "繼續繪製一區域。"
-        }
-      },
-      "cancel_draw": {
-        "annotation": "取消了繪圖。"
-      },
-      "change_tags": {
-        "annotation": "修改了標籤。"
-      },
-      "copy": {
-        "title": "複製",
-        "annotation": "已複製 {n} 個圖徽。"
-      },
-      "paste": {
-        "title": "貼上",
-        "nothing_copied": "未複製圖徽。"
-      },
-      "circularize": {
-        "title": "環形化",
-        "annotation": {
-          "feature": "將 {n} 個圖徽變為圓形。"
-        },
-        "not_closed": "因為這些圖徵並不是封閉的而無法圓形化。",
-        "too_large": "因為這些圖徵檢視部分不足而無法圓形化。"
-      },
-      "orthogonalize": {
-        "title": "方角化",
-        "description": {
-          "corner": "方角化這些角",
-          "feature": "方角化這些圖徵的角。"
-        },
-        "annotation": {
-          "corner": "將 {n} 個角落變為方形。",
-          "feature": "將 {n} 個圖徽的角落變為方形。"
-        }
-      },
-      "straighten": {
-        "description": {
-          "line": "拉直此線段。",
-          "lines": "拉直這些線。"
-        }
-      },
-      "delete": {
-        "title": "刪除",
-        "annotation": {
-          "point": "刪除了一點。",
-          "vertex": "刪除了路徑上的一個節點。",
-          "line": "刪除了一線段。",
-          "area": "刪除了一區域。",
-          "relation": "刪除了一關係",
-          "feature": "已刪除 {n} 個圖徽。"
-        },
-        "too_large": "因為檢視的部分並不夠，所以無法刪除。",
-        "incomplete_relation": "因為這些圖徵沒有完全下載下來，所以無法刪除。"
-      },
-      "downgrade": {
-        "has_wikidata_tag": "因為這些圖徵有 Wikidata 標籤而無法降級。"
-      },
-      "disconnect": {
-        "title": "斷開",
-        "not_connected": "未有足夠的路徑／區域來斷開。",
-        "connected_to_hidden": "無法斷開，因為其連接著隱藏的特徵。",
-        "relation": "因為其連接到了關係中的成員，所以不能斷開。"
-      },
-      "merge": {
-        "title": "合併",
-        "description": "合併這些特徵",
-        "annotation": "已合併 {n} 個圖徽。",
-        "not_eligible": "不能合併這些物件。",
-        "incomplete_relation": "這些物件不能合併，因為其中最少有一件未有完全下載。",
-        "conflicting_tags": "這些特徵並不能合併，因為它們有彼此衝突的標籤。"
-      },
-      "move": {
-        "title": "移動",
-        "annotation": {
-          "point": "移動了一點。",
-          "vertex": "移動了路徑上的一節點。",
-          "line": "移動了一線段。",
-          "area": "移動了一區域。"
-        }
-      },
-      "rotate": {
-        "title": "旋轉",
-        "description": "依據中心點旋轉這些圖徵。",
-        "annotation": {
-          "line": "旋轉了一線段。",
-          "area": "旋轉了一區域。",
-          "relation": "旋轉了一個關係。",
-          "feature": "已旋轉 {n} 個圖徽。"
-        },
-        "too_large": "因為這些圖徵檢視部分不夠，所以無法旋轉。"
-      },
-      "reverse": {
-        "title": "反轉"
-      },
-      "split": {
-        "title": "斬開",
-        "description": {
-          "line": {
-            "multiple": {
-              "single_node": "在這個點上分割這些線段。"
-            }
+    "QA": {
+      "keepRight": {
+        "close": "關閉（問題已修復）",
+        "close_comment": "關閉並留言",
+        "comment": "留言",
+        "comment_placeholder": "輸入留言以與其他使用者分享。",
+        "detail_description": "説明",
+        "errorTypes": {
+          "20": {
+            "description": "這一地點有超過一個節點，Node IDs: {var1}。",
+            "title": "同一地點有多個節點"
+          },
+          "30": {
+            "description": "{var1} 被標示為 \"{var2}\" 而且必須是封閉區域。",
+            "title": "非閉合區域"
+          },
+          "40": {
+            "description": "{var2} 的第一個節點 {var1} 並沒有連接到其他路徑。",
+            "title": "不合理的單行道"
+          },
+          "41": {
+            "description": "{var2} 的最後一個節點 {var1} 並沒有連接到其他路徑。"
+          },
+          "42": {
+            "description": "你無法到達 {var1}，因為其他到達的路徑都是單行道。"
+          },
+          "43": {
+            "description": "你無法脫離 {var1}，因為其他到達的路徑都是單行道。"
+          },
+          "50": {
+            "description": "{var1} 非常接近，但沒有連接到路徑 {var2}。",
+            "title": "幾乎是交叉"
+          },
+          "60": {
+            "description": "{var1} 使用已棄用的標籤 \"{var2}\"。請使用 \"{var3}\" 替代。",
+            "title": "已棄用的標籤"
+          },
+          "70": {
+            "description": "{var1} 有空白標籤：\"{var2}\"。",
+            "title": "缺少標籤"
+          },
+          "71": {
+            "description": "{var1} 並沒有標籤。"
+          },
+          "72": {
+            "description": "{var1} 不屬於任何一項路徑且不具有任何標籤。"
+          },
+          "73": {
+            "description": "{var1} 帶有 \"{var2}\" 標籤但未有 \"highway\" 標籤。"
+          },
+          "74": {
+            "description": "{var1} 有空白標籤：\"{var2}\"。"
+          },
+          "75": {
+            "description": "{var1} 有名稱 \"{var2}\" 但無其他標籤。"
+          },
+          "90": {
+            "description": "因 {var1} 標記為高速公路， 故其應有 \"ref\" 、 \"nat_ref\" 或 \"int_ref\" 任一標籤。",
+            "title": "高速公路缺少道路編號"
+          },
+          "100": {
+            "description": "因 {var1} 標記為禮拜場所，故其應有宗教教派標籤。",
+            "title": "禮拜場所未標註所屬宗教"
+          },
+          "110": {
+            "description": "因 {var1} 被標記為 \"{var2}\"，故此應有名稱標籤。",
+            "title": "興趣點沒有名稱"
+          },
+          "120": {
+            "description": "{var1} 只有單一節點。",
+            "title": "沒有節點的路徑"
+          },
+          "130": {
+            "description": "{var1} 沒有連接到地圖其他地方。",
+            "title": "已分離路徑"
+          },
+          "150": {
+            "description": "道路和鐵路交叉的 {var1} 需要被標為 \"railway=crossing\" 或是 \"railway=level_crossing\"。",
+            "title": "缺少標籤的平交道"
+          },
+          "160": {
+            "description": "{var1} 此處有不同層數的路徑 (如：隧道或橋樑) 互相連接。",
+            "title": "鐵路圖層衝突"
+          },
+          "170": {
+            "description": "{var1} 帶有 FIXME 標籤： {var2}",
+            "title": "FIXME 標籤的項目"
+          },
+          "180": {
+            "description": "{var1} 缺少 \"type\" 標籤。",
+            "title": "沒有類別的關聯"
+          },
+          "190": {
+            "description": "{var1} 雖與 {var2} {var3} 相交，但其交叉點缺少路口交叉節點、橋樑或隧道。",
+            "title": "相交但沒有交插"
+          },
+          "200": {
+            "description": "{var1} 重疊於 {var2} {var3} 之上。",
+            "title": "相互重疊的路徑"
+          },
+          "210": {
+            "description": "自我交叉的路徑有未明確的問題。",
+            "title": "自我相交路徑"
+          },
+          "211": {
+            "description": "{var1} 多次含有多於一個節點，節點如下： {var2} 。請注意這不一定代表錯誤。"
+          },
+          "212": {
+            "description": "{var1} 僅含有兩個不同節略而其中一個節點被包含在内多於一次。"
+          },
+          "220": {
+            "description": "{var1} 被標記為 \"{var2}\" 但 \"{var3}\" 看似是屬於 \"{var4}\"。",
+            "title": "拼寫錯誤的標籤"
+          },
+          "221": {
+            "description": "{var1} 帶有可能不符描述的標籤 \"{var2}\"。"
+          },
+          "230": {
+            "description": "{var1} 是一個不同層數路徑之交叉點。",
+            "title": "圖層衝突"
+          },
+          "231": {
+            "description": "{var1} 是一個不同層數路徑 {var2} 之交叉點。",
+            "layer": "(圖層: {layer})"
+          },
+          "232": {
+            "description": "{var1} 被標記為 \"layer={var2}\"。雖其看似怪異但未必是錯誤。"
+          },
+          "270": {
+            "description": "{var1} 是高速公路和其他不是 \"motorway\", \"motorway_link\", \"trunk\", \"rest_area\", 或是 \"construction\" 交叉的狀況。連結到 \"service\" 或是 \"unclassified\" 只有在 \"access=no/private\" 狀況才有效，或是連到高速高路服務區，會是有 \"service=parking_aisle\"。",
+            "title": "不尋常的高速公路連結"
+          },
+          "280": {
+            "description": "這個標界有未指明的問題。",
+            "title": "標界問題"
+          },
+          "281": {
+            "description": "{var1} 缺少名稱。",
+            "title": "標界缺少名稱"
+          },
+          "282": {
+            "description": " {var1} 的標界並沒有效的 admin_level，請不要加混合的層級 (例如 \"6;7\")，請從最低的標界層級 admin_level 下標籤。",
+            "title": "標界缺少邊界等級"
+          },
+          "283": {
+            "description": "{var1} 的標界不是一個閉合形狀",
+            "title": "標界不是一個閉合形狀"
+          },
+          "284": {
+            "description": "{var1} 的邊界在此處分割。",
+            "title": "邊界已經分割"
+          },
+          "285": {
+            "description": "{var1} 有 \"admin_level={var2}\"，但屬於比較低的 \"admin_level\" (例如較高的優先)；應該在所有的關聯中有最低的 \"admin_level\"。",
+            "title": "邊界 admin_level 太高了"
+          },
+          "290": {
+            "description": "這個限制有未指明的問題。",
+            "title": "限制問題"
+          },
+          "291": {
+            "description": "{var1} 帶有無法辨識的限制類型。",
+            "title": "限制遺失種類"
+          },
+          "292": {
+            "description": "{var1} 擁有 {var2} 個 \"from\" 的成員，但該項應只有1個成員。",
+            "title": "道路限制缺少 \"from\" 的路徑。"
+          },
+          "293": {
+            "description": "{var1} 擁有 {var2} 個 \"to\" 的成員，但該項應只有1個成員。",
+            "title": "道路限制缺少 \"to\" 的路徑。"
+          },
+          "294": {
+            "description": "{var1} 擁有\"from\" 或 \"to\" 的成員，但該項應為路徑。{var2}。",
+            "title": "道路限制的 \"from\" 或 \"to\" 的成員並非路徑。"
+          },
+          "295": {
+            "description": "{var1} 擁有 \"via\" (節點 {var2}) 並不是 \"{var3}\" (路徑 {var4}) 第一個或最後一個成員。",
+            "title": "道路限制的 \"via\" 的成員並非終點。"
+          },
+          "296": {
+            "description": "{var1} 擁有限制類型 \"{var2}\" ，但是角度是 {var3} 度，也許這種限制類型並不洽當？",
+            "title": "不常見的限制角度"
+          },
+          "297": {
+            "description": "{var1} 並不符合往路徑 {var2} 的 \"to\" 方向",
+            "title": "\"to\" 路徑方向錯誤"
+          },
+          "298": {
+            "description": "{var1} 可能為冗餘標籤。項目已有 {var2} 的 \"oneway\" 單行道標籤限制進入。",
+            "title": "冗餘的道路限制 - 單行道"
+          },
+          "300": {
+            "description": "{var1}  缺少「最高速限」的標籤，而且也被標為高速公路、快速道路、主要道路或次要道路。",
+            "title": "缺少最高速限"
+          },
+          "310": {
+            "description": "這個圓環有未指明的問題。",
+            "title": "圓環問題"
+          },
+          "311": {
+            "description": "{var1} 屬於圓環的一部分，但是並非封閉的路線。(靠近圓環分離的行車道不應該被標為圓環)。",
+            "title": "圓環並非閉合環狀"
+          },
+          "312": {
+            "description": "如果 {var1} 在一個有 {var2} 交通規則的國家內，看來交通方向錯了。",
+            "title": "圓環行車方向錯誤"
+          },
+          "313": {
+            "description": "{var1} 僅有連接 {var2} 條道路。圓環一般而言會與 3 條或以上的道路相連。",
+            "title": "圓環有弱的連結"
+          },
+          "320": {
+            "description": "{var1} 被標為 \"{var2}\"，但是並沒有連到其他 \"{var3}\" 或是\"{var4}\"。",
+            "title": "不當的連絡道連接"
+          },
+          "350": {
+            "description": "{var1} 並沒有像週遭的路徑那樣有共同的標籤，顯示橋樑的目標，應該有標籤： {var2}。",
+            "title": "不當的橋樑標籤"
+          },
+          "360": {
+            "description": "{var1} 如果有在地名稱 \"name:XX={var2}\" 會更好，而 XX 顯示是在地名稱 \"{var2}\" 的語言。",
+            "title": "缺少在地名稱標籤"
+          },
+          "370": {
+            "description": "{var1} 擁有與附近路徑  {var2} {var3} 相同的標籤，而且看來是多餘的。",
+            "including_the_name": "(含有名稱 {name})",
+            "title": "重覆地標"
+          },
+          "380": {
+            "description": "{var1} 被標為 \"{var2}\"，但沒有實體標籤 (例如 \"leisure\", \"building\", \"amenity\", 或是 \"highway\")。",
+            "title": "非運動使用的運動標籤"
+          },
+          "390": {
+            "description": "{var1} 缺少 \"tracktype\" 標籤。",
+            "title": "缺失道路種類"
+          },
+          "400": {
+            "description": "這個幾何形狀有未指明的問題。",
+            "title": "形狀問題"
+          },
+          "401": {
+            "description": "路徑 {var1} 和 {var2} 用很尖銳的角度連接，而且沒有 oneway 標籤或是轉彎限制防止轉彎。",
+            "title": "缺少轉彎限制"
+          },
+          "402": {
+            "description": "{var1} 在此以一個陡急的角度彎曲。",
+            "title": "不合理的角度"
+          },
+          "410": {
+            "description": "聯絡網址和 URL 有未指名的問題。",
+            "title": "網站問題"
+          },
+          "411": {
+            "description": "{var1} 也許有過期的 URL：{var2} 回傳 HTTP 狀態代碼 {var3}。"
+          },
+          "412": {
+            "description": "{var1} 也許有過期的 URL：{var2} 包含怪怪的文字 \"{var3}\"。"
+          },
+          "413": {
+            "description": "{var1} 也許有過期的 URL：{var2} 並沒有包含關鍵字 \"{var3}\"。"
           }
         },
-        "not_eligible": "不能於線段的首尾進行分割。",
-        "connected_to_hidden": "這個沒辦法切割，因為與其他隱藏的圖徵相連."
-      },
-      "restriction": {
-        "annotation": {
-          "create": "已增加轉向限制",
-          "delete": "已移除轉向限制"
-        }
-      },
-      "extract": {
-        "description": {
-          "area": "從這區域截取點。"
+        "error_parts": {
+          "bank": "銀行",
+          "cafe": "咖啡廳",
+          "cinema": "電影院",
+          "courthouse": "法院",
+          "cycleway": "自行車道",
+          "cycleway_footpath": "自行車道/人行道",
+          "fast_food": "快餐店",
+          "from": "從",
+          "fuel": "加油站",
+          "highway": "公路",
+          "hospital": "醫院",
+          "left_hand": "左手",
+          "library": "圖書館",
+          "pharmacy": "藥房",
+          "place_of_worship": "禮拜場所",
+          "pub": "酒館",
+          "railway": "鐵道",
+          "restaurant": "餐廳",
+          "right_hand": "右手",
+          "riverbank": "河濱",
+          "school": "學校",
+          "theatre": "劇院",
+          "this_boundary": "這個邊界",
+          "this_bridge": "這條橋",
+          "this_crossing": "這個人行穿越道",
+          "this_cycleway": "這條自行車道",
+          "this_cycleway_footpath": "這條自行車道/人行道",
+          "this_feature": "這個圖徵",
+          "this_highway": "這條公路",
+          "this_mini_roundabout": "這個小型迴旋處",
+          "this_node": "這個節點",
+          "this_oneway": "這條單行道",
+          "this_railway": "這條鐵道",
+          "this_railway_crossing": "這個鐵路平交道",
+          "this_relation": "這個關聯",
+          "this_riverbank": "這個河濱",
+          "this_roundabout": "這個圓環",
+          "this_track": "這個土路",
+          "this_tunnel": "這個隧道",
+          "this_turn_restriction": "這個轉彎限制",
+          "this_waterway": "這個水路",
+          "this_way": "這條路徑",
+          "to": "至",
+          "university": "大學",
+          "waterway": "水道"
         },
-        "connected_to_hidden": "無法從這些圖徵截取點，因為有些連結的圖徵已經被隱藏了。"
+        "ignore": "移除（誤報）",
+        "ignore_comment": "移除並留言",
+        "save_comment": "儲存留言",
+        "title": "KeepRight"
       },
-      "cycle_highway_tag": {
-        "title": "循環道路相關標籤"
+      "osmose": {
+        "detail_title": "詳細資訊",
+        "elems_title": "圖徽",
+        "fix_title": "修復指南",
+        "title": "Osmose 問題",
+        "trap_title": "常見錯誤"
       }
     },
-    "undo": {
-      "title": "復原",
-      "tooltip": "復原: {action}",
-      "nothing": "沒有動作可以撤銷。"
-    },
-    "redo": {
-      "title": "重新進行",
-      "tooltip": "取消復原: {action}",
-      "nothing": "沒有動作可以重做。"
-    },
-    "translate": {
-      "translate": "新增多語言名稱",
-      "localized_translation_label": "多語言名稱",
-      "localized_translation_language": "選擇語言",
-      "localized_translation_name": "名稱"
-    },
-    "zoom_in_edit": "拉近以編輯",
-    "login": "登入",
-    "logout": "登出",
-    "loading_auth": "正在連接 OpenStreetMap...",
-    "report_a_bug": "回報錯誤",
-    "help_translate": "協助翻譯",
-    "feature_info": {
-      "hidden_warning": "{count} 個隱藏圖徽"
-    },
-    "status": {
-      "message": {
-        "readonly": "OpenStreetMap API 目前是唯讀狀態。您可以繼續編輯，但必須等待儲存您的變更。"
+    "area_fill": {
+      "full": {
+        "description": "全部填充",
+        "tooltip": "區域全部用顏色填充"
+      },
+      "partial": {
+        "description": "部分填充",
+        "tooltip": "區域只有外框部分有顏色填充。(新手畫圖者推薦選項)"
+      },
+      "wireframe": {
+        "description": "不填充 (線條顯示)",
+        "tooltip": "啟用線框模式，可以很容易地看到背景圖像。"
       }
-    },
-    "commit": {
-      "title": "上傳到開放街圖",
-      "upload_explanation": "你的修改將會在所有使用OpenStreetMap資料的地圖上看到。",
-      "upload_explanation_with_user": "你以 {user} 具名的修改將會在所有使用OpenStreetMap資料的地圖上看到。",
-      "request_review": "我需要其他人檢視查核我的編輯。",
-      "save": "上傳",
-      "changes": "變更",
-      "download_changes": "下載 osmChange 檔案",
-      "modified": "已修改",
-      "deleted": "已刪除",
-      "created": "已建立",
-      "comment_needed_message": "請先加上變更集留言。",
-      "about_changeset_comments": "關於變更集留言",
-      "google_warning": "您在此留言中提到了 Google：請注意從 Google 地圖複製是嚴格禁止的。"
-    },
-    "contributors": {
-      "list": "正顯示 {users} 的編輯",
-      "truncated_list": "由 {users} 與其他 {count} 人編輯"
-    },
-    "info_panels": {
-      "background": {
-        "zoom": "縮放",
-        "description": "説明"
-      },
-      "history": {
-        "last_edit": "最近編輯",
-        "edited_by": "編輯由",
-        "changeset": "變更組合",
-        "link_text": "開放街圖網站上的歷史頁面"
-      },
-      "location": {
-        "title": "位置"
-      },
-      "measurement": {
-        "area": "區域",
-        "location": "位置"
-      }
-    },
-    "geometry": {
-      "line": "線",
-      "area": "區域",
-      "relation": "關係",
-      "note": "註記"
-    },
-    "geocoder": {
-      "search": "搜尋全世界...",
-      "no_results_worldwide": "找不到搜尋結果"
-    },
-    "geolocate": {
-      "title": "顯示我的位置",
-      "locating": "正在定位，請等待...",
-      "location_unavailable": "您的位置不可用。"
-    },
-    "inspector": {
-      "show_more": "顯示更多",
-      "view_on_osm": "在 openstreetmap.org 中檢視",
-      "feature_type": "圖徽類型",
-      "fields": "欄位",
-      "features": "圖徽",
-      "new_relation": "建立新關係...",
-      "choose_relation": "選擇父關係",
-      "choose": "選擇物件種類",
-      "no_documentation_key": "沒有可用的文件。",
-      "key_value": "鍵=值",
-      "back_tooltip": "變更圖徽類型",
-      "type": "種類",
-      "remove": "移除",
-      "search": "搜尋",
-      "unknown": "未知種類",
-      "feature_list": "搜尋物件",
-      "check": {
-        "yes": "是",
-        "no": "否",
-        "reverser": "變更方向"
-      },
-      "add": "新增",
-      "node": "節點",
-      "way": "路徑",
-      "relation": "關係",
-      "add_fields": "新增欄位"
     },
     "background": {
-      "best_imagery": "這個地點已知最佳的影像來源",
-      "switch": "切換回此背景",
-      "custom": "客製化",
-      "reset": "重設",
       "3dmap": {
         "tooltip": "顯示預設的 3D 地圖。"
+      },
+      "backgrounds": "背景",
+      "best_imagery": "這個地點已知最佳的影像來源",
+      "brightness": "亮度",
+      "contrast": "對比",
+      "custom": "客製化",
+      "description": "背景設定",
+      "display_options": "顯示設定",
+      "fix_misalignment": "空拍圖偏移量",
+      "imagery_problem_faq": "回報影像問題",
+      "key": "B",
+      "location_panel": {
+        "description": "顯示位置面板",
+        "tooltip": "顯示經緯度與地區的詳情。"
       },
       "minimap": {
         "description": "顯示迷你地圖",
         "tooltip": "顯示縮小的地圖幫助你確認所在區域的位置"
       },
-      "offset": "在灰色區域內拖拉調整影像偏移，或是輸入偏移公尺數。"
-    },
-    "map_data": {
-      "title": "地圖圖資",
-      "description": "地圖圖資",
-      "data_layers": "資料圖層",
-      "layers": {
-        "notes": {
-          "title": "開放街圖註記"
-        },
-        "maproulette": {
-          "detail_title": "詳細資料",
-          "fixed": "我已經修復了！"
-        }
+      "none": "無",
+      "offset": "在灰色區域內拖拉調整影像偏移，或是輸入偏移公尺數。",
+      "overlays": "覆疊",
+      "panel": {
+        "description": "顯示背景面板",
+        "tooltip": "顯示進階背景資訊"
       },
-      "autohidden": "因為螢幕中的圖徵太多，這些圖徵已經被自動隱藏。請放大再編輯。"
+      "reset": "重設",
+      "reset_all": "所有重設",
+      "saturation": "飽和度",
+      "sharpness": "銳利度",
+      "switch": "切換回此背景",
+      "title": "背景"
     },
-    "visual_diff": {
-      "highlight_edits": {
-        "description": "突顯變更"
-      }
+    "bearing": {
+      "rotate_the_map": "旋轉地圖："
+    },
+    "commit": {
+      "about_changeset_comments": "關於變更集留言",
+      "about_changeset_comments_link": "//wiki.openstreetmap.org/wiki/Good_changeset_comments",
+      "cancel": "取消",
+      "changes": "變更",
+      "comment_needed_message": "請先加上變更集留言。",
+      "created": "已建立",
+      "deleted": "已刪除",
+      "download_changes": "下載 osmChange 檔案",
+      "errors": "錯誤",
+      "google_warning": "您在此留言中提到了 Google：請注意從 Google 地圖複製是嚴格禁止的。",
+      "modified": "已修改",
+      "outstanding_errors_message": "請先解決所有的錯誤。仍有 {count} 錯誤。",
+      "request_review": "我需要其他人檢視查核我的編輯。",
+      "request_review_info": "不確定東西對不對？邀請有經驗的製圖者來檢查你的工作吧。",
+      "save": "上傳",
+      "title": "上傳到開放街圖",
+      "upload_explanation": "你的修改將會在所有使用OpenStreetMap資料的地圖上看到。",
+      "upload_explanation_with_user": "你以 {user} 具名的修改將會在所有使用OpenStreetMap資料的地圖上看到。",
+      "warnings": "警告"
+    },
+    "confirm": {
+      "cancel": "取消",
+      "okay": "瞭解"
+    },
+    "contributors": {
+      "list": "正顯示 {users} 的編輯",
+      "truncated_list": "由 {users} 與其他 {count} 人編輯"
+    },
+    "download_osc": {
+      "title": "下載"
+    },
+    "feature_info": {
+      "hidden_warning": "{count} 個隱藏圖徽"
     },
     "filters": {
-      "points": {
-        "description": "點",
-        "tooltip": "興趣點"
-      },
-      "traffic_roads": {
-        "description": "通勤道路",
-        "tooltip": "道路、巷弄等"
-      },
-      "service_roads": {
-        "description": "服務性道路",
-        "tooltip": "服務性道路，停車場通道、路徑等"
-      },
-      "paths": {
-        "description": "通道",
-        "tooltip": "人行道、步行徑、單車道等。"
+      "boundaries": {
+        "description": "邊界",
+        "tooltip": "行政邊界"
       },
       "buildings": {
         "description": "建築",
@@ -361,528 +427,1245 @@
         "description": "土地利用圖徵",
         "tooltip": "森林、農莊、公園、住宅區、商業區等。"
       },
-      "boundaries": {
-        "description": "邊界",
-        "tooltip": "行政邊界"
+      "others": {
+        "tooltip": "其他東西"
       },
-      "water": {
-        "description": "水域圖徵",
-        "tooltip": "河道、湖泊、池溏、蓄水池等"
+      "past_future": {
+        "tooltip": "預定地，施工中，廢棄，拆除等。"
       },
-      "rail": {
-        "description": "鐵路圖徵"
+      "paths": {
+        "description": "通道",
+        "tooltip": "人行道、步行徑、單車道等。"
+      },
+      "points": {
+        "description": "點",
+        "tooltip": "興趣點"
       },
       "power": {
         "description": "電力設施",
         "tooltip": "輸電線、發電廠、變電所等。"
       },
-      "past_future": {
-        "tooltip": "預定地，施工中，廢棄，拆除等。"
+      "rail": {
+        "description": "鐵路圖徵"
       },
-      "others": {
-        "tooltip": "其他東西"
-      }
-    },
-    "area_fill": {
-      "wireframe": {
-        "description": "不填充 (線條顯示)",
-        "tooltip": "啟用線框模式，可以很容易地看到背景圖像。"
+      "service_roads": {
+        "description": "服務性道路",
+        "tooltip": "服務性道路，停車場通道、路徑等"
       },
-      "partial": {
-        "description": "部分填充",
-        "tooltip": "區域只有外框部分有顏色填充。(新手畫圖者推薦選項)"
+      "traffic_roads": {
+        "description": "通勤道路",
+        "tooltip": "道路、巷弄等"
       },
-      "full": {
-        "description": "全部填充",
-        "tooltip": "區域全部用顏色填充"
+      "water": {
+        "description": "水域圖徵",
+        "tooltip": "河道、湖泊、池溏、蓄水池等"
       }
-    },
-    "settings": {
-      "custom_data": {
-        "or": "或是"
-      }
-    },
-    "preferences": {
-      "title": "偏好設定",
-      "description": "偏好設定",
-      "privacy": {
-        "title": "隱私",
-        "privacy_link": "檢視 Rapid 隱私政策",
-        "third_party_icons": {
-          "tooltip": "取消勾選此方塊以避免從第三方網站，如維基共享資源、Facebook 或 Twitter 載入圖示。"
-        }
-      },
-      "map_interaction": {
-        "mouse_wheel": {
-          "auto": {
-            "tooltip": "最適合觸控版使用者。 使用兩根手指，輕掃手勢可以平移地圖，捏合手勢可縮放和取消縮放地圖。 按住 Shift 鍵可以縮放和取消縮放地圖。"
-          },
-          "zoom": {
-            "title": "縮放地圖",
-            "tooltip": "使用滾輪滾動可以總是縮放或是取消縮放地圖。"
-          },
-          "pan": {
-            "title": "平移地圖",
-            "tooltip": "使用滾輪滾動可以平移地圖， 按住 Shift 鍵可以放大或縮小地圖。"
-          }
-        }
-      },
-      "color_selection": {
-        "title": "地圖色盤",
-        "tooltip": "在色盤之間切換",
-        "example": "範例（高對比）",
-        "placeholder": "選擇色盤"
-      },
-      "colorblind_options": {
-        "tooltip": "在色盲模式之間切換",
-        "default": "預設（無）",
-        "protanopia": "紅色盲",
-        "deuteranopia": "綠色盲",
-        "tritanopia": "藍黄色盲",
-        "placeholder": "選擇色盲模式"
-      }
-    },
-    "restore": {
-      "heading": "您有未儲存的變更",
-      "description": "您希望從先前的編輯工作階段中復原未儲存的變更嗎？",
-      "restore": "復原我的變更",
-      "reset": "放棄我的變更"
-    },
-    "save": {
-      "title": "儲存",
-      "help": "審閱您的修改並將它們上傳至開放街圖，讓其他使用者看見。",
-      "no_changes": "沒有修改需要儲存。",
-      "error": "嘗試儲存時發生了故障",
-      "status_code": "伺服器傳回的狀態碼{code}",
-      "unknown_error_details": "請確定你已經連上網路。",
-      "uploading": "正在上傳修改至開放街圖...",
-      "unsaved_changes": "你有未儲存的編輯",
-      "conflict": {
-        "header": "解決編輯衝突",
-        "count": "在{total}中有{num}個衝突 ",
-        "previous": "< 上一個",
-        "next": "下一個 >",
-        "keep_local": "保留我的",
-        "keep_remote": "使用他們的",
-        "restore": "復原",
-        "delete": "放棄資料",
-        "download_changes": "或下載 osmChange 檔案",
-        "done": "所有衝突已解決！"
-      }
-    },
-    "download_osc": {
-      "title": "下載"
-    },
-    "merge_remote_changes": {
-      "conflict": {
-        "deleted": "此圖徽已被 {user} 刪除。",
-        "nodelist": "節點已被你和{user}改變了.",
-        "memberlist": "關係成員已被你和{user}改變了。"
-      }
-    },
-    "success": {
-      "just_edited": "您剛編輯了開放街圖！",
-      "thank_you": "感謝您改進地圖。",
-      "thank_you_location": "感謝您改進了 {where} 附近的地圖。",
-      "help_link_text": "詳細資料",
-      "view_on_osm": "在OSM上顯示變動",
-      "like_osm": "喜歡開放街圖嗎？與其他人聯繫：",
-      "missing": "清單上仍有遺漏資訊？",
-      "tell_us": "告訴我們！"
-    },
-    "confirm": {
-      "okay": "瞭解"
-    },
-    "splash": {
-      "privacy_update": "*我們最近更新了隱私政策。*",
-      "privacy": "在使用本軟體時，您同意遵守以下條款 [Rapid隱私政策](https://github.com/facebook/Rapid/blob/main/PRIVACY.md)。",
-      "walkthrough": "開始教學模式",
-      "start": "現在就編輯"
-    },
-    "whats_new": {
-      "project_links": "要知道詳細資訊請在 GitHub 檢視[版本變更記錄](https://github.com/facebook/Rapid/blob/main/CHANGELOG.md#whats-new)以及[問題追蹤](https://github.com/facebook/Rapid/issues)。Happy Mapping！👍"
-    },
-    "source_switch": {
-      "dev": "開發模式",
-      "live": "實況模式",
-      "lose_changes": "您有尚未儲存的編輯，切換地圖伺服器會失去這些編輯。您是否確定要切換伺服器？"
-    },
-    "rapid_splash": {
-      "welcome": "引入人工智慧輔助繪製地圖！",
-      "start": "不必了，開始畫地圖吧"
-    },
-    "rapid_first_edit": {
-      "text": "您需要開放街圖帳號来保存您的貢獻。您想現在登入 OSM 還是繼續瀏覽？",
-      "exploring": "我只是在探索",
-      "login_with_osm": "登入 OSM"
-    },
-    "rapid_inspector": {
-      "option_accept": {
-        "disabled_flash": "要幫助改進開放街圖資料品質，我們每一次畫地圖階段只允許添加 {n}個 AI 圖徵。"
-      }
-    },
-    "rapid_menu": {
-      "remove": "移除",
-      "any_type": "任何類型",
-      "category": {
-        "roads": "道路"
-      },
-      "omdFootways": {
-        "label": "人行道的開放資料",
-        "description": "開啟從不同地方政府收集的人行道資料。"
-      }
-    },
-    "tag_reference": {
-      "description": "説明",
-      "on_wiki": "於wiki.osm.org上的 {tag}",
-      "used_with": "可與 {type} 使用"
-    },
-    "zoom": {
-      "out": "縮小",
-      "disabled": {
-        "in": "無法進一步放大。",
-        "out": "無法再縮小。"
-      }
-    },
-    "bearing": {
-      "rotate_the_map": "旋轉地圖："
     },
     "full_screen": "啟動全螢幕",
-    "QA": {
-      "osmose": {
-        "elems_title": "圖徽"
-      },
-      "keepRight": {
-        "detail_description": "説明",
-        "comment_placeholder": "輸入留言以與其他使用者分享。",
-        "save_comment": "儲存留言",
-        "error_parts": {
-          "this_relation": "這個關聯",
-          "cinema": "電影院"
-        }
-      }
+    "geocoder": {
+      "no_results_worldwide": "找不到搜尋結果",
+      "search": "搜尋全世界..."
     },
-    "streetside": {
-      "title": "Bing 街景"
+    "geolocate": {
+      "locating": "正在定位，請等待...",
+      "location_unavailable": "您的位置不可用。",
+      "title": "顯示我的位置"
     },
-    "mapillary": {
-      "tooltip": "從 Mapillary 來的街道級照片",
-      "detection": "Mapillary偵測",
-      "show_detections": "顯示偵測結果",
-      "view_on_mapillary": "在 Mapillary 上檢視"
-    },
-    "mapillary_signs": {
-      "tooltip": "在 Mapillary 照片中偵測到交通號誌",
-      "traffic_sign": "交通號誌"
-    },
-    "mapillary_detections": {
-      "title": "偵測到的物件",
-      "tooltip": "在 Mapillary 照片中偵測到的物件",
-      "construction": {
-        "barrier": {
-          "temporary": "臨時路障"
-        },
-        "flat": {
-          "crosswalk_plain": "人行穿越道 - 平地",
-          "driveway": "機動車道"
-        }
-      },
-      "marking": {
-        "discrete": {
-          "arrow": {
-            "left": "車道標線 - 箭頭（左）",
-            "right": "車道標線 - 箭頭（右）",
-            "split-left-or-straight": "車道標線 - 箭頭（左轉或是直行）",
-            "split-right-or-straight": "車道標線 - 箭頭（右轉或是直行）",
-            "straight": "車道標線 - 箭頭（直行）"
-          },
-          "crosswalk-zebra": "車道標線 - 人行穿越道",
-          "give-way-row": "車道標線 - 讓道 (列)",
-          "other-marking": "車道標線 - 其他",
-          "stop-line": "車道標線 - 停止線",
-          "symbol": {
-            "bicycle": "車道標線 - 標誌（自行車）"
-          },
-          "text": "車道標線 - 文字"
-        }
-      },
-      "object": {
-        "banner": "橫幅",
-        "bench": "長椅",
-        "bike-rack": "自行車架",
-        "billboard": "告示牌",
-        "cctv-camera": "監視器",
-        "junction-box": "接線盒",
-        "mailbox": "郵箱",
-        "parking-meter": "停車計時器",
-        "phone-booth": "電話亭",
-        "sign": {
-          "advertisement": "標識 - 廣告",
-          "information": "標識 - 資訊",
-          "other": "標識 - 其他",
-          "store": "標識 - 商家",
-          "traffic-sign": {
-            "back": "交通標誌 - 背面",
-            "direction-front": "交通標誌 - 正面",
-            "front": "交通標誌 - 正面"
-          }
-        },
-        "street-light": "路燈",
-        "support": {
-          "pole": "桿",
-          "traffic-sign-frame": "交通號誌框架",
-          "utility-pole": "電線桿"
-        },
-        "traffic-cone": "交通錐",
-        "traffic-light": {
-          "cyclists": "交通燈號 - 自行車",
-          "general-horizontal": "交通燈號 - 普通型（水平式）",
-          "general-single": "交通燈號 - 普通型（單一）",
-          "general-upright": "交通燈號 - 普通型（直立式）",
-          "other": "交通燈號 - 其他",
-          "pedestrians": "交通燈號 - 行人"
-        },
-        "water-valve": "水閥"
-      }
-    },
-    "note": {
+    "geometry": {
+      "area": "區域",
+      "line": "線",
       "note": "註記",
-      "newComment": "新留言",
-      "inputPlaceholder": "輸入留言以與其他使用者分享。",
-      "new": "新的註記",
-      "save": "儲存註記",
-      "login": "您必須登入以變更或留言此註記。"
+      "point": "點",
+      "relation": "關係",
+      "vertex": "頂點"
     },
     "help": {
-      "title": "說明文件",
-      "help": {
-        "title": "說明文件",
-        "before_start_h": "在開始之前",
-        "open_source_help": "你可以透過[回報臭蟲](https://github.com/facebook/Rapid/issues)來幫助 Rapid。"
-      },
-      "overview": {
-        "navigation_h": "瀏覽",
-        "features_h": "圖徵",
-        "nodes_ways": "在開放街圖裡，點有時候被稱為*節點*，而線和區域則被稱為*路徑*。"
+      "areas": {
+        "add_area_command": "要新增區域，點地圖上方工具列的 {area_icon} **{area}** 按鈕，或是按快速鍵 `3`。",
+        "add_area_continue": "透過 {leftclick} 點擊、{tap_icon} 輕點或是按下「{space}」鍵，繼續沿著區域邊緣放置節點。繪圖時，你可以放大或拖動地圖以新增更多細節。",
+        "add_area_draw": "下一步，放置區域的第一個角落。使用滑鼠將游標置於任意角落，然後 {leftclick} 左鍵點擊以放置節點。在觸控螢幕上，{tap_icon} 輕點位置。或者你也可以將滑鼠游標指向需要的位置，然後按下「{space}」鍵。",
+        "add_area_finish": "要畫完成區域時，按、輕按最後一個節點或是按下 `{return}` 。",
+        "add_area_h": "新增區域",
+        "delete_area": "如果區域畫得完全不對，像是真實世界並不存在那棟建築，那麼你可以放心刪除。但當刪除時請小心 - 背景影像也許已經過時了，那棟怪怪的建築也許只是新蓋好的建築。",
+        "delete_area_command": "要刪去區域，  {rightclick} 右鍵或是 {longpress_icon} 長按區域來打開編輯選單，然後選擇 {delete_icon} **{delete}** 操作。",
+        "delete_area_h": "刪除區域",
+        "intro": "*區埔通常用來顯示有邊界的圖徵，像是湖泊、建築、住宅區。區域應當沿著圖徵邊緣繪製，舉例來說就是沿著建築物地基繪製。",
+        "modify_area_addnode": "你也可以沿著區域新增點， {leftclick} **x2** 點兩下，或是 {doubletap_icon} 輕按兩次邊緣，或是拖動點跟點中間的小三角形。",
+        "modify_area_dragnode": "你會常看到形狀不太對的區域，比如說跟背景影像不太符合的建築物。要修正區域的形狀，先選擇區域，所有區域上的點會以小圓圈顯示，你可以拖動這些點到更適當的地點。",
+        "modify_area_h": "變動區域",
+        "point_or_area": "許多圖徵能夠用點或是區域表示。你應該儘可能用區域來畫建築和其他東西的外框。將節點放在建築區域裡來表示商家、便利設施和其他在位於建築的圖徵。",
+        "point_or_area_h": "點或區域？",
+        "square_area_command": "許多圖徵像是建築有直角，要直角化區域的角落，則對著區域的邊緣按 {rightclick} 右鍵或是 {longpress_icon} 長按，然後選擇編輯選單 {orthogonalize_icon} **{orthogonalize}** 操作。",
+        "square_area_h": "方角角落",
+        "title": "區域"
       },
       "editing": {
+        "backups": "如果您在儲存之前關閉了瀏覽器，您的編輯内容仍然保存在本地。當您以後使用相同的瀏覽器和設備再次開啟時，Rapid 會詢問是否恢復未儲存資料。",
+        "backups_h": "自動備份",
+        "keyboard": "你可以透過按下 `{shortcuts_key}` 鍵瀏覽鍵盤快捷鍵清單。",
+        "keyboard_h": "鍵盤快速鍵",
+        "multiselect": "多重選擇功能讓你能夠一次全部快速編輯。",
+        "multiselect_h": "多重選擇",
+        "multiselect_lasso": "另一個多重選擇的方式是按住 `{shift}` 鍵，然後按 {leftclick} 左鍵拖動滑鼠拉出選擇方框。而所有在方框區域內的節點都會被選擇。",
+        "multiselect_shift_click": "當你在使用滑鼠或是鍵盤時，按住 `{shift}` 和 {leftclick} 左鍵按圖徵能夠新增選取的物件到選擇當中。而在觸控螢幕下，則是 {longpress_icon} 按住一個圖徵一陣子再用其他手指按其他圖徵。",
+        "save": "點 {save_icon} **{save}** 按鈕完成你的編輯並傳送到開放街圖。你應該記得你必須時常儲存你的成果！ ",
+        "save_h": "儲存",
+        "save_validation": "在儲存畫面，你有機會回顧你做了什麼。iD 會進行基本的檢查，確保沒有遺失的資料，以及提供有幫助的建議，還有在怪怪的時候提出警告。",
+        "select_h": "選取",
+        "select_left_click": "對著圖徵按 {leftclick} 左鍵選擇，或是 {tap_icon} 按圖徵選擇，則會用高亮度顯示加上會發光，而側邊欄則會顯示關於圖徵的詳細內容。",
+        "select_right_click": "對著圖徵按 {rightclick} 右鍵或是 {longpress_icon} 長按則會顯示編輯選單，列出可以執行的操作，像是旋轉、移動和刪除。",
+        "select_space": "當你在選取或是繪製時，`{space}` 能夠充當左鍵的功能。",
         "title": "編輯及儲存",
         "undo_redo": "你的編輯都會存在本地的瀏覽器裡，直到你選擇上傳到開放街圖伺服器上。你可以點{undo_icon}** {undo} 按鈕來復原先前的編輯，{redo_icon}** {redo}**按鍵來取消復原。",
-        "save_h": "儲存",
-        "save": "點 {save_icon} **{save}** 按鈕完成你的編輯並傳送到開放街圖。你應該記得你必須時常儲存你的成果！ ",
-        "upload_h": "上傳",
-        "backups": "如果您在儲存之前關閉了瀏覽器，您的編輯内容仍然保存在本地。當您以後使用相同的瀏覽器和設備再次開啟時，Rapid 會詢問是否恢復未儲存資料。",
-        "keyboard_h": "鍵盤快速鍵"
+        "undo_redo_h": "復原及重複動作",
+        "upload": "在上傳你的變動之前，你必須輸入[變更集留言](https://wiki.openstreetmap.org/wiki/Good_changeset_comments)。接著按**{upload}**來傳送你的變動到開放街圖，然後這些變動會合併到地圖上，每個人都看得到。",
+        "upload_h": "上傳"
       },
       "feature_editor": {
+        "definitions": "上半部分會顯示圖徵的類型，中間部分則有顯示圖徵內容，像是名字或地址的*欄位*。",
+        "fields_add_field": "你也可以使用下拉選單\"新增欄位\"，增加新的欄位，像是描述、維基百科連結、輪椅通通等項目。",
+        "fields_all_fields": "\"{fields}\" 部份中包含了所有你可能會想要編輯的詳細資訊。在開放街圖中，所有的欄位都是可選的，如果你不確定某個欄位要怎麼填的話，可以將其留空。",
+        "fields_example": "每一個圖徵類型會有不同的欄位。舉例來說，道路類可能就有路面和速限的欄位，而餐廳則會顯示食物類型，以及營業時間的欄位。",
+        "fields_h": "欄位",
+        "intro": "*圖徵編輯器*會出現在地圖旁邊，允許你看到和編輯你選擇圖徵所有的資訊。",
+        "tags_all_tags": "在欄位部份下方，你可以展開 \"{tags}\" 部份以編輯選定的圖徵的任何開放街圖*標籤*。每個標籤都包含了一個 *key* 與 *value*，資料元素定義了所有儲存在開放街圖中的圖徵。",
+        "tags_h": "標籤",
+        "tags_resources": "編輯圖徵的標籤需要開放街圖進階的知識。你應該參考 [開放街圖 Wiki](https://wiki.openstreetmap.org/wiki/Main_Page) 或 [Taginfo](https://taginfo.openstreetmap.org/) 熟悉已經被接受的開放街圖標籤慣例。",
+        "title": "圖徵編輯器",
+        "type": "你可以點選圖徵類型來改變不同的圖徵類型。所有現實世界存在的東西都可以加到開放街圖上面，所以總共有成千種圖徵類型能夠選擇。",
         "type_h": "圖徵類型",
-        "fields_h": "欄位"
+        "type_picker": "類選選擇器顯示最常見的圖徵類儒，像是公園、醫院、餐廳、道路建築。你可以藉由在搜尋框輸入任何東西來搜尋。你也可以點選圖徵類型旁邊的 {inspect} **資訊**圖示來得到更多資訊。"
       },
-      "points": {
-        "title": "點",
-        "move_point": "要移動點的話，{mouse_left_icon}左鍵按一下然後用滑鼠拖動，或是{onefinger_tap_and_drag_icon}在觸控螢幕拖動。"
-      },
-      "lines": {
-        "title": "線段",
-        "add_line_h": "新增線段",
-        "add_line_draw": "接著，按一下線段的開始位置，使用滑鼠時，放置箭頭到線段開始的位置，接著{mouse_left_icon}按滑鼠左鍵放置新點。在觸控螢幕操作時，{onefinger_tap_icon}點位置。",
-        "modify_line_h": "變更線段",
-        "connect_line_h": "連結線段",
-        "disconnect_line_h": "切斷線段",
-        "move_line_h": "移動線段"
-      },
-      "areas": {
-        "title": "區域",
-        "square_area_h": "方角角落"
-      },
-      "relations": {
-        "multipolygon_merge": "合併多個線段與區域會新增這些選擇的區域為成員的多重多邊形。Rapid 會依據圖徵是否在側，自動選擇內圈與外圍角色。",
-        "boundary_h": "邊界"
-      },
-      "notes": {
-        "title": "註記",
-        "show_notes": "要開啟註記圖層，請開啟{data_icon}**{map_data}**面板，然後點{osm_notes}的勾選方框，或是點`{shift}`+`{toggle_notes_key}`。",
-        "add_note_h": "新增註記",
-        "move_note": "要移動註記的話，{mouse_left_icon}左鍵按一下然後用滑鼠拖動，或是{onefinger_tap_and_drag_icon}在觸控螢幕拖動。只有註記能被移動。",
-        "save_note_h": "儲存註記"
-      },
-      "imagery": {
-        "sources_h": "空拍圖來源"
-      },
-      "streetlevel": {
-        "intro": "街景照片能夠幫助繪製交通號誌、店家、或其他無法從衛星或空照圖看到的事物。Rapid 編輯器支援 [Bing 街景](https://www.microsoft.com/en-us/maps/streetside)、[Mapillary](https://www.mapillary.com) 與 [KartaView](https://www.kartaview.org) 的街景照片。"
+      "field": {
+        "restrictions": {
+          "about": {
+            "about": "這個欄位允許你偵測和變動轉彎限制，顯示選取的交叉路口的模型，以及鄰近連結的道路。",
+            "from_via_to": "轉彎限制總是有：一個**從路徑**，一個**到路徑**，以及一個**經由節點*，或一個或多個**經由路徑**。",
+            "maxdist": "\"{distField}\" 滑塊控制怎麼搜尋額外連結的道路。",
+            "maxvia": "\"{viaField}\"  滑塊調整搜尋時包括有多少經由路徑 (技巧：越簡單越好)",
+            "title": "關於"
+          },
+          "inspecting": {
+            "about": "飄浮過任何 **FROM** 片段來看轉彎限制，每個可能的 **TO** 目標會用上色的陰影包住，顯示關聯是否存在。",
+            "allow_shadow": "{allowShadow} **允許到**",
+            "from_shadow": "{fromShadow} **從片段**",
+            "only": "\"只有\"意味著汽車從這條路來的時候，只能做這項選擇，例如說，\"只淮直行\"。",
+            "only_shadow": "{onlyShadow} **只有到**",
+            "restrict_shadow": "{restrictShadow} **禁止到**",
+            "restricted": "\"限制\"意著有轉彎限制，例如說\"禁止左轉\"。",
+            "title": "偵測"
+          },
+          "modifying": {
+            "about": "要變動轉彎限制，請先檢查先選取起始的 **FROM** 片段，選取的片段會放大，然後任何可能的 **TO** 目的地會以轉彎符號顯示。",
+            "allow_turn": "{allowTurn} **到允許**",
+            "indicators": "接著，點選轉彎符號切換為\"允許\"，\"限制\"，和\"只有\"。",
+            "only_turn": "{onlyTurn} **只有到**",
+            "restrict_turn": "{restrictTurn} **到限制**",
+            "title": "變動"
+          },
+          "tips": {
+            "indirect": "**一些限制會顯示 \"(indirect)\" 文字，並且畫得比較淡。**",
+            "indirect_example": "這此限制存在，因為其他鄰近的限制。舉例來說，一個**只允許直行**的限制會間接為其他經過的道路創建\"不允許轉彎\"限制。",
+            "indirect_noedit": "你並不允許編輯間接限制，做為替代，你可以編輯鄰近的方向限制。",
+            "simple": "**偏好簡單限制而不是複雜的限制。**",
+            "simple_example": "舉例來說，如果有簡單的經由點轉彎限制的話，避免創建經由道路限制。",
+            "title": "技巧"
+          },
+          "title": "轉彎限制說明"
+        }
       },
       "gps": {
-        "upload": "您也可以透過[上傳你的 GPS 資訊至 OpenStreetMap 開放街圖](https://www.openstreetmap.org/trace/create)以供其他使用者利用。"
+        "intro": "收集的 GPS 軌跡對開放街圖是相當可靠的資料來源。編輯器支援本地裝置的 *.gpx*、*,geojson*，以及 *.kml* 檔案。你可以用智慧型手機、運動手錶或其他 GPS 裝置收集 GPS 軌跡。",
+        "survey": "要知道如何用 GPS 踏查，請閱讀[使用手機、GPS 或紙本繪圖](http://learnosm.org/en/mobile-mapping/)。",
+        "title": "GPS 軌跡",
+        "tracing": "GPS 軌跡並未傳到開放街圖 - 而最好的使用方式則是照著軌跡的指引，繪製你要新增的圖徵。",
+        "upload": "您也可以透過[上傳你的 GPS 資訊至 OpenStreetMap 開放街圖](https://www.openstreetmap.org/trace/create)以供其他使用者利用。",
+        "using": "要用 GPS 軌跡畫地圖，請把資料檔案拖到地圖編輯器裡。如果成功辨識，則會在地圖上顯示亮紫色的線條。開啟地圖旁邊的 {data_icon} **{map_data}** 面板來啟用、關閉，或是縮放到你的 GPS 資料。",
+        "using_h": "使用 GPS 軌跡"
+      },
+      "help": {
+        "before_start": "你應該先熟悉開放街圖以及編輯器之前再開始編輯。iD 編輯器中有教學能教你基本編輯開放街圖的方法。點螢幕上的\"{開始新手教學}\"按鈕開始新手教學－這只會花 15 分鐘。",
+        "before_start_h": "在開始之前",
+        "open_data": "在地圖上面的編輯變動會讓所有使用開放街圖的人看到。你的編輯必須基於個人知識，現地踏察，或是收集的空照或是街景影像。從商業來源如 Google 地圖，則[嚴重禁止](https://www.openstreetmap.org/copyright)。",
+        "open_data_h": "開放資料",
+        "open_source": "iD 編輯器是共同協作的開源專案，你現在則是使用 {version} 版本。專案的原始碥在 [GitHub 上面](https://github.com/openstreetmap/iD)。",
+        "open_source_h": "開源",
+        "open_source_help": "你可以透過[回報臭蟲](https://github.com/facebook/Rapid/issues)來幫助 Rapid。",
+        "title": "說明文件",
+        "welcome": "歡迎來到 [開放街圖](https://www.openstreetmap.org/)的 iD 編輯器。使用 iD 編輯器能讓你在網頁瀏覽器更新開放街圖。"
+      },
+      "imagery": {
+        "choosing": "要看有那些影像來源可以用在編輯，點選地圖旁的 {layers_icon} **{background_settings}**面板。",
+        "intro": "背景影像出現在地圖資料下方，是繪製地圖時相當重要的資源。這些影像可能是從衛星、飛機和無人機收集的空拍影像，或是掃描歷史地圖或是其他自由可用的來源資料。",
+        "offset": "有時候影像會與既有地圖資料有些偏移狀況，如果你看到道路或是建築相比背景影像有偏移狀況，也許影像並沒有對準，請別移動全部的資料來吻合背景影像。你可以在背景影像設定，藉由 \"{imagery_offset}\" 調整背景來將影像吻合既有的資料。",
+        "offset_change": "點小三角形微幅調整影像，或是按住 {leftclick} 左鍵在灰色區域拖動，來調整影像。",
+        "offsets_h": "調整空拍圖層偏移",
+        "sources": "[Bing 地圖](https://www.bing.com/maps/)衛星圖層或最佳的當地影像會被設定為預設的背景。視你在編輯的地方，還有其他的影像來源。有些影像比較新或有更高的解析度，所以請常常檢查有哪些圖層可用，以及選擇那個圖層是最好用的繪製地圖參考來源。",
+        "sources_h": "空拍圖來源",
+        "title": "背景影像"
+      },
+      "key": "H",
+      "lines": {
+        "add_line": "要新增線，點地圖上方工具列的 {line_icon} **線**按鈕，或是按快速鍵 `2`。",
+        "add_line_continue": "透過 {leftclick} 點擊、{tap_icon} 輕點或是按下「{space}」鍵，繼續沿著線的形狀放置節點。繪圖時，你可以放大或拖動地圖以新增更多細節。",
+        "add_line_draw": "接著，按一下線段的開始位置，使用滑鼠時，放置箭頭到線段開始的位置，接著{mouse_left_icon}按滑鼠左鍵放置新點。在觸控螢幕操作時，{onefinger_tap_icon}點位置。",
+        "add_line_finish": "要完成畫線，按、輕按或是按下 `{return}` 最後一個節點。",
+        "add_line_h": "新增線段",
+        "connect_line": "路要適當連結，不只方便地圖顯示，還是提供導航最基本的方式。",
+        "connect_line_display": "道路的交叉處會用灰色圓圈表示，而線的尾段如無連到任何東西，則是用較大的白色圓圈代表。",
+        "connect_line_drag": "要讓線連到其他圖徵，則要將線的節點接到其他圖徵上，直到兩個圖徵接合為止。小技巧：你可以按著 `{alt}` 鍵避免點連到其他圖徵。",
+        "connect_line_h": "連結線段",
+        "connect_line_tag": "如果你的交叉處是交通號誌或是穿越道，你可以藉由選取連接的點，然後用圖徵編輯器選取正確的圖徵類似來增加。",
+        "delete_line": "如果一條線都不對，舉例來說道路並不存在真實世界，當然你可以刪除。當你要刪除圖徵時請小心：背景影像也許過時，而看起來錯誤的道路也許是新修築的。",
+        "delete_line_command": "要刪去一條線段，  {rightclick} 右鍵或是 {longpress_icon} 長按點選該線段來打開編輯選單，然後選擇 {delete} **刪除** 操作。",
+        "delete_line_h": "刪除線段",
+        "disconnect_line_command": "要將道路從其他圖徵分離，請選取連接的節點按 {rightclick} 右鍵或是 {longpress_icon} 長按，然後在編輯選單選取 {disconnect_icon}「{disconnect}」。",
+        "disconnect_line_h": "切斷線段",
+        "intro": "*線*用來代表像是道路、鐵路和河流。線應沿著被代表物體的中心繪製。",
+        "modify_line_addnode": "你也可以沿著線新增點，在線上 {leftclick} **x2** 點兩下，或是 {doubletap_icon} 輕按兩次線段，或是拖動點跟點中間的小三角形。",
+        "modify_line_dragnode": "有時候你會看線的形狀並不正確，比方說道路並沒有與背景影像重合。要調整線的形狀，首先選取線，所有線的點都會變成小的圓圈，接著你可以拖動這些點到更適合的位置。",
+        "modify_line_h": "變更線段",
+        "move_line_command": "要移動整條線，用 {rightclick} 右鍵點線然後選擇選單 {move_icon}  **{move}** 操作。接著移動滑鼠，用 {leftclick} 左鍵點要移動到的新地點。",
+        "move_line_connected": "有連到其他圖徵的線，則在移動線的同時也被移動到新地點。iD 可能會阻止你不讓你移動線到與其他連接的線交叉。",
+        "move_line_h": "移動線段",
+        "title": "線段"
+      },
+      "notes": {
+        "add_note": "要新增註記，點地圖上方工具列的 {note_icon} **{note}** 按鈕，或是按快速鍵 `{add_note_key}`。",
+        "add_note_h": "新增註記",
+        "intro": "*註記*是用於警告其他使用者有圖徵需要修復或注意。註記會在地圖上特定位置標記。要檢視既有的註記或加入新的註記，打開 {data_icon} **{map_data}** 面板以啟用 {osm_notes} 層。",
+        "move_note": "要移動註記的話，{mouse_left_icon}左鍵按一下然後用滑鼠拖動，或是{onefinger_tap_and_drag_icon}在觸控螢幕拖動。只有註記能被移動。",
+        "place_note": "接著，要在地圖放置新的註記，將滑鼠十字移到註記要放的位置，接著按 {leftclick} 左鍵或按`空白鍵`。在觸控螢幕上面，則是 {tap_icon} 輕按位置。",
+        "save_note": "你必須分別儲存任何註記的編輯，只要點在留言下方的按鈕就可以了。註記編輯**不**會包含在你上傳至開放街圖的變更集中。",
+        "save_note_h": "儲存註記",
+        "show_notes": "要開啟註記圖層，請開啟{data_icon}**{map_data}**面板，然後點{osm_notes}的勾選方框，或是點`{shift}`+`{toggle_notes_key}`。",
+        "title": "註記",
+        "update_note": "既有的註記可以透過將其關閉、重新開啟或是對它新增留言來更新。關閉註記是指出問題已經解決。重新開啟註記則是指出原本的問題沒有被解決。",
+        "update_note_h": "關閉、重新開啟與留言"
+      },
+      "operations": {
+        "circularize": "{circularize_icon} **{circularize}** 將區域與閉合的線段變為圓形。",
+        "continue": "{continue_icon} **{continue}** 讓你可從現有的端點延長既有的線段。",
+        "copy_paste": "{copy_icon} **{copy}** 與 {paste_icon} **{paste}** 可讓你複製圖徵。",
+        "delete": "{delete_icon} **{delete}** 將圖徵從地圖上移除。現實世界中不存在的任何東西都應該刪除。",
+        "disconnect": "{disconnect_icon}「{disconnect}」會將連接起來的線段或區域彼此分開。你可以解除整個圖徵的或選定的點的相連。",
+        "downgrade": "{downgrade_icon} **{downgrade}** 移除除了建築物與地址以外大多數的標籤移除。當企業關閉但設施仍保留時會很有用。",
+        "extract": "{extract_icon} **{extract}** 將點與線分離。它也可以將點拉出建築物與其他區域。",
+        "intro": "「操作」是你可以用於編輯圖徵的特殊指令。{rightclick} 右鍵點擊或 {longpress_icon} 長按任何圖徵以檢視可用的操作。",
+        "intro_2": "每個操作都有其鍵盤快捷鍵。大多數操作可以一次套用到多個圖徵。",
+        "merge": "{merge_icon} **{merge}** 將多個圖徵合併成一個。你可以區域合併在一起以建立多邊形，合併線段以建立更長的線段，以及合併點到任何內容中以轉移它們的標籤。",
+        "move": "{move_icon} **{move}** 讓你在地圖上拖動圖徵。",
+        "orthogonalize": "{orthogonalize_icon} **{orthogonalize}** 將區域的角落或線段變為 90°。你可以將單獨的角落直角化或整個圖徵都直角化。",
+        "reflect": "{reflect_short_icon} **{reflect_short}** 與 {reflect_long_icon} **{reflect_long}** 可讓圖徵沿其短軸或長軸翻轉。",
+        "reverse": "{reverse_icon} **{reverse}** 可變更圖徵的方向。方向對於某些東西來說很重要，如單向道、交通號誌、水路與懸崖等。",
+        "rotate": "{rotate_icon} **{rotate}** 讓你可以繞著圖徵的中心點旋轉。",
+        "split": "{split_icon}「{split}」 在選定的點處切開線段。若選定了特定線段，則只有它們會被分離。",
+        "straighten": "{straighten_icon} **{straighten}** 會移除線的轉折點。它也可以用來將點的群組對齊成整齊的線段。",
+        "title": "操作"
+      },
+      "overview": {
+        "features": "我們用字詞*圖徵*來描述地圖上會出現的東西，像是道路、建築、或是興趣點。任何在現實世界出現的東西，都可以當作圖徵畫到開放街圖上面。地圖圖徵在地圖上以*點*、*線*或是*區域*的方式呈現。",
+        "features_h": "圖徵",
+        "navigation_h": "瀏覽",
+        "navigation_zoom": "你可以用 {mousewheel_icon} 滑鼠滾輪、觸控版、或是在觸控螢幕捏雙指放大或縮小。你也可以按地圖旁的 {plus} / {minus} 按鈕，或是用鍵盤上的  `+`, `-` 鍵。",
+        "nodes_ways": "在開放街圖裡，點有時候被稱為*節點*，而線和區域則被稱為*路徑*。",
+        "title": "概要"
+      },
+      "points": {
+        "add_point": "要新增一個點，點選地圖上面工具列 {point_icon} **{point}** 按鈕，或是按快速鍵 `1`。這會讓滑鼠遊標變成十字圖樣。",
+        "add_point_finish": "接著，要在地圖放置新的點，將滑鼠十字移到點的位置，接著按 {leftclick} 滑鼠左鍵。在觸控螢幕上，{tap_icon} 輕點位置。或者你也可以將滑鼠游標指向需要的位置，然後按下「{space}」鍵。",
+        "add_point_h": "新增點",
+        "delete_point": "刪除現實世界不存在的圖徵是很 OK 的事情。從開放街圖刪除圖徵，意味著從每個人會用到的地圖移除，所以你必須確定圖徵確實不在了，才真的刪除圖徵。",
+        "delete_point_command": "要刪去一個點，  {rightclick} 右鍵或是 {longpress_icon} 長按點選該點來打開編輯選單，然後選擇 {delete} **刪除** 操作。",
+        "delete_point_h": "刪除點",
+        "intro": "*點*可以用來表示像是商店、餐廳和紀念碑的圖徵。他們佔據特定的地點，描述在那裡的東西。",
+        "move_point": "要移動點的話，{mouse_left_icon}左鍵按一下然後用滑鼠拖動，或是{onefinger_tap_and_drag_icon}在觸控螢幕拖動。",
+        "move_point_h": "移動點",
+        "title": "點"
       },
       "qa": {
-        "tools_h": "工具",
-        "tools": "目前支援以下工具：[KeepRight](https://www.keepright.at/) 和 [Osmose](https://osmose.openstreetmap.fr/)。"
+        "intro": "「品質保証」(Q/A, Quality Assurance) 工具能找出開放街圖上不適當的標籤、未連接的道路或是其他問題，圖客能藉此修復。要檢視現有的 Q/A 問題，開啟 {data_icon} **{map_data}** 面板開啓特定 Q/A 層。",
+        "issues": "處理 Q/A 問題類似處理註記。選取標記以在側邊欄檢視議題。每個工具都有其功能，但是一般來說你可以回應和/或關閉問題。",
+        "issues_h": "處理問題",
+        "title": "品質保証",
+        "tools": "目前支援以下工具：[KeepRight](https://www.keepright.at/) 和 [Osmose](https://osmose.openstreetmap.fr/)。",
+        "tools_h": "工具"
+      },
+      "relations": {
+        "boundary": "「邊界」關聯是由一個或多個線段圖徵組成的行政區域邊界。",
+        "boundary_add": "要將圖徵新增到邊界關聯中，選取圖徵並往下捲到圖徵編輯器的「{relations}」部份，然後點 {plus} 新增按鈕以將此圖徵新增到附近既有的關聯或是新的關聯中。",
+        "boundary_h": "邊界",
+        "edit_relation": "在圖徵編輯器底部，你可以展開「{relations}」部份以檢視選定的圖徵是否為任何關聯的成員。然後你可以選擇關聯並編輯它。",
+        "edit_relation_add": "要將圖徵新增到關聯中，請選取圖徵，然後在圖徵編輯器的「{relations}」部份中按 {plus} 新增按鈕。你可以從附近的關聯清單中選擇，或是選擇「{new_relation}」選項。",
+        "edit_relation_delete": "你也可以按 {delete_icon} **{delete}** 按鈕將關聯中選取的圖徵移除。如果你移除關聯裏的所有成員，關聯也將被自動刪除。",
+        "edit_relation_h": "編輯關聯",
+        "intro": "「關聯」是開放街圖的一種特殊型態圖徵，能夠將其他圖徵組織成一組。屬於關聯的圖徵被稱為「成員」，而每個成員在關聯裡都會有「角色」。",
+        "maintain_relation": "大部分的情形來說，你編輯時 iD 會自動維護關聯，你應當特別注意替換關聯中的成員。舉例來說，如果你刪除一段路，用新繪製的路段取代，你應當如同原來的一樣，將新的部分加到同一個關聯 (路線、轉彎限制等)。",
+        "maintain_relation_h": "維護關聯",
+        "multipolygon": "「多重多邊形」關聯是擁有一個或多個 outer 以及一個或多個 inner 圖徵的群組。outer 圖徵定義多重多邊形的外圍，而 inner 圖徵則定義次區域或是多重多邊形內部的洞。",
+        "multipolygon_create": "要創建多重多邊形，像是建築內有洞的狀況，要用區域的方式先畫外框，再來用線段或是不同形狀區塊的方式畫內部的邊緣。接著 `{shift}`+{leftclick}  左鍵同時選取兩個圖徵，{rightclick} 右鍵點下去之後出現編輯選單，接著選 {merge_icon} **{merge}** 操作。 ",
+        "multipolygon_h": "多重多邊形",
+        "multipolygon_merge": "合併多個線段與區域會新增這些選擇的區域為成員的多重多邊形。Rapid 會依據圖徵是否在側，自動選擇內圈與外圍角色。",
+        "relation_types_h": "關聯種類",
+        "route": "「路線」關聯是由一個或多個線段圖徵組成的道路網路群組，像是公車路線、鐵路路線或是道路路線。",
+        "route_add": "要將圖徵新增到路線關聯中，選取圖徵並往下捲到圖徵編輯器的「{relations}」部份，然後點 {plus} 新增按鈕以將此圖徵新增到附近既有的關聯或是新的關聯中。",
+        "route_h": "路線",
+        "title": "關聯",
+        "turn_restriction": "「轉彎限制」關聯是有數個交叉道路的群組。轉彎限制包含一個 from 路段、一個或數個 via 節點/路段，以及一個 to 路段。",
+        "turn_restriction_editing": "在「{turn_restrictions}」欄位中，選擇 from 路段，接著看是允許或是限制到 to 路段。你可以點轉彎圖示切換允許或是限制，iD 會依據你的選擇自動新建關聯與設定 from、via、to 的角色。",
+        "turn_restriction_field": "要編輯轉彎限制，選擇兩個以上道路交叉的節點。圖徵編輯器則會顯示特別的 \"{turn_restrictions}\" 欄位，欄位裡有交叉點相關的模式。",
+        "turn_restriction_h": "轉彎限制"
+      },
+      "streetlevel": {
+        "intro": "街景照片能夠幫助繪製交通號誌、店家、或其他無法從衛星或空照圖看到的事物。Rapid 編輯器支援 [Bing 街景](https://www.microsoft.com/en-us/maps/streetside)、[Mapillary](https://www.mapillary.com) 與 [KartaView](https://www.kartaview.org) 的街景照片。",
+        "photos": "當啟用時，照片覆蓋層會顯示有一連串有圖片沿著一條線，在更高的縮放程度，圓圈標示代表圖片的位置，而在更高的縮放下面，方向標示會顯示照片拍攝時的鏡頭方向。",
+        "title": "街景照片",
+        "using": "要使用街景影像來畫地圖，開啟地圖旁 {data_icon} **{map_data}** 面板，來啟用或關閉可用的照片覆蓋層。",
+        "using_h": "使用街景照片",
+        "viewer": "當你選擇其中一張照片位置，會在圖片下面角落出現照片檢示器。圖片檢示器能控制照片序列要往前進或後退。同時會顯示拍照者的名稱，拍攝日期，以及連到原始網站的連結。"
+      },
+      "title": "說明文件"
+    },
+    "help_translate": "協助翻譯",
+    "icons": {
+      "copy": "複製",
+      "deselect": "取消選取",
+      "download": "下載",
+      "favorite": "最愛",
+      "information": "資訊",
+      "list": "清單",
+      "remove": "移除",
+      "text": "文字",
+      "undo": "復原",
+      "view_on": "在 {domain} 上檢視",
+      "visit_website": "造訪網站",
+      "zoom_to": "縮放至"
+    },
+    "info_panels": {
+      "background": {
+        "accuracy": "準確度",
+        "description": "説明",
+        "hide_tiles": "隱藏圖磚",
+        "resolution": "解析度",
+        "show_tiles": "顯示圖磚",
+        "source": "來源",
+        "title": "背景",
+        "vintage": "年代",
+        "zoom": "縮放"
+      },
+      "history": {
+        "changeset": "變更組合",
+        "edited_by": "編輯由",
+        "last_edit": "最近編輯",
+        "link_text": "開放街圖網站上的歷史頁面",
+        "no_history": "無歷史 (新功能)",
+        "note_comments": "留言",
+        "note_created_date": "創建日期",
+        "note_created_user": "創建者",
+        "note_link_text": "openstreetmap.org 註記",
+        "note_no_history": "無歷史（新註記）",
+        "title": "歷史",
+        "version": "版本"
+      },
+      "location": {
+        "title": "位置",
+        "unknown_location": "未知位置"
+      },
+      "measurement": {
+        "area": "區域",
+        "center": "中心",
+        "centroid": "質心",
+        "closed_area": "封閉區域",
+        "closed_line": "封閉線段",
+        "distance": "距離",
+        "geometry": "形狀",
+        "imperial": "英制",
+        "length": "長度",
+        "location": "位置",
+        "metric": "公制",
+        "node_count": "節點數目",
+        "perimeter": "周長",
+        "title": "測量"
+      },
+      "selected": {
+        "other": "已選取 {n} 個"
+      }
+    },
+    "inspector": {
+      "add": "新增",
+      "add_fields": "新增欄位",
+      "add_to_relation": "新增至關聯",
+      "back_tooltip": "變更圖徽類型",
+      "check": {
+        "no": "否",
+        "reverser": "變更方向",
+        "yes": "是"
+      },
+      "choose": "選擇物件種類",
+      "choose_relation": "選擇父關係",
+      "display_name": {
+        "direction": "{direction}",
+        "from_to": "從 {from} 到 {to}",
+        "from_to_via": "從 {from} 到 {to} 經由 {via}",
+        "network": "{network}",
+        "network_direction": "{network} {direction}",
+        "network_from_to": "{network} 從 {from} 到 {to}",
+        "network_from_to_via": "{network} 從 {from} 到 {to} 經由 {via}",
+        "network_ref": "{network} {ref}",
+        "network_ref_direction": "{network} {ref} {direction}",
+        "network_ref_from_to": "{network} {ref} 從 {from} 到 {to}",
+        "network_ref_from_to_via": "{network} {ref} 從 {from} 到 {to} 經由 {via}",
+        "network_ref_name": "{network} {ref}：{name}",
+        "ref": "{ref}",
+        "ref_direction": "{ref} {direction}",
+        "ref_from_to": "{ref} 從 {from} 到 {to}",
+        "ref_from_to_via": "{ref} 從 {from} 到 {to} 經由 {via}",
+        "ref_name": "{ref}：{name}"
+      },
+      "edit": "編輯特徵",
+      "edit_reference": "編輯/翻譯文件",
+      "feature_list": "搜尋物件",
+      "feature_type": "圖徽類型",
+      "features": "圖徽",
+      "fields": "欄位",
+      "incomplete": "<未下載>",
+      "key_value": "鍵=值",
+      "location": "地點",
+      "lock": {
+        "suggestion": "「{label}」欄位已被鎖定，因為其有 Wikidata 標籤。你可以刪除它或在「標籤」部份中編輯標籤。"
+      },
+      "members": "成員",
+      "multiple_roles": "多重角色",
+      "multiple_types": "多重類型",
+      "multiple_values": "多重值",
+      "new_relation": "建立新關係...",
+      "no_documentation_key": "沒有可用的文件。",
+      "node": "節點",
+      "none": "無",
+      "radio": {
+        "structure": {
+          "default": "預設",
+          "layer": "圖層"
+        }
+      },
+      "relation": "關係",
+      "relations": "關聯",
+      "remove": "移除",
+      "results": {
+        "other": "{n} 個 {search} 的結果"
+      },
+      "role": "角色",
+      "search": "搜尋",
+      "show_more": "顯示更多",
+      "tags": "標籤",
+      "title_count": "{title} ({count})",
+      "type": "種類",
+      "unknown": "未知種類",
+      "unshared_value_tooltip": "並未被所有圖徵共享",
+      "view_on_keepRight": "在 keepright.at 檢視",
+      "view_on_osm": "在 openstreetmap.org 中檢視",
+      "view_on_osmose": "在 osmose.openstreetmap.fr 上檢視",
+      "way": "路徑",
+      "wiki_en_reference": "觀看英文的說明文件",
+      "wiki_reference": "觀看說明文件",
+      "zoom_to": {
+        "no_selection": "沒有東西可放大。",
+        "title": "縮放到選取的部份"
+      }
+    },
+    "intro": {
+      "areas": {
+        "add_field": "遊樂場並沒有正式的名稱，所以我們不會在名稱欄位加任何名稱到{name}名稱欄位。 {br}不過我們會在 {description} 欄位加上遊樂場的詳情。**開啟新增欄位清單**",
+        "add_playground": "*區域*可以用來顯示圖徵邊界，常用在表示湖泊、建築和住宅區。 {br}。另外區域也可以用在畫更詳盡有更多圖徵的地圖上面，取代先前只用節點表示的圖徵。**點 {area_icon} {area} 按鈕來新增區域。**",
+        "choose_field": "**從清單選擇 {field}。**",
+        "choose_playground": "**從清單選擇{preset}**",
+        "continue_playground": "繼續在遊樂場邊界標上更多節點來繪製區域。如果遇到既有的人行道，你也可以將區域連接到人行道上。{br}小技巧：你可以按住 `{alt}` 鍵防止節點連到其他圖徵。 **繼續繪製遊樂場區域。** ",
+        "describe_playground": "**新增描述，接著按 {button} 按鈕關閉圖徵編輯器。**",
+        "finish_area_click": "要完成繪製區域，按 `{return}` 或再次點第一個點或最後一個點。",
+        "finish_area_tap": "要完成繪製區域， {tap_icon} 輕按點第一個點或最後一個點，或是按鍵盤的 `{return}`。",
+        "finish_playground": "**完成繪製遊樂場的區域。**",
+        "play": "太棒了！接著嘗試畫更多區域，然後看看你可以新增什麼區域圖徵到開放街圖上。**當你準備好進入下一章，請按 '{next}'。**",
+        "retry_add_field": "你沒有選到 {field}欄位。請再試一次。",
+        "search_playground": "**搜尋'{preset}'。**",
+        "start_playground": "讓我們用畫區域的方式來新增遊樂場吧。區域是由增加圖徵邊界的*節點*來繪製。",
+        "starting_node_click": "**點或是按 `{space}` 在遊樂場邊角標上初始節點。**",
+        "starting_node_tap": "****{tap_icon} 輕按在遊樂場邊角標上初始節點。**",
+        "title": "區域"
+      },
+      "buildings": {
+        "add_building": "開放街圖是世界最大的建築資料庫。 {br}你可以藉由描繪建築增加建築，幫忙增進資料庫物件。**點 {area_icon} {area} 按鍵新增區域。**",
+        "add_tank": "接下來我們要描繪油槽。**點 {area_icon} {area} 按鈕新增區域。**",
+        "building_corner_click": "**點或是按 `{space}` 在建築角邊新增節點。**",
+        "building_corner_tap": "**{tap_icon} 輕按建築其中一角初始節點。**",
+        "choose_category_building": "**從清單選擇 {category}。**",
+        "choose_preset_house": "有不同種類的建築，但這棟應該是洋房。 {br}如果你不確定建築類型，你可以選擇一般建築類型就婕。**選擇 {preset} 類型。**",
+        "choose_tank": "**從清單選擇  {preset}。**",
+        "circle_tank": "**點 {circularize_icon} {circularize} 按鈕來讓油槽更圓。**",
+        "continue_building": "繼續新增更多建築外框的節點。記住你想要增加更多細節時可以放大地圖。",
+        "continue_tank": "沿著邊緣新增更多節點。圓圈會依你描繪的節點出現形狀。",
+        "done_square": "看到建築的角落移到位置了嗎？讓我們來學習另一個實用技巧。",
+        "edit_menu_building_touch": "**對著你新增的建築 {longpress_icon} 長按叫出編輯選單。**",
+        "edit_menu_tank_touch": "**對著你新增的油槽 {longpress_icon} 長按叫出編輯選單。**",
+        "finish_building": "**完成繪製建築。**",
+        "finish_tank": "**完成描繪油槽。**",
+        "play": "太好了！再試著描幾棟建築，試著用編輯選單的其他操作。**當你準備好進入下一章時，點 ' {next}'。**",
+        "retry_building": "看起你好像加建築邊角的節點時遇到困難了。再試一次！",
+        "retry_circle": "你沒有按 {circularize_icon} {circularize} 按鈕。再試一下。",
+        "retry_square": "你沒有按 {orthogonalize_icon} {orthogonalize} 按鈕。再試一下。",
+        "rightclick_building": "**對著你創建的建築按 {rightclick} 右鍵，顯示編輯選單。**",
+        "rightclick_tank": "**對著新增的油槽按 {rightclick} 右鍵，接著顯示編輯目錄。**",
+        "search_tank": "**搜尋 '{preset}'。**",
+        "square_building": "你剛創建的建築如果變得更方正會更好看。**點 {orthogonalize_icon} {orthogonalize} 按鈕來方角化建築形狀。**",
+        "start_building": "讓我們描繪這棟建築的外框，新增一棟建築。 {br}描繪建築時要依據建築地基，越精確越好。",
+        "start_tank": "不用擔心你畫不出來完美的圓形。先沿著油槽邊畫油槽範圍。",
+        "tank_edge_click": "**點或按 `{space}` 在油槽邊緣標上起始節點。**",
+        "tank_edge_tap": "**{tap_icon} 輕按在油槽邊緣標上起始節點。**",
+        "title": "建築"
+      },
+      "done": "完成",
+      "graph": {
+        "block_number": "4鄰",
+        "city": "臺北市",
+        "countrycode": "tw",
+        "county": "TW",
+        "district": "松山區",
+        "hamlet": "中崙",
+        "name": {
+          "10th-avenue": "艋舺大道",
+          "11th-avenue": "縣民大道",
+          "12th-avenue": "市府路",
+          "1st-avenue": "塔悠路",
+          "2nd-avenue": "中山路",
+          "4th-avenue": "南京路",
+          "5th-avenue": "長安路",
+          "6th-avenue": "林森路",
+          "6th-street": "羅斯福路",
+          "7th-avenue": "登輝大道",
+          "8th-avenue": "市民大道",
+          "9th-avenue": "凱達格蘭大道",
+          "access-point-employment": "就服站",
+          "adams-street": "忠孝路",
+          "andrews-elementary-school": "介壽國小",
+          "andrews-street": "介壽路",
+          "armitage-street": "仁愛路",
+          "barrows-school": "信義路",
+          "battle-street": "和平路",
+          "bennett-street": "八德路",
+          "bowman-park": "四維路",
+          "collins-drive": "格致路",
+          "conrail-railroad": "縱貫線",
+          "conservation-park": "保護區",
+          "constantine-street": "憲政路",
+          "cushman-street": "軍校路",
+          "dollar-tree": "金城武樹",
+          "douglas-avenue": "賴和路",
+          "east-street": "溪東街",
+          "elm-street": "大安路",
+          "flower-street": "中正路",
+          "foster-street": "林森南路",
+          "french-street": "美援路",
+          "garden-street": "花藝路",
+          "gem-pawnbroker": "台元汽車借款",
+          "golden-finch-framing": "師大錶框行",
+          "grant-avenue": "大道路",
+          "hoffman-pond": "醉月湖",
+          "hoffman-street": "醉月路",
+          "hook-avenue": "虎克路",
+          "jefferson-street": "中華路",
+          "kelsey-street": "朝陽路",
+          "lafayette-park": "大安森林公園",
+          "las-coffee-cafe": "靈感咖啡",
+          "lincoln-avenue": "林肯大道",
+          "lowrys-books": "水準書局",
+          "lynns-garage": "新遠東水電行",
+          "main-street": "大街",
+          "main-street-barbell": "大街吊燈",
+          "main-street-cafe": "大街咖啡館",
+          "main-street-fitness": "大街健身房",
+          "maple-street": "三和路",
+          "marina-park": "海洋公園",
+          "market-street": "市場路",
+          "memory-isle": "城中",
+          "memory-isle-park": "二二八公園",
+          "michigan-avenue": "南昌路",
+          "middle-street": "南寧路",
+          "millard-street": "福州路",
+          "moore-street": "廈門路",
+          "morris-avenue": "汕頭路",
+          "mural-mall": "101購物中心",
+          "paisanos-bar-and-grill": "名人燒肉",
+          "paisley-emporium": "微風廣場",
+          "paparazzi-tattoo": "Z Tattoo",
+          "pealer-street": "蘇州路",
+          "pine-street": "杭州路",
+          "pizza-hut": "Pizza Hut",
+          "portage-avenue": "南京東路",
+          "portage-river": "新店溪",
+          "preferred-insurance-services": "富邦人壽",
+          "railroad-drive": "鐵支路",
+          "river-city-appliance": "燦坤3C",
+          "river-drive": "河濱路",
+          "river-road": "河西路",
+          "river-street": "基河路",
+          "riverside-cemetery": "富德公墓",
+          "riverwalk-trail": "河濱步道",
+          "riviera-theatre": "淡水劇場",
+          "rocky-river": "淡水河",
+          "saint-joseph-river": "基隆河",
+          "scidmore-park": "大安森林公園",
+          "scidmore-park-petting-zoo": "大安森林公園寵物區",
+          "scouter-park": "青年公園",
+          "sherwin-williams": "孫中心",
+          "south-street": "新生路",
+          "southern-michigan-bank": "臺灣銀行",
+          "spring-street": "春日街",
+          "sturgeon-river-road": "大安路",
+          "three-rivers": "臺北市",
+          "three-rivers-city-hall": "臺北市政府大廈",
+          "three-rivers-elementary-school": "中山國小",
+          "three-rivers-fire-department": "城中消防隊",
+          "three-rivers-high-school": "建國高中",
+          "three-rivers-middle-school": "介壽國中",
+          "three-rivers-municipal-airport": "松山機場",
+          "three-rivers-post-office": "北門郵局",
+          "three-rivers-public-library": "王貫英紀念圖書館",
+          "tulip-lane": "鬱金香巷",
+          "unique-jewelry": "傳奇珠寶",
+          "walnut-street": "克強路",
+          "washington-street": "山西路",
+          "water-street": "塔悠路",
+          "west-street": "重陽路",
+          "wheeler-street": "成功路",
+          "william-towing": "電器行",
+          "willow-drive": "大甲路",
+          "wood-street": "松山路",
+          "world-fare": "環球廣場"
+        },
+        "neighbourhood": "健軍新村",
+        "postcode": "116",
+        "province": "臺北市",
+        "quarter": "中崙",
+        "state": "臺灣",
+        "subdistrict": "中崙",
+        "suburb": "東區"
+      },
+      "lines": {
+        "add_line": "*線*被用來表示如道路、鐵路以及河流。 **按下 {line_icon} {line} 按鈕來新增一條線。**",
+        "add_node": "我們可以在這條線上新增一些節點，改善線的形狀。有一個新增的節點的方法是在想新增節點的地方，對準線上點兩下。**在線上點兩下來新增節點。**",
+        "add_node_touch": "我們可以在這條線上新增一些節點，改善線的形狀。有一個新增的節點的方法是在想新增節點的地方，對準線上 {doubletap_icon}  點兩下。**在線上點兩下來新增節點。**",
+        "add_to_selection_click": "你可以按住 `{shift}` 時同時選擇多個物件。**Shift 點選  {other2}。**",
+        "add_to_selection_touch": " **{longpress_icon} 輕按並按住時用其他手指 {tap_icon} 輕按 {other2} 來同時選擇。**",
+        "choose_category_road": "**從清單選擇 {category}**",
+        "choose_preset_residential": "有許多不同型態的道路，但這條路屬於住宅區道路。**請選擇 {preset} 類型。**",
+        "continue_drag_midpoint": "現在線看起來好多了！繼續調整線直到彎曲程度符合道路形狀。**當你覺得線段看起來不錯時，點 {ok}。**",
+        "continue_line": "繼續繪製新路的線段。記得如果需要可以拖拉和縮放地圖。",
+        "delete_lines": "如果道路沒有實際存在，你當然可以刪除線段。 {br}這裡的例子是城市當局規畫了 {street}，但並沒有真的付諸行動建造道路。我們可以刪除既有的線段來增進這一帶的圖資品質。",
+        "did_name_road": "看起來很好！接下來我們要學習怎麼更新線段的形狀。",
+        "did_split_multi": "太棒了！ {street1} 已經分割為兩段了。可以移除上半部。**選擇 {street2} 的上半部**。",
+        "did_split_single": "**選擇 {street2} 的上半部**。",
+        "drag_to_intersection": "**拖拉最末端節點到道路應該交叉處。",
+        "edit_menu_intersection_touch": "**對著交叉點長按{onefinger_tap_and_hold_icon}。**",
+        "finish_drag_endpoint": "**放開滑鼠左鍵來結束拖拉。**",
+        "finish_drag_endpoint_touch": "**放開點來結束拖拉。**",
+        "finish_line_click": "當你完成時，再點最後一個節點或是按  `{return}`。",
+        "finish_line_tap": "當你完成時，再 {tap_icon} 輕按最後一個節點，或是按鍵盤上的  `{return}`。",
+        "finish_road": "**完成繪製道路。**",
+        "intersect": "點或按空白鍵為線新增更多節點。 {br}道路與路徑和渡輪路線，必須彼此間適當的連接，以便導航軟體能夠運作。**點 {name} 連接兩條線的交叉處。**",
+        "line_draw_info": "在開放街圖上，線要對準道路中線開始繪製。你可以在繪圖有需要時，拖拉和縮放地圖。",
+        "missing_road": "這裡缺少一條路，我們來新增吧！",
+        "multi_delete": "**點 {delete_icon} {delete} 按鈕來移除多餘的線。**",
+        "multi_edit_menu_touch": "**對著其中一條線 {longpress_icon} 長按叫出編輯選單。**",
+        "multi_rightclick": "**{mouse_right_icon}右鍵點其中一條線來顯示編輯選單。**",
+        "multi_select": "已經選取 {selected}，接著也來選擇 {other1}。",
+        "multi_select_success": "太棒了！要刪除的兩條線都被選取了。",
+        "name_road": "**填入道路名稱，並按 {button} 按鈕或是`{esc}`來關閉圖徵編輯器。**",
+        "play": "太好了！你可以利用這一章學到的技術來練習增加更多線。**當你準備好進入下一章，請按 ' {next}'。**",
+        "retry_delete": "你沒有按 {delete_icon} {delete} 按鈕。再試一下。",
+        "retry_intersect": "{name}道路必須交叉，讓我們試試接起來吧！",
+        "retry_preset_residential": "你沒有選到 {preset} 類型。**請點按鈕再選一次。**",
+        "retry_split": "你沒有按 {split_icon} {split} 按鈕。再試一次。",
+        "rightclick_intersection": "**對著交叉口按 {rightclick} 右鍵。**",
+        "split_intersection": "**點 {split_icon} {split} 按鈕來分割 {street}。**",
+        "split_street": "最後一條真實存在的道路是 {street1}，所以我們在交叉口分割 {street2}、移除之前的東西。",
+        "spot_looks_good": "這個位置看來不錯。",
+        "start_drag_endpoint": "當已經選擇線段，你可以在點和按住滑鼠 {leftclick} 左鍵時，微調任何線上的節點。",
+        "start_drag_endpoint_touch": "當已經選擇線段，你可以 {touchdrag_icon} 輕按和拖動任何點，微調任何線上的節點。",
+        "start_drag_midpoint": "小的三角形會出現在節點和節點之間的*中點*。另一個增加節點的方式是拖拉中點到新的位置。**拖拉中點的三角形在道路線上創建新的節點。**",
+        "start_line": "**點缺失道路的最頂端開始畫新的線。**",
+        "start_line_tap": "** {tap_icon} 輕按缺失道路的最頂端開始畫新的線。**",
+        "title": "線",
+        "update_line": "有時候你需要調整既有的線段形狀。這邊有條道路看起來不太對勁。"
+      },
+      "navigation": {
+        "choose_street": "**選擇清單中的{name}。**",
+        "click_townhall": "所有地圖上的圖徵都能透過{mouse_left_icon}點滑鼠左鍵來選擇。**點一下來選擇該點。**",
+        "close_townhall": "**按上方角落 {button} 按鈕或是按 `{esc}` 按鍵來關閉圖徵編輯器。**",
+        "editor_street": "以選取的道路為例，圖徵編輯器的欄位有 '{field1}' 和 '{field2}'。**按 {button} 按鈕或是按 `{esc}` 鍵來關閉圖徵編輯器。**",
+        "editor_townhall": "當圖徵被選取時，*圖徵編輯器*會在地圖旁邊顯示。",
+        "features": "我們使用圖徵這詞來描述出現在地圖上的事物。任何在現實世界中出現的事物都可以被當作圖徵，描述到開放街圖上面。",
+        "fields_townhall": "圖徵編輯器中間部分則是*欄位*，顯示圖徵的屬性，像是名稱和地址。",
+        "map_info": "主地圖區域會在背景圖之上顯示開放街圖資料。",
+        "map_info2": "這份地圖的導航方式與您以前使用過的其他電腦地圖類似。",
+        "nodes_ways": "在開放街圖裡，點常被叫做*節點*，而線或是區域被叫做*線段*。",
+        "pan": "有多種方式平移地圖：",
+        "pan_the_map": "**試著平移地圖！**",
+        "play": "嘗試探索地圖，並且點選其他的圖徵，觀察有什麼東西可以加到開放街圖。**當你準備繼續下一章節時，請按'{next}'.。**",
+        "points_lines_areas": "地圖圖徵用*點、線、區域*來表示。",
+        "preset_townhall": "圖徵編輯器的上半部會顯示不同圖徵類型，這個點是{preset}。",
+        "rotate": "旋轉地圖有多種方式：",
+        "rotate_the_map": "**試試旋轉地圖！**",
+        "search_street": "你也可以搜尋目前檢視下或是全球的圖徵，**搜尋'{name}'。**",
+        "selected_street": "太好了！{name} 已經被選取了。",
+        "selected_townhall": "太好了！這個點已經被選取了。選取的圖徵會以持續閃爍方式呈現。",
+        "street_different_fields": "給道路的欄位與市鎮大廈顯示的欄位並不相同。",
+        "tap_townhall": "所有地圖的圖徵都可以用 {tap_icon} 按點的方式選取。**按點一個點來選取它。**",
+        "title": "導航",
+        "user_settings": "如果觸控版或滑鼠滾輪不如預期縮放，可以在使用者選項面版中調整。",
+        "zoom": "縮放地圖有多種方式：",
+        "zoom_keyboard": "- 按下鍵盤上的 `+` 或 `-` 鍵。",
+        "zoom_the_map": "**試試縮放地圖！**"
+      },
+      "ok": "瞭解",
+      "points": {
+        "add_close": "圖徵編輯器會自動記住你所有的變動。**當你新增完成名稱，按 {button} 按鍵或是按 `{esc}` 鍵關閉圖徵編輯器。**",
+        "add_name": "我們假設你對咖啡店的資訊具備在地知識，而且你知道咖啡店的名字，那就**加上咖啡店的名字。**",
+        "add_point": "他們佔據特定的地點，描述在那裡的東西。**點擊 {point_icon} {point} 點按鈕以新增一點**",
+        "choose_cafe": "**從清單選擇 {preset}。**",
+        "delete": "如果現實中圖徵不存在，你當然可以刪除。{br}刪除開放街圖上的圖徵，會讓每位使用地圖的人受影響，所以請確定該圖徵的確不存在了才刪除。**按一下 {delete_icon} {delete}  按鈕來刪除節點。**",
+        "edit_menu_touch": "你可以對任何圖徵 {longpress_icon} 長按來開啟*編輯清單*，顯示一系列你可以操作的編輯動作。**長按選擇你創建的節點，然後顯示編輯清單。**",
+        "feature_editor": "現在這個節點標示為咖啡店。使用圖徵編輯器，我們可以為咖啡店增加更多資訊。",
+        "fields_info": "在開放街圖中，所有的欄位都是可選的，如果你不確定某個欄位要怎麼填的話，可以將其留空。",
+        "place_point": "要在地圖上放置節點，滑鼠指標對準的地方按下 {leftclick} 左鍵或是 `{space}` 節點就會出現。**移動滑鼠指標到建築的位置，接著 按左鍵或按 `{space}`。**",
+        "place_point_touch": "要在地圖放置新的點，按 {tap_icon} 點按想要放的位置。**點按建築物的中心。**",
+        "play": "現在你知道怎麼創建和編輯節點了，嘗試練習新增更多節點吧！**當你準備好進入下一章時，請點 '{next}'。**",
+        "points_info": "*點*可以用來表示像是商店、餐廳和紀念碑的圖徵。",
+        "reselect": "有時候節點早就存在了，但資料填錯或是不完整，我們可以編輯既有的節點。**選擇剛剛新增的咖啡店。**",
+        "rightclick": "你可以對任何圖徵按 {rightclick} 右鍵來開啟*編輯清單*，顯示一系列你可以操作的編輯動作。{br}按右鍵也許跟按住 control 點或是兩指點效果一樣**右鏈選擇你創建的節點，然後顯示編輯清單。**",
+        "search_cafe": "有很多不同圖徵可以用節點表示。你剛加的節點是一家咖啡館，**搜尋 '{preset}'",
+        "title": "點",
+        "undo": "在儲存你編輯到開放街圖前，你總是可以復原任何做出的改變。**按 {undo_icon} {undo} 按鈕來復原刪除，恢復原先的節點。**",
+        "update": "我們來填入更多咖啡店的細節資訊吧，你可以改名成，加上料理種類，或是加上地址。**改變咖啡店詳情。**",
+        "update_close": "**當你更新咖啡店完成後，按 {button} 鈕或是按 `{esc}` 鍵關閉圖徵編輯器。**"
+      },
+      "rapid": {
+        "add_road_not_saved_yet": "這個道路已經添加到地圖上。與其他地圖變更一樣，在儲存之前不會顯示給其他人。",
+        "ignore_road": "這一次，按下 “忽略此功能 ”按鈕，即可以從作地圖上隱藏錯誤的道路。",
+        "new_lints": "新增道路後，問题面板當中出出了一項新問题。Rapid 引入了幾項新的驗證檢查，以偵測將這些建議圖徵合併到開放街圖中可能會出現的問題。",
+        "open_issues": "現在，讓我們打開問題面版。",
+        "undo_road_add_aftermath": "道路已經從本地變化中移除，並恢復到之前的洋紅色圖層！"
+      },
+      "startediting": {
+        "help": "你現在準備好可以來編輯開放街圖了！ {br}你可以再看一次新手教學，或者按下{help_icon} {help} 按鈕或 `{help_key}` 鍵看更多使用說明文件。 ",
+        "save": "不要忘記定時儲存您的編輯！",
+        "shortcuts": "你可以透過按 `{shortcuts_key}` 鍵檢視指令與它們的快捷鍵清單。",
+        "start": "開始製圖！",
+        "title": "開始編輯"
+      },
+      "welcome": {
+        "chapters": "你可以使用下面的按鈕隨時跳過章節，或是當卡住時重新開始章節。我們來動手吧！**點'{next}'來繼續。**",
+        "practice": "所有教學裡的資料都只是為了練習，所以任何你做出來的編輯不會真的儲存下來。",
+        "title": "歡迎",
+        "welcome": "歡迎！這個教學將會教你開放街圖基本的編輯方法。",
+        "words": "這篇教學會介紹新的辭彙和概念，介紹到的新辭彙我們會用*斜體*標示。"
       }
     },
     "issues": {
-      "title": "問題",
-      "options": {
-        "what": {
-          "edited": "我的編輯"
-        }
+      "almost_junction": {
+        "highway-highway": {
+          "reference": "交叉的道路應該共享交叉連接點。 "
+        },
+        "message": "{feature} 很接近但是沒有連到 {feature2}",
+        "self": {
+          "message": "{feature} 在非常靠近自身，但不會重新連接的地方結束"
+        },
+        "tip": " 尋找應當連接到其他附近的圖徵 ",
+        "title": "幾乎是交叉"
       },
       "ambiguous_crossing": {
-        "no_changes": "（無變化）",
+        "fix": {
+          "choose_type": "標籤這穿越路口變成'{type}'"
+        },
         "message": {
           "candidate": "該節點看起来可能是穿越路口",
           "update": "可更新穿越標籤"
         },
-        "fix": {
-          "choose_type": "標籤這穿越路口變成'{type}'"
+        "no_changes": "（無變化）"
+      },
+      "area_as_point": {
+        "message": "{feature} 應該是區域而不是點"
+      },
+      "close_nodes": {
+        "detached": {
+          "message": "{feature} 太靠近 {feature2} 了",
+          "reference": "單獨的點不應共享同一個位置。"
+        },
+        "message": "{way} 的兩個節點相當接近 ",
+        "reference": "路徑中多餘的節點應該被合併或是移出。",
+        "tip": "尋找多餘及擁擠的點",
+        "title": "很接近的節點"
+      },
+      "crossing_ways": {
+        "aeroway-aeroway": {
+          "reference": "航道交叉應該要連接。"
+        },
+        "aeroway-building": {
+          "reference": "航空通道穿越建築狀況，應該使用橋樑或是其他圖層。"
+        },
+        "aeroway-highway": {
+          "reference": "航空通道穿越鐵路的狀況應當連結。"
+        },
+        "aeroway-railway": {
+          "reference": "航空通道穿越道路應當連結。"
+        },
+        "aeroway-waterway": {
+          "reference": "航空通道穿越水路應當使用隧道。"
+        },
+        "bridge-bridge": {
+          "reference": "相交的橋樑應使用不同圖層。"
+        },
+        "bridge-bridge_connectable": {
+          "reference": "相交的橋樑應予以連接或使用不同圖層。"
+        },
+        "building-building": {
+          "reference": "除非是不同層，不然建築不該交叉 "
+        },
+        "building-highway": {
+          "reference": "穿越建築物的道路應該使用橋樑、隧道或不同層。"
+        },
+        "building-railway": {
+          "reference": "穿越建築物的鐵路應該使用橋樑、隧道或不同層。"
+        },
+        "building-waterway": {
+          "reference": "水路跨越建築應使用隧道或位在不同層。 "
+        },
+        "highway-highway": {
+          "reference": "道路交叉應使用橋樑、隧道或交叉路口。 "
+        },
+        "highway-railway": {
+          "reference": "道路與鐵軌交叉應使用橋樑、隧道或平交道。 "
+        },
+        "highway-waterway": {
+          "reference": "道路跨越水路應使用橋梁、隧道、或涉水。"
+        },
+        "indoor-indoor": {
+          "reference": "相交的室內圖徵應使用不同圖層。"
+        },
+        "indoor-indoor_connectable": {
+          "reference": "相交的室內圖徵應予以連接或使用不同圖層。"
+        },
+        "message": "{feature} 跨過 {feature2}",
+        "railway-railway": {
+          "reference": "交叉的鐵軌應當要連接，或是使用橋樑或隧道。"
+        },
+        "railway-waterway": {
+          "reference": "鐵路與水路交叉應使用橋梁或隧道。 "
+        },
+        "tip": "尋找沒有正確跨越另一圖徵的圖徵",
+        "title": "穿越路徑",
+        "tunnel-tunnel": {
+          "reference": "相交的隧道應使用不同圖層。"
+        },
+        "tunnel-tunnel_connectable": {
+          "reference": "相交的隧道應予以連接或使用不同圖層。"
+        },
+        "waterway-waterway": {
+          "reference": "相交的水道應予以連接或使用不同圖層。"
         }
       },
-      "short_road": {
-        "tip": "您可能想删除或延伸道路。",
-        "reference": "短途道路可能需要延伸或是刪除。"
+      "disable_all": "關閉所有",
+      "disconnected_way": {
+        "routable": {
+          "message": {
+            "other": "只有 {count} 個可導航圖徵彼此相連"
+          },
+          "reference": "所有的道路、路徑與渡輪航線都應相連形成一個導航路網。此圖徵（或是一部分圖徵）可能與導航路網分離，或是透過僅少數應用程式認為可導航的圖徵連結到它。"
+        },
+        "tip": "尋找無法導航的道路、路徑和水運路線",
+        "title": "未連接的路徑"
       },
       "dupe_node_on_road": {
-        "title": "道路上非常接近的節點",
-        "message": "道路上非常接近的節點"
+        "message": "道路上非常接近的節點",
+        "title": "道路上非常接近的節點"
       },
-      "y_shaped_connection": {
-        "tip": "您可能需要删除或移動節點以便簡化連結。",
-        "reference": "可能需要移動或是刪除連結周圍的節點。"
-      },
+      "enable_all": "啟用所有",
       "fix": {
+        "add_a_bridge": {
+          "annotation": "已新增橋樑。",
+          "title": "新增橋樑"
+        },
+        "add_a_tunnel": {
+          "annotation": "已新增隧道。",
+          "title": "新增隧道"
+        },
+        "address_the_concern": {
+          "title": "解決問題"
+        },
+        "connect_almost_junction": {
+          "annotation": "接連相當靠近的圖徵"
+        },
+        "connect_crossing_features": {
+          "annotation": "連接交叉的圖徵"
+        },
+        "connect_endpoints": {
+          "annotation": "連接路徑的端點",
+          "title": "連接結束處"
+        },
+        "connect_feature": {
+          "title": "連接這些圖徵"
+        },
+        "connect_features": {
+          "title": "連接圖徵"
+        },
+        "connect_using_crossing": {
+          "title": "使用穿越道連結"
+        },
+        "connect_using_ford": {
+          "title": "通過需要涉水"
+        },
+        "continue_from_end": {
+          "title": "繼續從結束處繪製"
+        },
+        "continue_from_start": {
+          "title": "繼續從開始處繪製"
+        },
+        "convert_to_line": {
+          "annotation": "已將區域轉換為線段。",
+          "title": "將這個轉換為線段"
+        },
+        "delete_feature": {
+          "title": "刪除這個圖徶"
+        },
+        "delete_node_around_conn": {
+          "title": "删除此節點以便簡化連結"
+        },
+        "extract_point": {
+          "title": "抽出此點"
+        },
+        "ignore_issue": {
+          "title": "忽略此問題"
+        },
+        "merge_close_vertices": {
+          "annotation": "合併非常親近節點到路徑。"
+        },
+        "merge_duplicate_way_segments": {
+          "annotation": "以某種方式合併重覆的線段。"
+        },
+        "merge_points": {
+          "title": "合併這些節點"
+        },
+        "move_node_around_conn": {
+          "title": "移點此節點可以調整連結形狀"
+        },
+        "move_points_apart": {
+          "title": "移動分離這些節點"
+        },
+        "move_tags": {
+          "annotation": "移動標籤",
+          "title": "移動這標籤"
+        },
+        "move_way_segments_apart": {
+          "title": "將這些路段分開"
+        },
+        "remove_from_relation": {
+          "title": "從關聯中移除"
+        },
+        "remove_generic_name": {
+          "annotation": "移除常用名稱"
+        },
+        "remove_mistaken_name": {
+          "annotation": "已移除錯誤的名稱。"
+        },
+        "remove_private_info": {
+          "annotation": "移除隱私資訊"
+        },
+        "remove_proprietary_data": {
+          "title": "移除任何專有資料"
+        },
+        "remove_tag": {
+          "annotation": "移除標籤。",
+          "title": "移除這個標籤"
+        },
+        "remove_tags": {
+          "title": "移除標籤"
+        },
+        "remove_the_name": {
+          "title": "移除名稱"
+        },
+        "remove_way_segments": {
+          "title": "删除其中一段路段"
+        },
+        "reposition_features": {
+          "title": "重新排列圖徵"
+        },
+        "reverse_feature": {
+          "title": "反轉這圖徵"
+        },
+        "select_preset": {
+          "title": "選擇圖徵類型"
+        },
+        "select_road_type": {
+          "title": "選取道路類型"
+        },
+        "set_as_inner": {
+          "title": "設定為內部"
+        },
+        "set_as_outer": {
+          "title": "設定為外部"
+        },
         "set_both_as_marked": {
           "title": "將線和點設為已經標記"
         },
         "set_both_as_unmarked": {
           "title": "將線和點設為未標記"
         },
-        "merge_duplicate_way_segments": {
-          "annotation": "以某種方式合併重覆的線段。"
+        "square_feature": {
+          "title": "方角化這圖徵"
         },
-        "move_way_segments_apart": {
-          "title": "將這些路段分開"
+        "tag_as_disconnected": {
+          "annotation": "標記相當靠近的圖徵為未相連接。",
+          "title": "標記為未相連接"
         },
-        "remove_way_segments": {
-          "title": "删除其中一段路段"
+        "tag_as_not": {
+          "annotation": "新增 not: 標籤",
+          "title": "標記為不同的「{name}」"
         },
-        "delete_node_around_conn": {
-          "title": "删除此節點以便簡化連結"
+        "tag_as_unsquare": {
+          "annotation": "切換非方角的路徑。",
+          "title": "標示為物理上非方角標籤"
         },
-        "move_node_around_conn": {
-          "title": "移點此節點可以調整連結形狀"
+        "tag_this_as_higher": {
+          "title": "將此標註爲更高層"
+        },
+        "tag_this_as_lower": {
+          "title": "將此標註爲更低層"
+        },
+        "upgrade_tags": {
+          "annotation": "已接受建議的更新",
+          "title": "接受建議的更新"
+        },
+        "use_different_layers": {
+          "title": "使用不同階層"
+        },
+        "use_different_layers_or_levels": {
+          "title": "使用不同階層或樓層"
+        },
+        "use_different_levels": {
+          "title": "使用不同樓層"
         }
+      },
+      "fix_all": {
+        "annotation": "修正了幾項驗證上的問題。",
+        "title": "全部修正"
+      },
+      "fix_one": {
+        "title": "修正"
+      },
+      "fixme_tag": {
+        "message": "{feature} 有 \"Fix Me\" 要求",
+        "reference": "fixme 標籤表示圖客標示此圖徵需要其他人幫忙處理。"
+      },
+      "generic_name": {
+        "message": "{feature} 有可疑名稱 \"{name}\"",
+        "message_language": "{feature} 有 {language} 的可疑名稱「{name}」",
+        "reference": "名稱應當是真實，圖徵實際在地的名稱。"
+      },
+      "help_request": {
+        "tip": "尋找其他人請求協助的圖徵",
+        "title": "協助請求"
+      },
+      "impossible_oneway": {
+        "highway": {
+          "end": {
+            "message": "{feature} 沒有出口",
+            "reference": "單行道應該要到其他道路。"
+          },
+          "start": {
+            "message": "{feature} 無法到達",
+            "reference": "單行道應該要能連到其他道路。"
+          }
+        },
+        "tip": "尋找路線有單行道圖徵的問題",
+        "title": "不可能的單行道",
+        "waterway": {
+          "connected": {
+            "end": {
+              "message": "{feature} 流向與連接的水路不同"
+            },
+            "reference": "水路片段應該要所有水流指向同一方向。",
+            "start": {
+              "message": "{feature} 流向與連接的水路相同"
+            }
+          }
+        }
+      },
+      "incompatible_source": {
+        "feature": {
+          "message": "{feature} 將「{value}」列為資料來源"
+        },
+        "reference": {
+          "amap": "Amap 的產品性質是專有的，所以不應被用作參考資料。 ",
+          "baidu": "百度的產品性質是專有的，所以不應被用作參考資料。 ",
+          "google": "Google 的產品性質是專有的，所以不應被用作參考資料。 "
+        },
+        "tip": "尋找有可疑來源標籤的圖徵",
+        "title": "可疑來源"
+      },
+      "invalid_format": {
+        "email": {
+          "message": "{feature} 有無效的電子郵件地址",
+          "reference": "Email 地址應該長得像 \"user@example.com\"。"
+        },
+        "tip": "尋找有非預期格式的標籤",
+        "title": "無效格式",
+        "website": {
+          "message": "{feature} 有無效的 URL",
+          "reference": "URL 必須以「http://」或「https://」開頭。"
+        }
+      },
+      "key": "I",
+      "line_as_area": {
+        "message": "{feature} 應該是線段而非區域"
+      },
+      "line_as_point": {
+        "message": "{feature} 應該是線段而非點"
+      },
+      "mismatched_geometry": {
+        "reference": "大多數圖徵僅限於特定幾何類型。",
+        "tip": "尋找有衝突的標籤與幾何的圖徵",
+        "title": "幾何不符合"
+      },
+      "missing_role": {
+        "message": "{member} 沒有在 {relation} 裡的角色",
+        "multipolygon": {
+          "reference": "多重多邊形成員必須有內部和外外的角色。"
+        },
+        "tip": "尋找缺少成員或角色錯誤的關聯",
+        "title": "缺少角色"
+      },
+      "missing_tag": {
+        "any": {
+          "message": "{feature} 沒有標籤"
+        },
+        "descriptive": {
+          "message": "{feature} 沒有描述性的標籤"
+        },
+        "reference": "圖徵必須有能定議他們是什麼的標籤。",
+        "relation_type": {
+          "message": "{feature} 是沒有類型的關聯"
+        },
+        "tip": "尋找缺少敘述性標籤的圖徵",
+        "title": "缺少標籤"
+      },
+      "no_issues": {
+        "hidden_issues": {
+          "disabled_rules": "有失效規則圖徵的問題：{count}",
+          "disabled_rules_elsewhere": "其他地方有失效規則圖徵的問題：{count}",
+          "elsewhere": "其他地方的問題：{count}",
+          "everything_else": "其他問題：{count}",
+          "everything_else_elsewhere": "其他地方的問題：{count}",
+          "ignored_issues": "忽略的問題：{count}",
+          "ignored_issues_elsewhere": "其他地方忽略的問題：{count}",
+          "none": "偵測到的問題會在這出現"
+        },
+        "message": {
+          "edits": "你的編輯看來很好",
+          "edits_in_view": "視野內你的編輯看來很好",
+          "everything": "所有東西都很好 ",
+          "everything_in_view": "所有視野內的東西都很好 ",
+          "no_edits": "您沒有尚未儲存的變更"
+        }
+      },
+      "old_multipolygon": {
+        "message": "{multipolygon} 有誤標的標籤",
+        "reference": "多重多邊形應該標到關聯上，不是 outer 路徑上。"
+      },
+      "options": {
+        "what": {
+          "all": "全部",
+          "edited": "我的編輯",
+          "title": "檢查："
+        },
+        "where": {
+          "all": "所有",
+          "title": "地點：",
+          "visible": "視野內"
+        }
+      },
+      "outdated_tags": {
+        "incomplete": {
+          "message": "{feature} 的標籤不完整",
+          "reference": "一些圖徵應當有額外的標籤。"
+        },
+        "message": "{feature} 有過時的標籤",
+        "noncanonical_brand": {
+          "message": "{feature} 看起來像是有非標準標籤的常見圖徵",
+          "message_incomplete": "{feature} 看起來像是有不完整標籤的常見圖徵",
+          "reference": "某些圖徵，例如零售連鎖商店或是郵局，通常會預期有共同的標籤。"
+        },
+        "reference": "有些標籤隨著時間過去而應該更新。",
+        "tip": "尋找已棄用的標籤圖徵，來更新資料",
+        "title": "過時的標籤"
+      },
+      "point_as_area": {
+        "message": "{feature} 應該是點而非區域"
+      },
+      "point_as_line": {
+        "message": "{feature} 應該是點而非線段"
+      },
+      "point_as_vertex": {
+        "message": "基於其標籤，{feature} 應該是單獨的點",
+        "reference": "某些圖徵不應該是線或區域的一部份"
+      },
+      "private_data": {
+        "contact": {
+          "message": "{feature} 也許標示私人聯絡資訊"
+        },
+        "reference": "私密資料像是個人電話號碼不應該加上去。",
+        "tip": "尋找可能有隱私資料的圖徵",
+        "title": "隱私資訊"
+      },
+      "reset_ignored": "重設被忽略的",
+      "short_road": {
+        "reference": "短途道路可能需要延伸或是刪除。",
+        "tip": "您可能想删除或延伸道路。"
+      },
+      "suggested": "建議的更新：",
+      "suspicious_name": {
+        "tip": "尋找有通用名稱或可疑名稱",
+        "title": "可疑名稱"
+      },
+      "tag_suggests_area": {
+        "message": "{feature} 依據標籤 \"{tag}\"，應當是封閉區域",
+        "reference": "區域必須有連接的端點。"
+      },
+      "title": "問題",
+      "unclosed_multipolygon_part": {
+        "message": "{feature} 有未封閉的部份",
+        "reference": "多邊形的所有內部與外部部份都應該有連線的端點。"
+      },
+      "unknown_road": {
+        "message": "{feature} 沒有分類",
+        "reference": "道路沒有特別的類型，可能不會顯示在地圖上，或是能夠導航。"
+      },
+      "unsquare_way": {
+        "buildings": {
+          "reference": "有非方角的建築，常常可以畫得更精確。"
+        },
+        "message": "{feature} 有非方角",
+        "tip": "尋找有非方角的圖徵，可以畫得更好",
+        "title": "非方角 (最高 {val}°)"
+      },
+      "vertex_as_point": {
+        "message": "{feature} 應根據其標籤附加到線或區域上",
+        "reference": "某些圖徵不應該是單獨的點。"
+      },
+      "y_shaped_connection": {
+        "reference": "可能需要移動或是刪除連結周圍的節點。",
+        "tip": "您可能需要删除或移動節點以便簡化連結。"
       }
     },
-    "intro": {
-      "done": "完成",
-      "ok": "瞭解",
-      "graph": {
-        "state": "臺灣",
-        "countrycode": "tw",
-        "name": {
-          "spring-street": "春日街",
-          "tulip-lane": "鬱金香巷"
-        }
-      },
-      "welcome": {
-        "welcome": "歡迎！這個教學將會教你開放街圖基本的編輯方法。",
-        "practice": "所有教學裡的資料都只是為了練習，所以任何你做出來的編輯不會真的儲存下來。",
-        "words": "這篇教學會介紹新的辭彙和概念，介紹到的新辭彙我們會用*斜體*標示。"
-      },
-      "navigation": {
-        "title": "導航",
-        "map_info2": "這份地圖的導航方式與您以前使用過的其他電腦地圖類似。",
-        "pan": "有多種方式平移地圖：",
-        "pan_the_map": "**試著平移地圖！**",
-        "zoom": "縮放地圖有多種方式：",
-        "zoom_keyboard": "- 按下鍵盤上的 `+` 或 `-` 鍵。",
-        "zoom_the_map": "**試試縮放地圖！**",
-        "user_settings": "如果觸控版或滑鼠滾輪不如預期縮放，可以在使用者選項面版中調整。",
-        "rotate": "旋轉地圖有多種方式：",
-        "rotate_the_map": "**試試旋轉地圖！**",
-        "features": "我們使用圖徵這詞來描述出現在地圖上的事物。任何在現實世界中出現的事物都可以被當作圖徵，描述到開放街圖上面。",
-        "points_lines_areas": "地圖圖徵用*點、線、區域*來表示。",
-        "nodes_ways": "在開放街圖裡，點常被叫做*節點*，而線或是區域被叫做*線段*。",
-        "click_townhall": "所有地圖上的圖徵都能透過{mouse_left_icon}點滑鼠左鍵來選擇。**點一下來選擇該點。**",
-        "selected_townhall": "太好了！這個點已經被選取了。選取的圖徵會以持續閃爍方式呈現。",
-        "editor_townhall": "當圖徵被選取時，*圖徵編輯器*會在地圖旁邊顯示。",
-        "preset_townhall": "圖徵編輯器的上半部會顯示不同圖徵類型，這個點是{preset}。",
-        "fields_townhall": "圖徵編輯器中間部分則是*欄位*，顯示圖徵的屬性，像是名稱和地址。",
-        "search_street": "你也可以搜尋目前檢視下或是全球的圖徵，**搜尋'{name}'。**",
-        "selected_street": "太好了！{name} 已經被選取了。"
-      },
-      "points": {
-        "title": "點",
-        "choose_cafe": "**從清單選擇 {preset}。**"
-      },
-      "areas": {
-        "title": "區域",
-        "search_playground": "**搜尋'{preset}'。**",
-        "choose_playground": "**從清單選擇{preset}**",
-        "add_field": "遊樂場並沒有正式的名稱，所以我們不會在名稱欄位加任何名稱到{name}名稱欄位。 {br}不過我們會在 {description} 欄位加上遊樂場的詳情。**開啟新增欄位清單**"
-      },
-      "lines": {
-        "title": "線",
-        "name_road": "**填入道路名稱，並按 {button} 按鈕或是`{esc}`來關閉圖徵編輯器。**",
-        "edit_menu_intersection_touch": "**對著交叉點長按{onefinger_tap_and_hold_icon}。**",
-        "multi_rightclick": "**{mouse_right_icon}右鍵點其中一條線來顯示編輯選單。**"
-      },
-      "buildings": {
-        "title": "建築"
-      },
-      "rapid": {
-        "add_road_not_saved_yet": "這個道路已經添加到地圖上。與其他地圖變更一樣，在儲存之前不會顯示給其他人。",
-        "open_issues": "現在，讓我們打開問題面版。",
-        "new_lints": "新增道路後，問题面板當中出出了一項新問题。Rapid 引入了幾項新的驗證檢查，以偵測將這些建議圖徵合併到開放街圖中可能會出現的問題。",
-        "undo_road_add_aftermath": "道路已經從本地變化中移除，並恢復到之前的洋紅色圖層！",
-        "ignore_road": "這一次，按下 “忽略此功能 ”按鈕，即可以從作地圖上隱藏錯誤的道路。"
-      },
-      "startediting": {
-        "title": "開始編輯",
-        "save": "不要忘記定時儲存您的編輯！",
-        "start": "開始製圖！"
-      }
-    },
-    "shortcuts": {
-      "title": "鍵盤快速鍵",
-      "tooltip": "顯示鍵盤快速鍵畫面",
-      "key": {
-        "delete": "刪除",
-        "enter": "輸入鍵",
-        "return": "退回"
-      },
-      "navigation": "導航",
-      "commands": "命令",
-      "help": "幫助",
-      "command": {
-        "save": {
-          "label": "儲存變更"
-        },
-        "merge": {
-          "label": "合併 (整合) 選擇圖徵"
-        },
-        "toggle_preferences": {
-          "label": "切換使用者偏好設定面板"
-        },
-        "keyboard_shortcuts": {
-          "label": "顯示鍵盤快速鍵"
-        }
-      }
-    },
-    "units": {
-      "feet": "{quantity} 英呎",
-      "miles": "{quantity} 英哩",
-      "square_feet": "{quantity} 平方英呎",
-      "square_miles": "{quantity} 平方英哩",
-      "acres": "{quantity} 英畝",
-      "meters": "{quantity} 公尺",
-      "kilometers": "{quantity} 公里",
-      "square_meters": "{quantity} 平方公尺",
-      "square_kilometers": "{quantity} 平方公里",
-      "hectares": "{quantity} 公頃"
-    },
-    "wikidata": {
-      "description": "説明"
+    "kartaview": {
+      "title": "KartaView"
     },
     "languageNames": {
       "aa": "阿法文",
@@ -1524,6 +2307,720 @@
       "zun": "祖尼文",
       "zza": "扎扎文"
     },
+    "loading_auth": "正在連接 OpenStreetMap...",
+    "login": "登入",
+    "logout": "登出",
+    "map_data": {
+      "autohidden": "因為螢幕中的圖徵太多，這些圖徵已經被自動隱藏。請放大再編輯。",
+      "data_layers": "資料圖層",
+      "description": "地圖圖資",
+      "history_panel": {
+        "title": "顯示歷史面板",
+        "tooltip": "顯示選取物件的歷史詳情。"
+      },
+      "key": "U",
+      "layers": {
+        "custom": {
+          "title": "自訂地圖資料",
+          "tooltip": "拖曳資料檔案到頁面上，或點選按鈕以設定",
+          "zoom": "縮放到資料"
+        },
+        "keepRight": {
+          "title": "KeepRight 問題",
+          "tooltip": "由 keepright.at 偵測到的資料問題"
+        },
+        "maproulette": {
+          "detail_title": "詳細資料",
+          "fixed": "我已經修復了！"
+        },
+        "notes": {
+          "title": "開放街圖註記",
+          "tooltip": "從開放街圖而來的註記資料"
+        },
+        "osm": {
+          "title": "開放街圖資料",
+          "tooltip": "來自開放街圖的地圖資料"
+        },
+        "osmose": {
+          "title": "Osmose 問題",
+          "tooltip": "由 osmose.openstreetmap.fr 偵測到的資料問題"
+        }
+      },
+      "measurement_panel": {
+        "title": "顯示測量面板",
+        "tooltip": "顯選取物件的幾何數值。"
+      },
+      "osmhidden": "因為開放街圖的圖層隱藏，所以這些圖徵已自動隱藏。",
+      "style_options": "樣式選項",
+      "title": "地圖圖資"
+    },
+    "mapillary": {
+      "detection": "Mapillary偵測",
+      "show_detections": "顯示偵測結果",
+      "title": "Mapillary",
+      "tooltip": "從 Mapillary 來的街道級照片",
+      "view_on_mapillary": "在 Mapillary 上檢視"
+    },
+    "mapillary_detections": {
+      "construction": {
+        "barrier": {
+          "temporary": "臨時路障"
+        },
+        "flat": {
+          "crosswalk_plain": "人行穿越道 - 平地",
+          "driveway": "機動車道"
+        }
+      },
+      "marking": {
+        "discrete": {
+          "arrow": {
+            "left": "車道標線 - 箭頭（左）",
+            "right": "車道標線 - 箭頭（右）",
+            "split-left-or-straight": "車道標線 - 箭頭（左轉或是直行）",
+            "split-right-or-straight": "車道標線 - 箭頭（右轉或是直行）",
+            "straight": "車道標線 - 箭頭（直行）"
+          },
+          "crosswalk-zebra": "車道標線 - 人行穿越道",
+          "give-way-row": "車道標線 - 讓道 (列)",
+          "other-marking": "車道標線 - 其他",
+          "stop-line": "車道標線 - 停止線",
+          "symbol": {
+            "bicycle": "車道標線 - 標誌（自行車）"
+          },
+          "text": "車道標線 - 文字"
+        }
+      },
+      "object": {
+        "banner": "橫幅",
+        "bench": "長椅",
+        "bike-rack": "自行車架",
+        "billboard": "告示牌",
+        "cctv-camera": "監視器",
+        "junction-box": "接線盒",
+        "mailbox": "郵箱",
+        "parking-meter": "停車計時器",
+        "phone-booth": "電話亭",
+        "sign": {
+          "advertisement": "標識 - 廣告",
+          "information": "標識 - 資訊",
+          "other": "標識 - 其他",
+          "store": "標識 - 商家",
+          "traffic-sign": {
+            "back": "交通標誌 - 背面",
+            "direction-front": "交通標誌 - 正面",
+            "front": "交通標誌 - 正面"
+          }
+        },
+        "street-light": "路燈",
+        "support": {
+          "pole": "桿",
+          "traffic-sign-frame": "交通號誌框架",
+          "utility-pole": "電線桿"
+        },
+        "traffic-cone": "交通錐",
+        "traffic-light": {
+          "cyclists": "交通燈號 - 自行車",
+          "general-horizontal": "交通燈號 - 普通型（水平式）",
+          "general-single": "交通燈號 - 普通型（單一）",
+          "general-upright": "交通燈號 - 普通型（直立式）",
+          "other": "交通燈號 - 其他",
+          "pedestrians": "交通燈號 - 行人"
+        },
+        "water-valve": "水閥"
+      },
+      "title": "偵測到的物件",
+      "tooltip": "在 Mapillary 照片中偵測到的物件"
+    },
+    "mapillary_signs": {
+      "tooltip": "在 Mapillary 照片中偵測到交通號誌",
+      "traffic_sign": "交通號誌"
+    },
+    "merge_remote_changes": {
+      "conflict": {
+        "deleted": "此圖徽已被 {user} 刪除。",
+        "location": "此圖徵已被你與 {user} 同時移動。",
+        "memberlist": "關係成員已被你和{user}改變了。",
+        "nodelist": "節點已被你和{user}改變了.",
+        "tags": "你變更「{tag}」 標籤為「{local}」，而 {user} 將它變更為「{remote}」。"
+      }
+    },
+    "modes": {
+      "add_area": {
+        "description": "新增建築、公園、湖泊，或是其他區域到地圖上。",
+        "title": "區域"
+      },
+      "add_line": {
+        "description": "在地圖上新增公路、街道、行人道、運河或其他線段。",
+        "title": "線"
+      },
+      "add_note": {
+        "description": "發現了問題？讓其他製圖者知道。",
+        "title": "註記"
+      },
+      "add_point": {
+        "description": "在地圖上新增餐廳、古蹪、郵箱或其他事物。",
+        "title": "點"
+      },
+      "add_preset": {
+        "title": "新增 {feature}"
+      },
+      "browse": {
+        "description": "平移及縮放地圖。",
+        "title": "瀏覽"
+      },
+      "drag_node": {
+        "connected_to_hidden": "這個沒辦法被編輯，因其與其他隱藏的圖徵相連"
+      }
+    },
+    "note": {
+      "anonymous": "匿名",
+      "close": "關閉註記",
+      "close_comment": "關閉並留言",
+      "closed": "（已關閉）",
+      "comment": "留言",
+      "commentTitle": "留言",
+      "inputPlaceholder": "輸入留言以與其他使用者分享。",
+      "login": "您必須登入以變更或留言此註記。",
+      "new": "新的註記",
+      "newComment": "新留言",
+      "newDescription": "描述問題。",
+      "note": "註記",
+      "open": "重新開啟註記",
+      "open_comment": "重新開啟並留言",
+      "report": "回報",
+      "save": "儲存註記",
+      "status": {
+        "closed": "關閉 {when}",
+        "commented": "於 {when} 留言",
+        "opened": "已開啟 {when}",
+        "reopened": "再次開啟 {when}"
+      },
+      "title": "編輯註記",
+      "upload_explanation": "你的留言將會讓所有開放街圖的使用者都可以看到。",
+      "upload_explanation_with_user": "你對 {user} 的留言將會讓所有開放街圖的使用者都可以看到。"
+    },
+    "operations": {
+      "add": {
+        "annotation": {
+          "note": "已新增註記。",
+          "point": "已新增一點。",
+          "relation": "已新增一項關係。",
+          "vertex": "已新增一節點至路徑上。"
+        }
+      },
+      "add_member": {
+        "annotation": {
+          "other": "已新增 {n} 個成員到關聯中。"
+        }
+      },
+      "cancel_draw": {
+        "annotation": "取消了繪圖。"
+      },
+      "change_role": {
+        "annotation": {
+          "other": "已更改 {n} 個關聯成員的角色。"
+        }
+      },
+      "change_tags": {
+        "annotation": "修改了標籤。"
+      },
+      "circularize": {
+        "annotation": {
+          "feature": "將 {n} 個圖徽變為圓形。"
+        },
+        "not_closed": "因為這些圖徵並不是封閉的而無法圓形化。",
+        "title": "環形化",
+        "too_large": "因為這些圖徵檢視部分不足而無法圓形化。"
+      },
+      "connect": {
+        "annotation": {
+          "from_point": {
+            "to_area": "移動點到區域中。",
+            "to_line": "移動點到線段上。",
+            "to_point": "將點與其他點合併。",
+            "to_vertex": "將點與點合併為一條路徑。"
+          },
+          "from_vertex": {
+            "to_adjacent_vertex": "將鄰近的點合併到路徑中。",
+            "to_area": "已連接路徑到一區域。",
+            "to_line": "已連接路徑到一線段。",
+            "to_point": "已連接路徑到一點。",
+            "to_sibling_vertex": "已將路徑連接到它自身。",
+            "to_vertex": "已連接路徑到另一路徑。"
+          }
+        },
+        "relation": "這些圖徵不能連接，因為它們的關聯角色有衝突。",
+        "restriction": "這些圖徵不能連結，因為會破壞 \"{relation}\" 關聯。"
+      },
+      "continue": {
+        "annotation": {
+          "area": "繼續繪製一區域。",
+          "line": "繼續繪製一線段。"
+        },
+        "description": "繼續繪製此線段",
+        "multiple": "在此有許多線段可以繼續，請選擇一個來繼續。",
+        "not_eligible": "無法在此繼續繪製線段",
+        "title": "繼續"
+      },
+      "copy": {
+        "annotation": "已複製 {n} 個圖徽。",
+        "description": {
+          "other": "複製這些圖徵之後可以貼上。"
+        },
+        "title": "複製",
+        "too_large": {
+          "other": "無法複製這些圖徵，因為可見數量不夠多。"
+        }
+      },
+      "cycle_highway_tag": {
+        "title": "循環道路相關標籤"
+      },
+      "delete": {
+        "annotation": {
+          "area": "刪除了一區域。",
+          "feature": "已刪除 {n} 個圖徽。",
+          "line": "刪除了一線段。",
+          "point": "刪除了一點。",
+          "relation": "刪除了一關係",
+          "vertex": "刪除了路徑上的一個節點。"
+        },
+        "incomplete_relation": "因為這些圖徵沒有完全下載下來，所以無法刪除。",
+        "title": "刪除",
+        "too_large": "因為檢視的部分並不夠，所以無法刪除。"
+      },
+      "delete_member": {
+        "annotation": {
+          "other": "已從關聯移除 {n} 個成員。"
+        }
+      },
+      "disconnect": {
+        "annotation": {
+          "features": "已分離圖徵。",
+          "from_each_other": "將圖徵彼此分離。"
+        },
+        "connected_to_hidden": "無法斷開，因為其連接著隱藏的特徵。",
+        "description": {
+          "multiple_points": {
+            "multiple_ways": "在這些點分離選定的圖徵。",
+            "no_ways": "在這些點分離圖徵。",
+            "single_way": {
+              "area": "在這些點分離選定的區域。",
+              "line": "在這些點分離選定的線。"
+            }
+          },
+          "no_points": {
+            "multiple_ways": {
+              "conjoined": "分離這些圖徵。",
+              "separate": "分離這些圖徵與任何東西的連接。"
+            },
+            "single_way": {
+              "area": "將此區域與其他圖徵分離。",
+              "line": "將此線與其他圖徵分離。"
+            }
+          },
+          "single_point": {
+            "multiple_ways": "在這個點分離選定的圖徵。",
+            "no_ways": "在這個點分離圖徵。",
+            "single_way": {
+              "area": "在這個點分離選定的區域。",
+              "line": "在這個點分離選定的線。"
+            }
+          }
+        },
+        "not_connected": "未有足夠的路徑／區域來斷開。",
+        "not_downloaded": "這個無法分離，因為一部分還沒有下載。",
+        "relation": "因為其連接到了關係中的成員，所以不能斷開。",
+        "title": "斷開",
+        "too_large": {
+          "multiple": "這些無法分離，因為可視部份不足。",
+          "single": "這個無法分離，因為可視部份不足。"
+        }
+      },
+      "downgrade": {
+        "annotation": {
+          "address": {
+            "other": "已降級 {n} 個圖徵為地址。"
+          },
+          "building": {
+            "other": "將 {n} 個圖徵降級為基本建築。"
+          },
+          "generic": {
+            "other": "已降級 {n} 個圖徵。"
+          }
+        },
+        "description": {
+          "address": "移除所有不是地址的標籤。",
+          "building": "移除所有不是建築物的標籤。",
+          "building_address": "移除所有不是地址、不是建築物的標籤。",
+          "generic": "移除標籤"
+        },
+        "has_wikidata_tag": "因為這些圖徵有 Wikidata 標籤而無法降級。",
+        "title": "降級"
+      },
+      "extract": {
+        "annotation": {
+          "other": "已擷取 {n} 個點。"
+        },
+        "connected_to_hidden": "無法從這些圖徵截取點，因為有些連結的圖徵已經被隱藏了。",
+        "description": {
+          "area": "從這區域截取點。"
+        },
+        "title": "抽出"
+      },
+      "merge": {
+        "annotation": "已合併 {n} 個圖徽。",
+        "conflicting_relations": "這些圖徵無法合併，因為它們屬於互相衝突的關聯。",
+        "conflicting_tags": "這些特徵並不能合併，因為它們有彼此衝突的標籤。",
+        "damage_relation": "這些圖徵無法合併，因為它會危害到「{relation}」關聯。",
+        "description": "合併這些特徵",
+        "incomplete_relation": "這些物件不能合併，因為其中最少有一件未有完全下載。",
+        "not_adjacent": "這些特徵並不能合併，因為它們的端點並不相連。",
+        "not_eligible": "不能合併這些物件。",
+        "paths_intersect": "這些圖徵無法合併，因為產生的路徑會自相交叉。",
+        "relation": "這些圖徵無法合併，因為它們有衝突的關聯角色。",
+        "title": "合併",
+        "too_many_vertices": "這些圖徵無法合併，因為合併後的路徑會包含太多點。"
+      },
+      "move": {
+        "annotation": {
+          "area": "移動了一區域。",
+          "feature": {
+            "other": "已移動 {n} 個圖徵。"
+          },
+          "line": "移動了一線段。",
+          "point": "移動了一點。",
+          "relation": "移動了一個關聯。",
+          "vertex": "移動了路徑上的一節點。"
+        },
+        "title": "移動"
+      },
+      "orthogonalize": {
+        "annotation": {
+          "corner": "將 {n} 個角落變為方形。",
+          "feature": "將 {n} 個圖徽的角落變為方形。"
+        },
+        "description": {
+          "corner": "方角化這些角",
+          "feature": "方角化這些圖徵的角。"
+        },
+        "title": "方角化"
+      },
+      "paste": {
+        "annotation": {
+          "other": "貼上 {n} 個圖徵。"
+        },
+        "description": {
+          "other": "在此新增 {n} 個重複圖徵。"
+        },
+        "nothing_copied": "未複製圖徽。",
+        "title": "貼上"
+      },
+      "reflect": {
+        "annotation": {
+          "long": {
+            "feature": {
+              "other": "沿它們的長軸翻轉 {n} 個圖徵。"
+            }
+          },
+          "short": {
+            "feature": {
+              "other": "沿它們的短軸翻轉 {n} 個圖徵。"
+            }
+          }
+        },
+        "title": {
+          "long": "翻轉長邊",
+          "short": "翻轉短邊"
+        }
+      },
+      "reorder_members": {
+        "annotation": "重新排序關聯的成員。"
+      },
+      "restriction": {
+        "annotation": {
+          "create": "已增加轉向限制",
+          "delete": "已移除轉向限制"
+        }
+      },
+      "reverse": {
+        "annotation": {
+          "feature": {
+            "other": "已反轉 {n} 個圖徵。"
+          },
+          "line": {
+            "other": "已反轉 {n} 條線。"
+          },
+          "point": {
+            "other": "已反轉 {n} 個點。"
+          }
+        },
+        "description": {
+          "features": "翻轉這些圖徵的方向。",
+          "line": "讓這條線變相反的方向。",
+          "lines": "讓這些線變相反的方向。",
+          "point": "翻轉這個點的方向。",
+          "points": "翻轉這些點的方向。"
+        },
+        "title": "反轉"
+      },
+      "rotate": {
+        "annotation": {
+          "area": "旋轉了一區域。",
+          "feature": "已旋轉 {n} 個圖徽。",
+          "line": "旋轉了一線段。",
+          "relation": "旋轉了一個關係。"
+        },
+        "description": "依據中心點旋轉這些圖徵。",
+        "title": "旋轉",
+        "too_large": "因為這些圖徵檢視部分不夠，所以無法旋轉。"
+      },
+      "scale": {
+        "annotation": {
+          "down": {
+            "feature": {
+              "other": "縮小 {n} 個圖徵。"
+            }
+          },
+          "up": {
+            "feature": {
+              "other": "放大 {n} 個圖徵。"
+            }
+          }
+        }
+      },
+      "split": {
+        "annotation": {
+          "area": {
+            "other": "分割 {n} 個區域。"
+          },
+          "feature": {
+            "other": "已分割 {n} 個圖徵。"
+          },
+          "line": {
+            "other": "分割 {n} 條線段。"
+          }
+        },
+        "connected_to_hidden": "這個沒辦法切割，因為與其他隱藏的圖徵相連.",
+        "description": {
+          "area": {
+            "multiple": {
+              "multiple_node": "在這些點上將這些區域的邊緣分割。",
+              "single_node": "在這個點上將這些區域的邊緣分割。"
+            },
+            "single": {
+              "multiple_node": "在這些點上將此區域的邊緣分割。",
+              "single_node": "在這個點上將此區域的邊緣一分為二。"
+            }
+          },
+          "feature": {
+            "multiple": {
+              "multiple_node": "在這些點上分割這些圖徵。",
+              "single_node": "在這個點上將這些圖徵分割。"
+            }
+          },
+          "line": {
+            "multiple": {
+              "multiple_node": "在這些點將所有線段分開。訣竅：如要將此動作限制在特定線段上，請在執行分解之前同時選擇線與點。",
+              "single_node": "在這個點上分割這些線段。"
+            },
+            "single": {
+              "multiple_node": "在這些點上分割此線段。",
+              "single_node": "在這個點上將此線段一分為二。"
+            }
+          }
+        },
+        "not_eligible": "不能於線段的首尾進行分割。",
+        "title": "斬開"
+      },
+      "start": {
+        "annotation": {
+          "area": "開始繪製一塊區域。",
+          "line": "開始繪製一線段。"
+        }
+      },
+      "straighten": {
+        "annotation": {
+          "line": {
+            "other": "拉直 {n} 條線。"
+          },
+          "point": {
+            "other": "拉直 {n} 個點。"
+          }
+        },
+        "description": {
+          "line": "拉直此線段。",
+          "lines": "拉直這些線。",
+          "points": "拉直這些節點。"
+        },
+        "title": "拉直"
+      }
+    },
+    "photo_overlays": {
+      "date_filter": {
+        "fromDate": {
+          "title": "從",
+          "tooltip": "顯示此日期後拍攝的照片"
+        },
+        "toDate": {
+          "title": "到",
+          "tooltip": "顯示此日期前拍攝的照片"
+        }
+      },
+      "photo_type": {
+        "flat": {
+          "title": "平面照片",
+          "tooltip": "傳統照片"
+        },
+        "panoramic": {
+          "title": "全景照片",
+          "tooltip": "360度照片"
+        }
+      },
+      "title": "照片覆蓋層",
+      "username_filter": {
+        "title": "使用者名稱",
+        "tooltip": "僅顯示此使用者拍攝的照片"
+      }
+    },
+    "preferences": {
+      "color_selection": {
+        "example": "範例（高對比）",
+        "placeholder": "選擇色盤",
+        "title": "地圖色盤",
+        "tooltip": "在色盤之間切換"
+      },
+      "colorblind_options": {
+        "default": "預設（無）",
+        "deuteranopia": "綠色盲",
+        "placeholder": "選擇色盲模式",
+        "protanopia": "紅色盲",
+        "tooltip": "在色盲模式之間切換",
+        "tritanopia": "藍黄色盲"
+      },
+      "description": "偏好設定",
+      "key": "P",
+      "map_interaction": {
+        "mouse_wheel": {
+          "auto": {
+            "tooltip": "最適合觸控版使用者。 使用兩根手指，輕掃手勢可以平移地圖，捏合手勢可縮放和取消縮放地圖。 按住 Shift 鍵可以縮放和取消縮放地圖。"
+          },
+          "pan": {
+            "title": "平移地圖",
+            "tooltip": "使用滾輪滾動可以平移地圖， 按住 Shift 鍵可以放大或縮小地圖。"
+          },
+          "zoom": {
+            "title": "縮放地圖",
+            "tooltip": "使用滾輪滾動可以總是縮放或是取消縮放地圖。"
+          }
+        }
+      },
+      "privacy": {
+        "privacy_link": "檢視 Rapid 隱私政策",
+        "third_party_icons": {
+          "description": "顯示第三方圖示",
+          "tooltip": "取消勾選此方塊以避免從第三方網站，如維基共享資源、Facebook 或 Twitter 載入圖示。"
+        },
+        "title": "隱私"
+      },
+      "title": "偏好設定"
+    },
+    "rapid_first_edit": {
+      "exploring": "我只是在探索",
+      "login_with_osm": "登入 OSM",
+      "text": "您需要開放街圖帳號来保存您的貢獻。您想現在登入 OSM 還是繼續瀏覽？"
+    },
+    "rapid_inspector": {
+      "option_accept": {
+        "disabled_flash": "要幫助改進開放街圖資料品質，我們每一次畫地圖階段只允許添加 {n}個 AI 圖徵。"
+      }
+    },
+    "rapid_menu": {
+      "any_type": "任何類型",
+      "category": {
+        "roads": "道路"
+      },
+      "omdFootways": {
+        "description": "開啟從不同地方政府收集的人行道資料。",
+        "label": "人行道的開放資料"
+      },
+      "remove": "移除"
+    },
+    "rapid_splash": {
+      "start": "不必了，開始畫地圖吧",
+      "welcome": "引入人工智慧輔助繪製地圖！"
+    },
+    "redo": {
+      "nothing": "沒有動作可以重做。",
+      "title": "重新進行",
+      "tooltip": "取消復原: {action}"
+    },
+    "report_a_bug": "回報錯誤",
+    "restore": {
+      "description": "您希望從先前的編輯工作階段中復原未儲存的變更嗎？",
+      "heading": "您有未儲存的變更",
+      "reset": "放棄我的變更",
+      "restore": "復原我的變更"
+    },
+    "restriction": {
+      "controls": {
+        "distance": "距離",
+        "distance_up_to": "最大 {distance}",
+        "via": "經由",
+        "via_node_only": "只有節點",
+        "via_up_to_one": "最多 1 路徑",
+        "via_up_to_two": "最多 2 路徑"
+      },
+      "help": {
+        "from": "從",
+        "from_name": "{from} {fromName}",
+        "from_name_to_name": "{from} {fromName} {to} {toName}",
+        "indirect": "(間接)",
+        "select_from": "點選 {from} 片段",
+        "select_from_name": "點選 {from} 片段 {fromName}",
+        "to": "到",
+        "toggle": "點 \"{turn}\"",
+        "turn": {
+          "allowed_left_turn": "允許左轉 {indirect}",
+          "allowed_right_turn": "允許右轉 {indirect}",
+          "allowed_straight_on": "允許直行 {indirect}",
+          "allowed_u_turn": "允許迴轉 {indirect}",
+          "no_left_turn": "禁止左轉 {indirect}",
+          "no_right_turn": "禁止右轉 {indirect}",
+          "no_straight_on": "禁止直行 {indirect}",
+          "no_u_turn": "禁止迴轉 {indirect}",
+          "only_left_turn": "只能左轉 {indirect}",
+          "only_right_turn": "只能右轉 {indirect}",
+          "only_straight_on": "只能直行 {indirect}",
+          "only_u_turn": "只能迴轉 {indirect}"
+        },
+        "via": "經由",
+        "via_names": "{via} {viaNames}"
+      }
+    },
+    "save": {
+      "conflict": {
+        "count": "在{total}中有{num}個衝突 ",
+        "delete": "放棄資料",
+        "done": "所有衝突已解決！",
+        "download_changes": "或下載 osmChange 檔案",
+        "header": "解決編輯衝突",
+        "help": "另一個使用者變更了你變更的某些相同圖徵。在每個圖徵下面點選以取得更多衝突的資訊，並選取是否要保留，你的變更或是其他使用者的變更。",
+        "keep_local": "保留我的",
+        "keep_remote": "使用他們的",
+        "next": "下一個 >",
+        "previous": "< 上一個",
+        "restore": "復原"
+      },
+      "conflict_progress": "檢查衝突：{total} 中的 {num}",
+      "error": "嘗試儲存時發生了故障",
+      "help": "審閱您的修改並將它們上傳至開放街圖，讓其他使用者看見。",
+      "no_changes": "沒有修改需要儲存。",
+      "status_code": "伺服器傳回的狀態碼{code}",
+      "title": "儲存",
+      "unknown_error_details": "請確定你已經連上網路。",
+      "unsaved_changes": "你有未儲存的編輯",
+      "uploading": "正在上傳修改至開放街圖..."
+    },
     "scriptNames": {
       "Adlm": "富拉文",
       "Afak": "阿法卡文字",
@@ -1670,6 +3167,223 @@
       "Zsym": "符號",
       "Zxxx": "非書寫語言",
       "Zyyy": "一般文字"
-    }
+    },
+    "self_intersection": {
+      "error": {
+        "areas": "區域不能跨越自己。",
+        "lines": "線段不能跨越自己。"
+      }
+    },
+    "settings": {
+      "custom_background": {
+        "header": "自訂背景圖片設定",
+        "instructions": {
+          "info": "在下方輸入圖磚 URL 模板。",
+          "tms": {
+            "tokens": {
+              "flipped_y": "`{-y}` 或 `{ty}`：翻轉 TMS 風格的 Y 座標",
+              "quadtile": "`{u}`：四分位數 (Bing) 方案",
+              "scale_factor": "`{@2x}` 或 `{r}`：解析度比例因子",
+              "switch": "`{switch:a,b,c}`：DNS 伺服器多工",
+              "xyz": "`{zoom}` 或 `{z}`, `{x}`, `{y}`：Z/X/Y 圖磚座標"
+            },
+            "tokens_label": "支援的 TMS 權杖："
+          },
+          "wms": {
+            "tokens": {
+              "bbox": "`{bbox}`：要求的邊界框（例如 `minX,minY,maxX,maxY`）",
+              "dimensions": "`{width}`, `{height}`：要求的圖片尺寸（僅 `256`）",
+              "proj": "`{proj}`：要求的投影方式（僅 `EPSG:3857`）",
+              "wkid": "`{wkid}`：與 proj 相同，但沒有 EPSG（僅 `3857`）"
+            },
+            "tokens_label": "支援的 WMS 權杖："
+          }
+        },
+        "template": {
+          "placeholder": "編輯網址模版"
+        },
+        "tooltip": "編輯自訂的背景"
+      },
+      "custom_data": {
+        "file": {
+          "instructions": "選擇本機資料檔案。支援的檔案類型：\n   .gpx, .kml, .geojson, .json",
+          "label": "瀏覽檔案"
+        },
+        "header": "自訂地圖資料設定",
+        "or": "或是",
+        "tooltip": "編輯自訂資料圖層",
+        "url": {
+          "instructions": "輸入資料檔案 URL 或向量圖磚 URL 模板。有效的代號是：\n   {zoom} 或 {z}, {x}, {y} 為 Z/X/Y 圖磚結構",
+          "placeholder": "輸入 URL"
+        }
+      }
+    },
+    "shortcuts": {
+      "command": {
+        "keyboard_shortcuts": {
+          "label": "顯示鍵盤快速鍵"
+        },
+        "merge": {
+          "label": "合併 (整合) 選擇圖徵"
+        },
+        "save": {
+          "label": "儲存變更"
+        },
+        "toggle_preferences": {
+          "label": "切換使用者偏好設定面板"
+        }
+      },
+      "commands": "命令",
+      "gesture": {
+        "drag": "拖拉"
+      },
+      "help": "幫助",
+      "key": {
+        "alt": "Alt",
+        "backspace": "Backspace",
+        "cmd": "Cmd",
+        "ctrl": "Ctrl",
+        "del": "Del",
+        "delete": "刪除",
+        "end": "End",
+        "enter": "輸入鍵",
+        "esc": "Esc",
+        "home": "Home",
+        "menu": "選單",
+        "option": "Option",
+        "pause": "Pause",
+        "pgdn": "PgDn",
+        "pgup": "PgUp",
+        "return": "退回",
+        "shift": "Shift",
+        "space": "Space"
+      },
+      "navigation": "導航",
+      "or": "-or-",
+      "title": "鍵盤快速鍵",
+      "tooltip": "顯示鍵盤快速鍵畫面"
+    },
+    "source_switch": {
+      "dev": "開發模式",
+      "live": "實況模式",
+      "lose_changes": "您有尚未儲存的編輯，切換地圖伺服器會失去這些編輯。您是否確定要切換伺服器？"
+    },
+    "splash": {
+      "privacy": "在使用本軟體時，您同意遵守以下條款 [Rapid隱私政策](https://github.com/facebook/Rapid/blob/main/PRIVACY.md)。",
+      "privacy_update": "*我們最近更新了隱私政策。*",
+      "start": "現在就編輯",
+      "text": "iD 編輯器是一個易用且強大的工具，以助你編輯世界上最好的自由世界地圖。這是版本 {version}。欲知詳情，請瀏覽 {website} 及於 {github} 回報臭蟲。",
+      "walkthrough": "開始教學模式",
+      "welcome": "歡迎使用 iD 開放街圖編輯器"
+    },
+    "status": {
+      "message": {
+        "readonly": "OpenStreetMap API 目前是唯讀狀態。您可以繼續編輯，但必須等待儲存您的變更。"
+      }
+    },
+    "streetside": {
+      "title": "Bing 街景",
+      "tooltip": "微軟的街景照片"
+    },
+    "success": {
+      "events": "活動",
+      "help_link_text": "詳細資料",
+      "help_link_url": "https://wiki.openstreetmap.org/wiki/FAQ#I_have_just_made_some_changes_to_the_map._How_do_I_get_to_see_my_changes.3F",
+      "just_edited": "您剛編輯了開放街圖！",
+      "languages": "語言：{languages}",
+      "like_osm": "喜歡開放街圖嗎？與其他人聯繫：",
+      "missing": "清單上仍有遺漏資訊？",
+      "more": "更多",
+      "tell_us": "告訴我們！",
+      "thank_you": "感謝您改進地圖。",
+      "thank_you_location": "感謝您改進了 {where} 附近的地圖。",
+      "thank_you_where": {
+        "format": "{region}{separator}{place}",
+        "separator": "-"
+      },
+      "view_on_osm": "在OSM上顯示變動"
+    },
+    "tag_reference": {
+      "description": "説明",
+      "on_wiki": "於wiki.osm.org上的 {tag}",
+      "used_with": "可與 {type} 使用"
+    },
+    "title": {
+      "format": {
+        "changes": "({changes}) {base}",
+        "changes_context": "({changes}) {base} – {context}",
+        "context": "{base} – {context}"
+      },
+      "labeled_and_more": "{labeled} 與 {count} 個"
+    },
+    "toolbar": {
+      "add_feature": "新增圖徽",
+      "favorites": "最愛",
+      "inspect": "檢查",
+      "recent": "最近",
+      "undo_redo": "復原／重做"
+    },
+    "tooltip_keyhint": "快速鍵",
+    "translate": {
+      "language_and_code": "{language} ({code})",
+      "localized_translation_label": "多語言名稱",
+      "localized_translation_language": "選擇語言",
+      "localized_translation_name": "名稱",
+      "translate": "新增多語言名稱"
+    },
+    "undo": {
+      "nothing": "沒有動作可以撤銷。",
+      "title": "復原",
+      "tooltip": "復原: {action}"
+    },
+    "units": {
+      "acres": "{quantity} 英畝",
+      "arcdegrees": "{quantity}°",
+      "arcminutes": "{quantity}′",
+      "arcseconds": "{quantity}″",
+      "area_pair": "{area1} ({area2})",
+      "coordinate": "{coordinate}{direction}",
+      "coordinate_pair": "{latitude}, {longitude}",
+      "east": "東",
+      "feet": "{quantity} 英呎",
+      "hectares": "{quantity} 公頃",
+      "kilometers": "{quantity} 公里",
+      "meters": "{quantity} 公尺",
+      "miles": "{quantity} 英哩",
+      "north": "北",
+      "south": "南",
+      "square_feet": "{quantity} 平方英呎",
+      "square_kilometers": "{quantity} 平方公里",
+      "square_meters": "{quantity} 平方公尺",
+      "square_miles": "{quantity} 平方英哩",
+      "west": "西",
+      "year_month_day": "YYYY-MM-DD"
+    },
+    "version": {
+      "whats_new": "iD {version} 有什麼新東西"
+    },
+    "visual_diff": {
+      "highlight_edits": {
+        "description": "突顯變更",
+        "tooltip": "繪出已編輯圖徵的輪廓"
+      }
+    },
+    "whats_new": {
+      "project_links": "要知道詳細資訊請在 GitHub 檢視[版本變更記錄](https://github.com/facebook/Rapid/blob/main/CHANGELOG.md#whats-new)以及[問題追蹤](https://github.com/facebook/Rapid/issues)。Happy Mapping！👍"
+    },
+    "wikidata": {
+      "description": "説明",
+      "identifier": "識別碼",
+      "label": "標籤"
+    },
+    "zoom": {
+      "disabled": {
+        "in": "無法進一步放大。",
+        "out": "無法再縮小。"
+      },
+      "in": "放大",
+      "out": "縮小"
+    },
+    "zoom_in_edit": "拉近以編輯"
   }
 }

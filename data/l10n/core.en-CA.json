@@ -1,10 +1,120 @@
 {
   "en-CA": {
+    "QA": {
+      "keepRight": {
+        "errorTypes": {
+          "<220>": {
+            "title": "Misspelt tag"
+          },
+          "<291>": {
+            "description": "{var1} has an unrecognised restriction type."
+          }
+        }
+      }
+    },
+    "filters": {
+      "aerialways": {
+        "tooltip": "Chair Lifts, Gondolas, Flying Foxes, etc."
+      },
+      "paths": {
+        "tooltip": "Footpaths, Walkways, Cycleways, etc."
+      }
+    },
+    "help": {
+      "field": {
+        "restrictions": {
+          "inspecting": {
+            "about": "Hover over any **FROM** segment to see whether it has any turn restrictions. Each possible **TO** destination will be drawn with a coloured shadow showing whether a restriction exists."
+          }
+        }
+      },
+      "gps": {
+        "using": "To use a GPS trace for mapping, drag and drop the data file onto the map editor. If it's recognised, it will be drawn on the map as a bright purple line. Open the {data_icon} **{map_data}** panel on the side of the map to enable, disable, or zoom to your GPS data."
+      },
+      "imagery": {
+        "intro": "The background imagery that appears beneath the map data is an important resource for mapping. This imagery can be aerial photos collected from satellites, aeroplanes, and drones, or it can be scanned historical maps or other freely available source data."
+      },
+      "lines": {
+        "connect_line_tag": "If you know that the connection has traffic signals or pedestrian crossings, you can add them by selecting the connecting node and using the feature editor to select the correct feature's type.",
+        "intro": "*Lines* are used to represent features such as roads, railroads, and rivers. Lines should be drawn down the centre of the feature that they represent."
+      },
+      "operations": {
+        "rotate": "{rotate_icon} **{rotate}** lets you swivel features around their centre points."
+      }
+    },
     "icons": {
       "favorite": "favourite"
     },
-    "toolbar": {
-      "favorites": "Favourites"
+    "info_panels": {
+      "measurement": {
+        "center": "Centre"
+      }
+    },
+    "intro": {
+      "graph": {
+        "countrycode": "gb",
+        "name": {
+          "andrews-elementary-school": "Andrews Primary School",
+          "conrail-railroad": "National Rail",
+          "dollar-tree": "Euro Tree",
+          "lincoln-avenue": "Longspring Avenue",
+          "michigan-avenue": "Mayfair Avenue",
+          "southern-michigan-bank": "Santander",
+          "three-rivers-elementary-school": "Three Rivers Primary School",
+          "three-rivers-fire-department": "Three Rivers Fire Station",
+          "three-rivers-middle-school": "Three Rivers High School",
+          "washington-street": "Kings Road"
+        },
+        "postcode": "TR17 1BB",
+        "state": "<value for addr:state>"
+      },
+      "lines": {
+        "add_line": "*Lines* are used to represent features such as roads, railways, and rivers. **Press the {line_icon} {line} button to add a new line.**",
+        "line_draw_info": "In OpenStreetMap, lines should be drawn down the centre of the road. You can drag and zoom the map while drawing if necessary."
+      },
+      "welcome": {
+        "practice": "All of the data in this walkthrough is just for practising, and any edits that you make in the walkthrough will not be saved."
+      }
+    },
+    "issues": {
+      "curb_nodes": {
+        "fix": {
+          "add_curb_nodes": "Add {type} kerb nodes",
+          "annotation": "Added kerb nodes"
+        },
+        "footway-highway": "Footways crossing highways should have separately mapped kerb nodes.",
+        "message": "{feature} may be missing kerb nodes.",
+        "reference": {
+          "link_alt_text": "Kerb Tagging Guidelines",
+          "text": "Crossing ways should have individual kerb nodes (where appropriate). Use photo overlays to help determine kerb type."
+        },
+        "title": "Kerb Nodes"
+      },
+      "dupe_node_on_road": {
+        "tip": "Nodes are less than 2 metres away.",
+        "tip_merge": "Nodes are less than 2 metres away; you may want to merge them.",
+        "tip_move_away": "Nodes are less than 2 metres away but not mergeable; you may want to move them further apart."
+      },
+      "short_road": {
+        "message": "{highway} is shorter than 20 metres."
+      }
+    },
+    "languageNames": {
+      "ar-001": "Arabic (Modern Standard)",
+      "bn": "Bengali",
+      "mfe": "Mauritian Creole",
+      "nds-NL": "West Low German",
+      "ro-MD": "Moldovan"
+    },
+    "mapillary_detections": {
+      "object": {
+        "trash-can": "Rubbish Bin"
+      }
+    },
+    "modes": {
+      "add_point": {
+        "description": "Add restaurants, monuments, post boxes or other points to the map."
+      }
     },
     "operations": {
       "cancel_draw": {
@@ -14,18 +124,28 @@
         "title": "Circularise"
       }
     },
-    "info_panels": {
-      "measurement": {
-        "center": "Centre"
+    "preferences": {
+      "color_selection": {
+        "placeholder": "Select colour scheme",
+        "title": "Map Colour Scheme",
+        "tooltip": "Switch between colour schemes"
+      },
+      "colorblind_options": {
+        "placeholder": "Select colourblind mode",
+        "title": "Colourblind Mode",
+        "tooltip": "Switch between colourblind modes"
       }
     },
-    "filters": {
-      "paths": {
-        "tooltip": "Footpaths, Walkways, Cycleways, etc."
-      },
-      "aerialways": {
-        "tooltip": "Chair Lifts, Gondolas, Flying Foxes, etc."
+    "rapid_menu": {
+      "about_the_catalog": "These datasets have been provided as open data by various organisations and the Esri user community for the purpose of improving OpenStreetMap.<br/>You can learn more by clicking the links below, or visiting [the Rapid Guide](https://github.com/facebookmicrosites/Open-Mapping-At-Facebook/wiki/Esri-ArcGIS-FAQ) or [Esri/ArcGIS dataset page on the OSM Wiki](https://wiki.openstreetmap.org/wiki/Esri/ArcGIS_Datasets).",
+      "overture": {
+        "places": {
+          "description": "Contains over 53 million point representations of real-world entities: schools, businesses, hospitals, religious organisations, landmarks, mountain peaks, and much more."
+        }
       }
+    },
+    "save": {
+      "unknown_error_details": "Please ensure you are connected to the Internet."
     },
     "settings": {
       "custom_background": {
@@ -39,120 +159,6 @@
         }
       }
     },
-    "preferences": {
-      "color_selection": {
-        "title": "Map Colour Scheme",
-        "tooltip": "Switch between colour schemes",
-        "placeholder": "Select colour scheme"
-      },
-      "colorblind_options": {
-        "title": "Colourblind Mode",
-        "tooltip": "Switch between colourblind modes",
-        "placeholder": "Select colourblind mode"
-      }
-    },
-    "save": {
-      "unknown_error_details": "Please ensure you are connected to the Internet."
-    },
-    "whats_new": {
-      "text_v25": "This release includes a new validation to make mapping kerbs easier, new datasets in the data catalogue, and upgrades to the renderer for better performance."
-    },
-    "rapid_menu": {
-      "about_the_catalog": "These datasets have been provided as open data by various organisations and the Esri user community for the purpose of improving OpenStreetMap.<br/>You can learn more by clicking the links below, or visiting [the Rapid Guide](https://github.com/facebookmicrosites/Open-Mapping-At-Facebook/wiki/Esri-ArcGIS-FAQ) or [Esri/ArcGIS dataset page on the OSM Wiki](https://wiki.openstreetmap.org/wiki/Esri/ArcGIS_Datasets).",
-      "overture": {
-        "places": {
-          "description": "Contains over 53 million point representations of real-world entities: schools, businesses, hospitals, religious organisations, landmarks, mountain peaks, and much more."
-        }
-      }
-    },
-    "QA": {
-      "keepRight": {
-        "errorTypes": {
-          "<220>": {
-            "title": "Misspelt tag"
-          },
-          "<291>": {
-            "description": "{var1} has an unrecognised restriction type."
-          }
-        }
-      }
-    },
-    "mapillary_detections": {
-      "object": {
-        "trash-can": "Rubbish Bin"
-      }
-    },
-    "help": {
-      "lines": {
-        "intro": "*Lines* are used to represent features such as roads, railroads, and rivers. Lines should be drawn down the centre of the feature that they represent.",
-        "connect_line_tag": "If you know that the connection has traffic signals or pedestrian crossings, you can add them by selecting the connecting node and using the feature editor to select the correct feature's type."
-      },
-      "operations": {
-        "rotate": "{rotate_icon} **{rotate}** lets you swivel features around their centre points."
-      },
-      "imagery": {
-        "intro": "The background imagery that appears beneath the map data is an important resource for mapping. This imagery can be aerial photos collected from satellites, aeroplanes, and drones, or it can be scanned historical maps or other freely available source data."
-      },
-      "gps": {
-        "using": "To use a GPS trace for mapping, drag and drop the data file onto the map editor. If it's recognised, it will be drawn on the map as a bright purple line. Open the {data_icon} **{map_data}** panel on the side of the map to enable, disable, or zoom to your GPS data."
-      },
-      "field": {
-        "restrictions": {
-          "inspecting": {
-            "about": "Hover over any **FROM** segment to see whether it has any turn restrictions. Each possible **TO** destination will be drawn with a coloured shadow showing whether a restriction exists."
-          }
-        }
-      }
-    },
-    "issues": {
-      "curb_nodes": {
-        "title": "Kerb Nodes",
-        "message": "{feature} may be missing kerb nodes.",
-        "footway-highway": "Footways crossing highways should have separately mapped kerb nodes.",
-        "reference": {
-          "text": "Crossing ways should have individual kerb nodes (where appropriate). Use photo overlays to help determine kerb type.",
-          "link_alt_text": "Kerb Tagging Guidelines"
-        },
-        "fix": {
-          "add_curb_nodes": "Add {type} kerb nodes",
-          "annotation": "Added kerb nodes"
-        }
-      },
-      "short_road": {
-        "message": "{highway} is shorter than 20 metres."
-      },
-      "dupe_node_on_road": {
-        "tip": "Nodes are less than 2 metres away.",
-        "tip_merge": "Nodes are less than 2 metres away; you may want to merge them.",
-        "tip_move_away": "Nodes are less than 2 metres away but not mergeable; you may want to move them further apart."
-      }
-    },
-    "intro": {
-      "graph": {
-        "postcode": "TR17 1BB",
-        "state": "<value for addr:state>",
-        "countrycode": "gb",
-        "name": {
-          "andrews-elementary-school": "Andrews Primary School",
-          "conrail-railroad": "National Rail",
-          "dollar-tree": "Euro Tree",
-          "lincoln-avenue": "Longspring Avenue",
-          "michigan-avenue": "Mayfair Avenue",
-          "southern-michigan-bank": "Santander",
-          "three-rivers-elementary-school": "Three Rivers Primary School",
-          "three-rivers-fire-department": "Three Rivers Fire Station",
-          "three-rivers-middle-school": "Three Rivers High School",
-          "washington-street": "Kings Road"
-        }
-      },
-      "welcome": {
-        "practice": "All of the data in this walkthrough is just for practising, and any edits that you make in the walkthrough will not be saved."
-      },
-      "lines": {
-        "add_line": "*Lines* are used to represent features such as roads, railways, and rivers. **Press the {line_icon} {line} button to add a new line.**",
-        "line_draw_info": "In OpenStreetMap, lines should be drawn down the centre of the road. You can drag and zoom the map while drawing if necessary."
-      }
-    },
     "shortcuts": {
       "command": {
         "circularize": {
@@ -160,12 +166,11 @@
         }
       }
     },
-    "languageNames": {
-      "ar-001": "Arabic (Modern Standard)",
-      "bn": "Bengali",
-      "mfe": "Mauritian Creole",
-      "nds-NL": "West Low German",
-      "ro-MD": "Moldovan"
+    "toolbar": {
+      "favorites": "Favourites"
+    },
+    "whats_new": {
+      "text_v25": "This release includes a new validation to make mapping kerbs easier, new datasets in the data catalogue, and upgrades to the renderer for better performance."
     }
   }
 }
