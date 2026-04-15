@@ -697,35 +697,39 @@ describe('OsmService', () => {
 
 
   describe('#loadNotes', () => {
-    const notesBody =
-`<?xml version="1.0" encoding="UTF-8"?>
-<osm>
-<note lon="10" lat="0">
-  <id>1</id>
-  <url>https://www.openstreetmap.org/api/0.6/notes/1</url>
-  <comment_url>https://api.openstreetmap.org/api/0.6/notes/1/comment</comment_url>
-  <close_url>https://api.openstreetmap.org/api/0.6/notes/1/close</close_url>
-  <date_created>2019-01-01 00:00:00 UTC</date_created>
-  <status>open</status>
-  <comments>
-    <comment>
-      <date>2019-01-01 00:00:00 UTC</date>
-      <uid>584325</uid>
-      <user>bhousel</user>
-      <user_url>https://www.openstreetmap.org/user/bhousel</user_url>
-      <action>opened</action>
-      <text>This is a note</text>
-      <html>&lt;p&gt;This is a note&lt;/p&gt;</html>
-    </comment>
-  </comments>
-</note>
-</osm>`;
+    const notesBody = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [10, 0]
+        },
+        properties: {
+          id: 1,
+          url: 'https://www.openstreetmap.org/api/0.6/notes/1.json',
+          comment_url: 'https://api.openstreetmap.org/api/0.6/notes/1/comment.json',
+          close_url: 'https://api.openstreetmap.org/api/0.6/notes/1/close.json',
+          date_created: '2019-01-01 00:00:00 UTC',
+          status: 'open',
+          comments: [{
+            date: '2019-01-01 00:00:00 UTC',
+            uid: 584325,
+            user: 'bhousel',
+            user_url: 'https://www.openstreetmap.org/user/bhousel',
+            action: 'opened',
+            text: 'This is a note',
+            html: '<p>This is a note</p>'
+          }]
+        }
+      }]
+    };
 
     it('fires loadedNotes when notes are loaded', done => {
-      fetchMock.route(/notes\?/, {
+      fetchMock.route(/notes\/search\.json\?/, {
         body: notesBody,
         status: 200,
-        headers: { 'Content-Type': 'text/xml' }
+        headers: { 'Content-Type': 'application/json' }
       });
 
       _osm.on('loadedNotes', () => {

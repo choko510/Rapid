@@ -1,5 +1,6 @@
 describe('RapidSystem', () => {
   const STORAGE_KEY = 'rapid-external-manifest-urls';
+  const DATASET_STATE_STORAGE_KEY = 'rapid-dataset-state-v1';
 
   function makeDataset(id, categories = ['buildings']) {
     return {
@@ -58,8 +59,11 @@ describe('RapidSystem', () => {
   }
 
   class MockDataService {
+    constructor(datasets = []) {
+      this._datasets = datasets;
+    }
     startAsync() { return Promise.resolve(); }
-    getAvailableDatasets() { return []; }
+    getAvailableDatasets() { return this._datasets; }
   }
 
   class MockContext {
@@ -68,6 +72,9 @@ describe('RapidSystem', () => {
       if (options.storedURLs) {
         initialStorage[STORAGE_KEY] = JSON.stringify(options.storedURLs);
       }
+      if (options.storedDatasetState) {
+        initialStorage[DATASET_STATE_STORAGE_KEY] = JSON.stringify(options.storedDatasetState);
+      }
 
       this.systems = {
         assets: new MockSimpleSystem(),
@@ -75,11 +82,13 @@ describe('RapidSystem', () => {
         l10n: new MockSimpleSystem(),
         map: new MockSimpleSystem(),
         storage: new MockStorageSystem(initialStorage),
-        urlhash: new MockUrlHashSystem(new Map([['datasets', 'initial']]))
+        urlhash: new MockUrlHashSystem(options.initialHashParams ?? new Map([['datasets', 'initial']]))
       };
 
+      const availableDatasets = options.availableDatasets ?? [];
+
       this.services = {
-        esri: new MockDataService(),
+        esri: new MockDataService(availableDatasets),
         external: new MockExternalService(options.externalResults),
         mapwithai: new MockDataService(),
         overture: new MockDataService()
@@ -122,14 +131,69 @@ describe('RapidSystem', () => {
       ])
     });
     const rapid = new Rapid.RapidSystem(context);
+    const requestIdleStub = window.requestIdleCallback
+      ? sinon.stub(window, 'requestIdleCallback').callsFake(callback => window.setTimeout(callback, 0))
+      : null;
 
     await rapid.initAsync();
     await rapid.startAsync();
+    await new Promise(resolve => { window.setTimeout(resolve, 0); });
+    requestIdleStub?.restore();
 
     expect(context.services.external.calls).to.eql([urlA, urlB]);
     expect(rapid.catalog.has('external-a')).to.be.true;
     expect(rapid.catalog.has('external-b')).to.be.true;
     expect(rapid.datasets.get('external-a').enabled).to.be.true;
     expect(rapid.datasets.get('external-b').enabled).to.be.true;
+  });
+
+
+  it('restores stored dataset state when datasets hash is absent', async () => {
+    const context = new MockContext({
+      initialHashParams: new Map(),
+      availableDatasets: [makeDataset('ml-buildings-overture')],
+      storedDatasetState: {
+        addedDatasetIDs: ['ml-buildings-overture'],
+        enabledDatasetIDs: []
+      }
+    });
+    const rapid = new Rapid.RapidSystem(context);
+
+    await rapid.initAsync();
+    await rapid.startAsync();
+
+    expect(rapid.datasets.get('ml-buildings-overture').added).to.be.true;
+    expect(rapid.datasets.get('ml-buildings-overture').enabled).to.be.false;
+    expect(context.systems.urlhash.params.get('datasets')).to.be.null;
+  });
+
+
+  it('keeps disabled datasets disabled after reload when no datasets hash is present', async () => {
+    const defaultDatasetIDs = ['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways', 'tomtom-roads'];
+    const makeDefaultDatasets = () => defaultDatasetIDs.map(id => makeDataset(id));
+
+    const context1 = new MockContext({
+      initialHashParams: new Map(),
+      availableDatasets: makeDefaultDatasets()
+    });
+    const rapid1 = new Rapid.RapidSystem(context1);
+
+    await rapid1.initAsync();
+    await rapid1.startAsync();
+    rapid1.disableDatasets('ml-buildings-overture');
+
+    const storedDatasetState = JSON.parse(context1.systems.storage.getItem(DATASET_STATE_STORAGE_KEY));
+
+    const context2 = new MockContext({
+      initialHashParams: new Map(),
+      availableDatasets: makeDefaultDatasets(),
+      storedDatasetState: storedDatasetState
+    });
+    const rapid2 = new Rapid.RapidSystem(context2);
+
+    await rapid2.initAsync();
+    await rapid2.startAsync();
+
+    expect(rapid2.datasets.get('ml-buildings-overture').enabled).to.be.false;
   });
 });

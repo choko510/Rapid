@@ -1,6 +1,15 @@
 import { Extent, Tiler, Viewport, geoZoomToScale, vecAdd } from '@rapid-sdk/math';
-import { utilArrayChunk, utilArrayGroupBy, utilArrayUniq, utilObjectOmit, utilQsString } from '@rapid-sdk/util';
+import { utilArrayChunk, utilArrayGroupBy, utilArrayUniq, utilObjectOmit } from '@rapid-sdk/util';
 import _throttle from 'lodash-es/throttle.js';
+import {
+  closeNote as osmAPICloseNote,
+  commentOnNote as osmAPICommentOnNote,
+  configure as osmAPIConfigure,
+  createNote as osmAPICreateNote,
+  getNote as osmAPIGetNote,
+  getNotesForQuery as osmAPIGetNotesForQuery,
+  reopenNote as osmAPIReopenNote
+} from 'osm-api';
 import { osmAuth } from 'osm-auth';
 import RBush from 'rbush';
 
@@ -115,6 +124,8 @@ export class OsmService extends AbstractSystem {
       redirect_uri = `${origin}${pathname}land.html`;
     }
 
+    osmAPIConfigure({ apiUrl: this._apiroot });
+
     this._oauth = osmAuth({
       url: this._wwwroot,
       apiUrl: this._apiroot,
@@ -218,6 +229,7 @@ export class OsmService extends AbstractSystem {
   switchAsync(newOptions) {
     this._wwwroot = newOptions.url;
     this._apiroot = newOptions.apiUrl;
+    osmAPIConfigure({ apiUrl: this._apiroot });
 
     // Copy the existing options, but omit 'access_token'.
     // (if we did preauth, access_token won't work on a different server)
@@ -1063,19 +1075,17 @@ export class OsmService extends AbstractSystem {
 
 
   // Load notes from the API in tiles
-  // GET /api/0.6/notes?bbox=
+  // GET /api/0.6/notes/search.json?bbox=
   loadNotes(noteOptions) {
     if (this._paused || this.getRateLimit()) return;
 
     noteOptions = Object.assign({ limit: 10000, closed: 7 }, noteOptions);
 
     const cache = this._noteCache;
-    const that = this;
-    const path = '/api/0.6/notes?limit=' + noteOptions.limit + '&closed=' + noteOptions.closed + '&bbox=';
     const deferLoadUsers = _throttle(() => {
-      const uids = [...that._userCache.toLoad.values()];
+      const uids = [...this._userCache.toLoad.values()];
       if (!uids.length) return;
-      that.loadUsers(uids, function() {});  // eagerly load user details
+      this.loadUsers(uids, function() {});  // eagerly load user details
     }, 750);
 
     const viewport = this.context.viewport;
@@ -1101,47 +1111,86 @@ export class OsmService extends AbstractSystem {
         continue;
       }
 
-      const options = { skipSeen: false };
-      cache.inflight[tile.id] = this.loadFromAPI(
-        path + tile.wgs84Extent.toParam(),
-        function(err) {
-          delete that._noteCache.inflight[tile.id];
-          if (!err) {
-            that._noteCache.loaded.add(tile.id);
+      const controller = new AbortController();
+      const fetchOptions = this._osmAPIFetchOptions({ signal: controller.signal });
+      const query = {
+        q: '',
+        bbox: tile.wgs84Extent.toParam(),
+        closed: noteOptions.closed,
+        limit: noteOptions.limit
+      };
+
+      cache.inflight[tile.id] = controller;
+
+      osmAPIGetNotesForQuery(query, fetchOptions)
+        .then(notes => {
+          delete this._noteCache.inflight[tile.id];
+          this._noteCache.loaded.add(tile.id);
+
+          for (const noteObj of notes) {
+            this._parseNoteJSON(noteObj);
           }
+
           // deferLoadUsers();
-          const gfx = that.context.systems.gfx;
+          const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
-          that.emit('loadedNotes');
-        },
-        options
-      );
+          this.emit('loadedNotes');
+        })
+        .catch(err => {
+          delete this._noteCache.inflight[tile.id];
+          if (err?.name === 'AbortError') return;  // ok
+
+          this._osmAPIError(err);
+          const gfx = this.context.systems.gfx;
+          gfx.deferredRedraw();
+          this.emit('loadedNotes');
+        });
     }
   }
 
-  // Load a single note by id, XML format
-  // GET /api/0.6/notes/#id
+  // Load a single note by id, JSON format
+  // GET /api/0.6/notes/#id.json
   loadNote(noteID, callback) {
-    const options = { skipSeen: false };
-    const gotNote = (err, results) => {
-      if (callback) {
-        callback(err, { data: results });
-        const gfx = this.context.systems.gfx;
-        gfx.deferredRedraw();
-        this.emit('loadedNotes');
-      }
-    };
+    const controller = new AbortController();
+    const fetchOptions = this._osmAPIFetchOptions({ signal: controller.signal });
 
-    this.loadFromAPI(
-      `/api/0.6/notes/${noteID}`,
-      gotNote,
-      options
-    );
+    osmAPIGetNote(parseInt(noteID, 10), fetchOptions)
+      .then(noteObj => {
+        const note = this._parseNoteJSON(noteObj);
+        if (!note) {
+          const wrapped = this._osmAPIError(new Error('No JSON'));
+          if (callback) {
+            callback(wrapped);
+            const gfx = this.context.systems.gfx;
+            gfx.deferredRedraw();
+            this.emit('loadedNotes');
+          }
+          return;
+        }
+
+        if (callback) {
+          callback(null, { data: { data: [note], seenIDs: new Set([note.id]) } });
+          const gfx = this.context.systems.gfx;
+          gfx.deferredRedraw();
+          this.emit('loadedNotes');
+        }
+      })
+      .catch(err => {
+        if (err?.name === 'AbortError') return;  // ok
+        const wrapped = this._osmAPIError(err);
+
+        if (callback) {
+          callback(wrapped);
+          const gfx = this.context.systems.gfx;
+          gfx.deferredRedraw();
+          this.emit('loadedNotes');
+        }
+      });
   }
 
 
   // Create a note
-  // POST /api/0.6/notes?params
+  // POST /api/0.6/notes.json?params
   postNoteCreate(note, callback) {
     if (this._noteCache.inflightPost[note.id]) {
       return callback({ message: 'Note update already inflight', status: -2 }, note);
@@ -1151,42 +1200,30 @@ export class OsmService extends AbstractSystem {
 
     if (!note.loc[0] || !note.loc[1] || !note.newComment) return;  // location & description required
 
-    const createdNote = (err, xml) => {
-      delete this._noteCache.inflightPost[note.id];
-      if (err) { return callback(err); }
-
-      // we get the updated note back, remove from caches and reparse..
-      this.removeNote(note);
-
-      const options = { skipSeen: false };
-      return this._parseXML(xml, (err, results) => {
-        if (err) {
-          return callback(err);
-        } else {
-          const gfx = this.context.systems.gfx;
-          gfx.deferredRedraw();
-          this.emit('loadedNotes');
-          return callback(null, results.data[0]);
-        }
-      }, options);
-    };
-
-    const errback = this._wrapcb(createdNote);
-    const resource = this._apiroot + '/api/0.6/notes?' +
-      utilQsString({ lon: note.loc[0], lat: note.loc[1], text: note.newComment });
     const controller = new AbortController();
-    const options = { method: 'POST', signal: controller.signal };
+    const fetchOptions = this._osmAPIFetchOptions({ signal: controller.signal }, true);
 
-    this._oauth.fetch(resource, options)
-      .then(utilFetchResponse)
-      .then(result => errback(null, result))
-      .catch(err => {
-        this._changeset.inflight = null;
-        if (err.name === 'AbortError') return;  // ok
-        if (err.name === 'FetchError') {
-          errback(err);
-          return;
+    osmAPICreateNote(note.loc[1], note.loc[0], note.newComment, fetchOptions)
+      .then(noteObj => {
+        delete this._noteCache.inflightPost[note.id];
+
+        // we get the updated note back, remove from caches and reparse..
+        this.removeNote(note);
+
+        const updated = this._parseNoteJSON(noteObj);
+        if (!updated) {
+          return callback({ message: 'No JSON', status: -1 });
         }
+
+        const gfx = this.context.systems.gfx;
+        gfx.deferredRedraw();
+        this.emit('loadedNotes');
+        return callback(null, updated);
+      })
+      .catch(err => {
+        delete this._noteCache.inflightPost[note.id];
+        if (err.name === 'AbortError') return;  // ok
+        return callback(this._osmAPIError(err));
       });
 
     this._noteCache.inflightPost[note.id] = controller;
@@ -1215,51 +1252,48 @@ export class OsmService extends AbstractSystem {
       if (!note.newComment) return; // when commenting, comment required
     }
 
-    const updatedNote = (err, xml) => {
-      delete this._noteCache.inflightPost[note.id];
-      if (err) { return callback(err); }
-
-      // we get the updated note back, remove from caches and reparse..
-      this.removeNote(note);
-
-      // update closed note cache - used to populate `closed:note` changeset tag
-      if (action === 'close') {
-        this._noteCache.closed[note.id] = true;
-      } else if (action === 'reopen') {
-        delete this._noteCache.closed[note.id];
-      }
-
-      const options = { skipSeen: false };
-      return this._parseXML(xml, (err, results) => {
-        if (err) {
-          return callback(err);
-        } else {
-          const gfx = this.context.systems.gfx;
-          gfx.deferredRedraw();
-          this.emit('loadedNotes');
-          return callback(null, results.data[0]);
-        }
-      }, options);
-    };
-
-    const errback = this._wrapcb(updatedNote);
-    let resource = this._apiroot + `/api/0.6/notes/${note.id}/${action}`;
-    if (note.newComment) {
-      resource += '?' + utilQsString({ text: note.newComment });
-    }
     const controller = new AbortController();
-    const options = { method: 'POST', signal: controller.signal };
+    const fetchOptions = this._osmAPIFetchOptions({ signal: controller.signal }, true);
+    const noteID = parseInt(note.id, 10);
+    const text = note.newComment || undefined;
 
-    this._oauth.fetch(resource, options)
-      .then(utilFetchResponse)
-      .then(result => errback(null, result))
-      .catch(err => {
-        this._changeset.inflight = null;
-        if (err.name === 'AbortError') return;  // ok
-        if (err.name === 'FetchError') {
-          errback(err);
-          return;
+    let updater;
+    if (action === 'close') {
+      updater = osmAPICloseNote(noteID, text, fetchOptions);
+    } else if (action === 'reopen') {
+      updater = osmAPIReopenNote(noteID, text, fetchOptions);
+    } else {
+      updater = osmAPICommentOnNote(noteID, note.newComment, fetchOptions);
+    }
+
+    updater
+      .then(noteObj => {
+        delete this._noteCache.inflightPost[note.id];
+
+        // we get the updated note back, remove from caches and reparse..
+        this.removeNote(note);
+
+        // update closed note cache - used to populate `closed:note` changeset tag
+        if (action === 'close') {
+          this._noteCache.closed[note.id] = true;
+        } else if (action === 'reopen') {
+          delete this._noteCache.closed[note.id];
         }
+
+        const updated = this._parseNoteJSON(noteObj);
+        if (!updated) {
+          return callback({ message: 'No JSON', status: -1 });
+        }
+
+        const gfx = this.context.systems.gfx;
+        gfx.deferredRedraw();
+        this.emit('loadedNotes');
+        return callback(null, updated);
+      })
+      .catch(err => {
+        delete this._noteCache.inflightPost[note.id];
+        if (err.name === 'AbortError') return;  // ok
+        return callback(this._osmAPIError(err));
       });
 
     this._noteCache.inflightPost[note.id] = controller;
@@ -1422,6 +1456,54 @@ export class OsmService extends AbstractSystem {
     if (controller) {
       controller.abort();
     }
+  }
+
+
+  _osmAPIFetchOptions(options = {}, authRequired = false) {
+    const fetchOptions = { ...options };
+    const headers = { ...(fetchOptions.headers || {}) };
+
+    if (authRequired) {
+      const token = this._oauth.options()?.access_token;
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+    }
+
+    if (Object.keys(headers).length) {
+      fetchOptions.headers = headers;
+    }
+
+    return fetchOptions;
+  }
+
+
+  _osmAPIError(err) {
+    const status = Number.isFinite(err?.cause) ? err.cause : -1;
+    const message = err?.message ?? 'OSM API request failed';
+
+    // 509 Bandwidth Limit Exceeded, 429 Too Many Requests
+    if (status === 509 || status === 429) {
+      let duration = 10;  // default 10sec, see if response contains a better value
+      const match = message.match(/ (\d+) seconds/);
+      if (match) {
+        duration = parseInt(match[1], 10);
+      }
+      this.setRateLimit(duration);
+      this.throttledReloadApiStatus();
+
+    // Some other error.. it is worth checking API status.
+    } else if (this._apiStatus !== 'error') {
+      this.throttledReloadApiStatus();
+    }
+
+    // 400 Bad Request, 401 Unauthorized, 403 Forbidden
+    // An issue has occurred with the user's credentials.
+    if (status === 400 || status === 401 || status === 403) {
+      this.logout();
+    }
+
+    return { message, status };
   }
 
 
@@ -1755,6 +1837,55 @@ export class OsmService extends AbstractSystem {
       tags: obj.tags,
       members: this._getMembersJSON(obj)
     });
+  }
+
+  _parseNoteJSON(obj, uid = obj?.id?.toString()) {
+    if (!uid) return null;
+
+    const loc = [parseFloat(obj?.location?.lng), parseFloat(obj?.location?.lat)];
+    if (!isFinite(loc[0]) || !isFinite(loc[1])) return null;
+
+    const props = {
+      id: uid,
+      loc: loc,
+      url: obj.url,
+      comment_url: obj.comment_url,
+      close_url: obj.close_url,
+      date_created: obj.date_created,
+      status: obj.status,
+      comments: []
+    };
+
+    // if notes are coincident, move them apart slightly
+    let coincident = false;
+    const epsilon = 0.00001;
+    do {
+      if (coincident) {
+        props.loc = vecAdd(props.loc, [epsilon, epsilon]);
+      }
+      const bbox = new Extent(props.loc).bbox();
+      coincident = this._noteCache.rbush.search(bbox).length;
+    } while (coincident);
+
+    for (const comment of (obj.comments ?? [])) {
+      const parsedComment = {
+        date: comment.date,
+        uid: comment.uid?.toString(),
+        user: comment.user,
+        user_url: comment.user_url,
+        action: comment.action,
+        text: comment.text,
+        html: comment.html
+      };
+      if (parsedComment.uid && !this._userCache.user[parsedComment.uid]) {
+        this._userCache.toLoad.add(parsedComment.uid);
+      }
+      props.comments.push(parsedComment);
+    }
+
+    const note = new QAItem(this, null, props.id, props);
+    this.replaceNote(note);
+    return note;
   }
 
   _parseNodeXML(xml, uid) {

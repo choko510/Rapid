@@ -18,6 +18,7 @@ const RAPID_COLORS = [
   '#faf0e6'   // linen
 ];
 const EXTERNAL_MANIFEST_URLS_STORAGE_KEY = 'rapid-external-manifest-urls';
+const DATASET_STATE_STORAGE_KEY = 'rapid-dataset-state-v1';
 
 
 // Convert a single value, an Array of values, or a Set of values.
@@ -145,8 +146,14 @@ export class RapidSystem extends AbstractSystem {
 
         // Set some defaults
         if (!urlhash.initialHashParams.has('datasets')) {
-          this._addedDatasetIDs = new Set(['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways', 'tomtom-roads']);  // on menu
-          this._enabledDatasetIDs = new Set(['ml-buildings-overture']);  // checked
+          const storedDatasetState = this._getStoredDatasetState();
+          if (storedDatasetState) {
+            this._addedDatasetIDs = storedDatasetState.addedDatasetIDs;
+            this._enabledDatasetIDs = storedDatasetState.enabledDatasetIDs;
+          } else {
+            this._addedDatasetIDs = new Set(['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways', 'tomtom-roads']);  // on menu
+            this._enabledDatasetIDs = new Set(['ml-buildings-overture']);  // checked
+          }
           this._datasetsChanged();
         }
 
@@ -266,6 +273,46 @@ export class RapidSystem extends AbstractSystem {
     }
 
     return Array.from(deduped);
+  }
+
+
+  _getStoredDatasetState() {
+    const storage = this.context.systems.storage;
+    const raw = storage?.getItem(DATASET_STATE_STORAGE_KEY);
+    if (!raw) return null;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+
+    const addedDatasetIDs = Array.isArray(parsed?.addedDatasetIDs) ? parsed.addedDatasetIDs : null;
+    const enabledDatasetIDs = Array.isArray(parsed?.enabledDatasetIDs) ? parsed.enabledDatasetIDs : null;
+    if (!addedDatasetIDs || !enabledDatasetIDs) return null;
+
+    const addedSet = new Set(addedDatasetIDs.filter(id => typeof id === 'string' && id.length));
+    const enabledSet = new Set(
+      enabledDatasetIDs
+        .filter(id => typeof id === 'string' && id.length)
+        .filter(id => addedSet.has(id))
+    );
+
+    return {
+      addedDatasetIDs: addedSet,
+      enabledDatasetIDs: enabledSet
+    };
+  }
+
+
+  _rememberDatasetState() {
+    const storage = this.context.systems.storage;
+    if (!storage) return;
+
+    const addedDatasetIDs = [...this._addedDatasetIDs];
+    const enabledDatasetIDs = [...this._enabledDatasetIDs].filter(datasetID => this._addedDatasetIDs.has(datasetID));
+    storage.setItem(DATASET_STATE_STORAGE_KEY, JSON.stringify({ addedDatasetIDs, enabledDatasetIDs }));
   }
 
 
@@ -610,6 +657,7 @@ export class RapidSystem extends AbstractSystem {
 
     // datasets
     urlhash.setParam('datasets', enabledIDs.length ? enabledIDs.join(',') : null);
+    this._rememberDatasetState();
 
     this.emit('datasetchange');
   }
