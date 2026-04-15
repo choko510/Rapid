@@ -1,11 +1,11 @@
 {
-  "nl": {
+  "nl-NL": {
     "QA": {
       "keepRight": {
         "close": "Sluit (probleem opgelost)",
-        "close_comment": "Sluit en voeg commentaar toe",
-        "comment": "Commentaar",
-        "comment_placeholder": "Voer commentaar in om te delen met andere gebruikers.",
+        "close_comment": "Sluit met commentaar",
+        "comment": "Opmerking",
+        "comment_placeholder": "Voeg commentaar toe om te delen met anderen.",
         "detail_description": "Beschrijving",
         "errorTypes": {
           "20": {
@@ -261,260 +261,6 @@
           },
           "413": {
             "description": "{var1} heeft mogelijk een verouderde URL: {var2} bevat niet de steekwoorden \"{var3}\"."
-          },
-          "<100>": {
-            "description": "{var1} is getagd als gebedshuis en dient daarom te worden voorzien van een religietag.",
-            "title": "Gebedshuis zonder religie"
-          },
-          "<110>": {
-            "description": "{var1} is getagd als een ‘{var2}’ en dient daarom te worden voorzien van een naamtag.",
-            "title": "Interessant punt zonder naam"
-          },
-          "<120>": {
-            "description": "{var1} heeft slechts een enkele knoop.",
-            "title": "Weg zonder knopen"
-          },
-          "<130>": {
-            "description": "{var1} is niet aangesloten op de rest van de kaart.",
-            "title": "Niet-aangesloten weg"
-          },
-          "<150>": {
-            "description": "{var1} van een snelweg en spoorweg moeten getagd zijn als ‘railway=crossing’ of ‘railway=level_crossing’.",
-            "title": "Spoorwegovergang zonder tag"
-          },
-          "<160>": {
-            "description": "Er zijn wegen in verschillende lagen (bijv. tunnel of brug) die samenkomen bij {var1}.",
-            "title": "Spoorweg laag conflict"
-          },
-          "<170>": {
-            "description": "{var1} heeft een FIXME tag: {var2}",
-            "title": "Item getagd met FIXME"
-          },
-          "<180>": {
-            "description": "Bij {var1} ontbreekt een ‘type’-tag.",
-            "title": "Relatie zonder type"
-          },
-          "<190>": {
-            "description": "{var1} kruist de {var2} {var3}, maar er is geen kruispuntknoop, brug of tunnel.",
-            "title": "Intersectie zonder kruispunt"
-          },
-          "<200>": {
-            "description": "{var1} overlapt met de {var2} {var3}.",
-            "title": "Overlappende wegen"
-          },
-          "<20>": {
-            "description": "Er zijn meer dan één knopen op deze plek. Knoop ID's: {var1}.",
-            "title": "Meerdere knopen op dezelfde plek"
-          },
-          "<210>": {
-            "description": "Er is een ongespecificeerd probleem met zichzelf snijdende wegen.",
-            "title": "Zichzelf snijdende weg"
-          },
-          "<211>": {
-            "description": "{var1} bevat meerdere keren meer dan één knoop. Knopen zijn {var2}. Dit is mogelijk een fout."
-          },
-          "<212>": {
-            "description": "{var1} heeft slechts twee verschillende knopen en bevat een of meerdere dubbel."
-          },
-          "<220>": {
-            "description": "{var1} is getagd als \"{var2}\" waar \"{var3}\" op \"{var4}\" lijkt.",
-            "title": "Foutief gespelde tag"
-          },
-          "<221>": {
-            "description": "{var1} heeft een verdachte tag \"{var2}\"."
-          },
-          "<230>": {
-            "description": "{var1} is een kruising van wegen met verschillende lagen.",
-            "title": "Laagconflict"
-          },
-          "<231>": {
-            "description": "{var1} is een kruising van wegen met verschillende lagen: {var2}.",
-            "layer": "(laag: {layer})"
-          },
-          "<232>": {
-            "description": "{var1} is getagd met \"layer={var2}\". Dit hoeft niet fout te zijn, maar lijkt onjuist."
-          },
-          "<270>": {
-            "description": "{var1} is een kruising van een snelweg en een weg anders dan \"motorway\", \"motorway_link\", \"trunk\", \"rest_area\", of \"construction\". Verbinding met \"service\" of \"unclassified\" is alleen geldig als het een \"access=no/private\" tag heeft of als het leidt naar een snelweg verzorgingsplaats of als het een \"service=parking_aisle\" tag heeft.",
-            "title": "Ongebruikelijke snelwegverbinding"
-          },
-          "<280>": {
-            "description": "Er is een ongespecificeerd probleem met deze grens.",
-            "title": "Grensprobleem"
-          },
-          "<281>": {
-            "description": "{var1} heeft geen naam.",
-            "title": "Grens mist naam"
-          },
-          "<282>": {
-            "description": "De grens van {var1} heeft geen geldig numeriek admin_level. Gelieve administratieve niveaus niet te mixen (bijv. \"6;7\"). Tag altijd het laagste admin_level van alle grenzen.",
-            "title": "Grens mist administratief niveau"
-          },
-          "<283>": {
-            "description": "De grens van {var1} is geen gesloten lus.",
-            "title": "Grens is geen gesloten lus"
-          },
-          "<284>": {
-            "description": "De grens van {var1} splitst hier.",
-            "title": "Grens is opgesplitst"
-          },
-          "<285>": {
-            "description": "{var1} heeft \"admin_level={var2}\", maar hoort bij een relatie met een lager \"admin_level\" (bijv. hogere prioriteit). Het moet de laagste \"admin_level\" van alle relaties hebben.",
-            "title": "Administratief niveau van deze grens is te hoog"
-          },
-          "<290>": {
-            "description": "Er is een ongespecificeerd probleem met deze beperking.",
-            "title": "Beperkingsprobleem"
-          },
-          "<291>": {
-            "description": "{var1} heeft een niet herkend beperkingstype",
-            "title": "Missend beperkingstype"
-          },
-          "<292>": {
-            "description": "{var1} heeft {var2} \"van\"-onderdelen, maar het behoort er 1 te hebben.",
-            "title": "Beperking mist \"van\"-weg"
-          },
-          "<293>": {
-            "description": "{var1} heeft {var2} \"naar\"-onderdelen, maar het behoort 1 te hebben.",
-            "title": "Beperking mist \"naar\"-weg"
-          },
-          "<294>": {
-            "description": "{var1} heeft \"van\" of \"naar\" onderdelen die wegen zouden moeten zijn. {var2}.",
-            "title": "Beperking \"van\" of \"naar\" is geen weg"
-          },
-          "<295>": {
-            "description": "{var1} heeft een \"via\" (knoop {var2}) die niet het eerste of laatste onderdeel is van \"{var3}\" (way{var4}).",
-            "title": "Beperking \"via\" is geen bestemming"
-          },
-          "<296>": {
-            "description": "{var1} heeft beperkingstype \"{var2}\", maar de hoek is {var3} graden. Wellicht is het beperkingstype niet geschikt?",
-            "title": "Ongewone beperkingshoek"
-          },
-          "<297>": {
-            "description": "{var1} komt niet overeen met de richting van de \"naar\" weg {var2}.",
-            "title": "Verkeerde richting van weg \"naar\""
-          },
-          "<298>": {
-            "description": "{var1} kan overbodig zijn. Toegang is reeds verboden door het eenrichtingsverkeer op {var2}.",
-            "title": "Overbodige beperking - eenrichtingsverkeer"
-          },
-          "<300>": {
-            "description": "{var1} heeft geen informatie over maximumsnelheid en is getagd als motorway, trunk, primary, or secondary.",
-            "title": "Missende maximumsnelheid"
-          },
-          "<30>": {
-            "description": "{var1} is getagt met \"{var2}\" en moet een gesloten loop zijn.",
-            "title": "Niet afgesloten gebied"
-          },
-          "<310>": {
-            "description": "Er is een ongespecificeerd probleem met deze rotonde.",
-            "title": "Rotondeprobleem"
-          },
-          "<311>": {
-            "description": "{var1} is onderdeel van een rotonde, maar is geen gesloten lus. (Gescheiden rijbanen die een rotonde naderen mogen niet getagd worden als rotonde). ",
-            "title": "Rotonde is geen gesloten lus"
-          },
-          "<312>": {
-            "description": "Als {var1} in een land met {var2} verkeer ligt, dan is de oriëntatie omgedraaid.",
-            "title": "Rotonde met verkeerde richting"
-          },
-          "<313>": {
-            "description": "{var1} is met slechts {var2} weg(en) verbonden. Rotondes hebben over het algemeen 3 of meer.",
-            "title": "Rotonde zwak verbonden"
-          },
-          "<320>": {
-            "description": "{var1} is getagd als \"{var2}\", maar heeft geen verbinding met andere \"{var3}\" of \"{var4}\".",
-            "title": "Ongeldige link-verbinding"
-          },
-          "<350>": {
-            "description": "{var1} heeft geen tag gemeen met omliggende wegen die aangesloten zijn op deze brug. Een van deze tags zou aanwezig moeten zijn: {var2}.",
-            "title": "Ongeldige brug-tag"
-          },
-          "<360>": {
-            "description": "Het zou mooi zijn als {var1} een lokale naam tag zou hebben  \"name:XX={var2}\" waar XX de taal van de gebruikelijke naam toont \"{var2}\".",
-            "title": "Ontbrekende lokalenaam-tag"
-          },
-          "<370>": {
-            "description": "{var1} heeft overeenkomende tags met de omliggende weg {var2} {var3} en lijkt overbodig.",
-            "including_the_name": "(waaronder de naam {name})",
-            "title": "Dubbele plaatsen"
-          },
-          "<380>": {
-            "description": "{var1} is getagd als \"{var2}\", maar heeft geen fysieke tag (bijv. \"leisure\", \"building\", \"amenity\", or \"highway\").",
-            "title": "Niet fysiek gebruik van de sport tag"
-          },
-          "<390>": {
-            "description": "{var1} mist een \"tracktype\" tag.",
-            "title": "Missende tracktype"
-          },
-          "<400>": {
-            "description": "Er is een ongespecificeerd probleem met deze geometrie.",
-            "title": "Geometrieprobleem"
-          },
-          "<401>": {
-            "description": "Wegen {var1} en {var2} komen samen in een erg scherpe hoek en er is geen eenrichtingsverkeer of afslagbeperking die afslaan voorkomt.",
-            "title": "Ontbrekende afslagbeperking"
-          },
-          "<402>": {
-            "description": "{var1} buigt in een erg scherpe hoek hier.",
-            "title": "Onmogelijke hoek"
-          },
-          "<40>": {
-            "description": "De eerste knoop {var1} van {var2} is niet verbonden met een andere weg.",
-            "title": "Onmogelijke eenrichtingsweg"
-          },
-          "<410>": {
-            "description": "Er is een ongespecificeerd probleem met een website of URL.",
-            "title": "Probleem met website"
-          },
-          "<411>": {
-            "description": "{var1} heeft mogelijk een verouderde URL: {var2} geeft HTTP-statuscode {var3} terug."
-          },
-          "<412>": {
-            "description": "{var1} heeft mogelijk een verouderde URL: {var2} bevat verdachte text \"{var3}\"."
-          },
-          "<413>": {
-            "description": "{var1} heeft mogelijk een verouderde URL: {var2} bevat niet de steekwoorden \"{var3}\"."
-          },
-          "<41>": {
-            "description": "De laatste knoop {var1} van {var2} is niet verbonden met een andere weg."
-          },
-          "<42>": {
-            "description": "Je kunt {var1} niet bereiken, omdat alle wegen vanaf daar eenrichtingswegen zijn."
-          },
-          "<43>": {
-            "description": "Je kunt niet vertrekken vanaf {var1}, omdat alle wegen er naartoe eenrichtingswegen zijn."
-          },
-          "<50>": {
-            "description": "{var1} is erg dichtbij, maar niet verbonden met weg {var2}.",
-            "title": "Bijna kruising"
-          },
-          "<60>": {
-            "description": "{var1} gebruikt de verouderde tag ‘{var2}’. Gebruik in plaats daarvan ‘{var3}’.",
-            "title": "Verouderde tag"
-          },
-          "<70>": {
-            "description": "{var1} heeft een blanco tag: ‘{var2}’.",
-            "title": "Ontbrekende tag"
-          },
-          "<71>": {
-            "description": "{var1} heeft geen tags."
-          },
-          "<72>": {
-            "description": "{var1} is geen onderdeel van een weg en heeft geen tags."
-          },
-          "<73>": {
-            "description": "{var1} heeft een ‘{var2}’-tag, maar geen ‘highway’-tag."
-          },
-          "<74>": {
-            "description": "{var1} heeft een blanco tag: ‘{var2}’."
-          },
-          "<75>": {
-            "description": "{var1} heeft een naam, ‘{var2}’, maar geen andere tags."
-          },
-          "<90>": {
-            "description": "{var1} is getagd als snelweg en dient daarom te worden voorzien van een ‘ref’-, ‘nat_ref’-, of ‘int_ref’-tag.",
-            "title": "Snelweg zonder ref-tag"
           }
         },
         "error_parts": {
@@ -533,7 +279,6 @@
           "library": "bibliotheek",
           "pharmacy": "apotheek",
           "place_of_worship": "gebedshuis",
-          "pub": "kroeg",
           "railway": "spoorbaan",
           "restaurant": "restaurant",
           "right_hand": "rechterhand",
@@ -630,11 +375,10 @@
       "cancel": "Annuleer",
       "changes": "Wijzigingen",
       "comment_needed_message": "Voorzie de wijzigingenset van een opmerking.",
-      "created": "Aangemaakt:",
+      "created": "Aangemaakt",
       "deleted": "Verwijderd:",
       "download_changes": "Download osmChange-bestand",
       "errors": "Foutmeldingen",
-      "google_warning": "Je vermeldt Google in deze beschrijving. Onthoud dat kopiëren van Google Maps illegaal en ten strengste verboden is.",
       "modified": "Aangepast:",
       "outstanding_errors_message": "Los eerst alle fouten op. Openstaande meldingen: {count}.",
       "request_review": "Ik zou graag hebben dat iemand mijn bewerkingen nakijkt.",
@@ -646,8 +390,8 @@
       "warnings": "Waarschuwingen"
     },
     "confirm": {
-      "cancel": "Annuleren",
-      "okay": "Oké"
+      "cancel": "Annuleer",
+      "okay": "OK"
     },
     "contributors": {
       "list": "Aangepast door {users}",
@@ -662,71 +406,6 @@
         "other": "{count} verborgen objecten"
       }
     },
-    "filters": {
-      "aerialways": {
-        "description": "Luchtvaartobjecten",
-        "tooltip": "Stoeltjesliften, gondels, tokkelbanen, etc."
-      },
-      "boundaries": {
-        "description": "Grenzen",
-        "tooltip": "Administratieve grenzen"
-      },
-      "building_parts": {
-        "description": "Gebouwdelen",
-        "tooltip": "3D gebouw- en dakonderdelen"
-      },
-      "buildings": {
-        "description": "Gebouwen",
-        "tooltip": "Gebouwen, afdaken, garages …"
-      },
-      "indoor": {
-        "description": "Objecten in een gebouw",
-        "tooltip": "Ruimtes, gangen, portieken, etc."
-      },
-      "landuse": {
-        "description": "Landindeling",
-        "tooltip": "Bossen, landbouwgronden, parken, woongebieden, winkelzones …"
-      },
-      "others": {
-        "description": "Andere objecten",
-        "tooltip": "Al de rest"
-      },
-      "past_future": {
-        "description": "Historische/Toekomstige objecten",
-        "tooltip": "Voorgesteld, onder constructie, verwaarloosd, afgebroken …"
-      },
-      "paths": {
-        "description": "Paden",
-        "tooltip": "Trottoirs, paden voor voetgangers of fietsers …"
-      },
-      "pistes": {
-        "tooltip": "Skipistes, Rrdelbanen, schaatsbanen, etc."
-      },
-      "points": {
-        "description": "Punten",
-        "tooltip": "Interessante punten"
-      },
-      "power": {
-        "description": "Energie",
-        "tooltip": "Elektriciteitskabels, energiecentrales, transformatorstations …"
-      },
-      "rail": {
-        "description": "Sporen",
-        "tooltip": "Spoorwegen"
-      },
-      "service_roads": {
-        "description": "Toegangswegen",
-        "tooltip": "Toegangswegen, rijbanen op parkeerplaatsen, veldwegen, etc."
-      },
-      "traffic_roads": {
-        "description": "Wegennetwerk",
-        "tooltip": "Snelwegen, straten, etc."
-      },
-      "water": {
-        "description": "Water",
-        "tooltip": "Rivieren, meren, vijvers, reservoirs …"
-      }
-    },
     "full_screen": "Volledig scherm aan/uit",
     "geocoder": {
       "no_results_worldwide": "Er zijn geen resultaten gevonden",
@@ -734,8 +413,7 @@
     },
     "geolocate": {
       "locating": "Bezig met lokaliseren…",
-      "location_unavailable": "Je locatie is niet beschikbaar.",
-      "title": "Toon mijn locatie"
+      "location_unavailable": "Je locatie is niet beschikbaar."
     },
     "geometry": {
       "area": "vlak",
@@ -966,7 +644,6 @@
         "edit_relation_h": "Relaties bewerken",
         "intro": "Een *relatie* is een speciaal soort object in OpenStreetMap dat andere objecten groepeert. De objecten die tot een relatie behoren worden haar *leden* genoemd (Engels: *members*) en elk lid kan een *rol* hebben in de relatie.",
         "maintain_relation": "Over het algemeen zal iD automatisch relaties onderhouden wanneer je bewerkingen uitvoert. Wees voorzichtig wanneer je objecten vervangt die onderdeel kunnen zijn van een relatie. Bijvoorbeeld als je een deel van een weg verwijdert en een nieuw deel tekent om het te vervangen, zal je het nieuwe deel moeten toevoegen aan dezelfde relaties (routes, afslagbeperkingen, enz.) als het origineel.",
-        "maintain_relation_h": "Relaties onderhouden",
         "multipolygon": "Een *multipolygoon*-relatie is een groep van een of meer buitenrandvlakken (rol *outer*) en nul of meer binnenrandvlakken (rol *inner*). De buitenranden definiëren de buitenste contouren van de multipolygoon. De binnenranden definiëren gaten binnen de multipolygoon.",
         "multipolygon_create": "Om een multipolygoon aan te maken, bijvoorbeeld een gebouw met een binnenplaats, teken je de buitenste contouren en de binnenste contouren als aparte vlakken. `{shift}`+{leftclick} Klik daarna met de linkermuisknop om beide objecten te selecteren, klik met de {rightclick} rechtermuisknop om het bewerkmenu te tonen, en klik op {merge_icon} **{merge}**.",
         "multipolygon_h": "Multipolygonen",
@@ -998,9 +675,9 @@
       "favorite": "favoriet",
       "information": "informatie",
       "list": "lijst",
-      "remove": "verwijder",
+      "remove": "verwijderen",
       "text": "tekst",
-      "undo": "maak ongedaan",
+      "undo": "Ongedaan maken",
       "view_on": "bekijk op {domain} ",
       "visit_website": "bezoek de website",
       "zoom_to": "zoom naar"
@@ -1008,7 +685,7 @@
     "info_panels": {
       "background": {
         "accuracy": "Nauwkeurigheid",
-        "description": "Omschrijving",
+        "description": "Beschrijving",
         "hide_tiles": "Verberg tegels",
         "resolution": "Resolutie",
         "show_tiles": "Toon tegels",
@@ -1035,8 +712,8 @@
         "unknown_location": "Onbekende locatie"
       },
       "measurement": {
-        "area": "Oppervlakte",
-        "center": "Midden",
+        "area": "Gebied",
+        "center": "Park",
         "centroid": "Zwaartepunt",
         "closed_area": "gesloten gebied",
         "closed_line": "gesloten lijn",
@@ -1056,18 +733,17 @@
       }
     },
     "inspector": {
-      "add": "Voeg toe",
+      "add": "Toevoegen",
       "add_fields": "Voeg eigenschap toe:",
       "add_to_relation": "Voeg toe aan relatie",
       "back_tooltip": "Wijzig objecttype",
       "check": {
-        "no": "Nee",
+        "no": "Geen",
         "reverser": "Andere richting",
-        "yes": "Ja"
+        "yes": "Aanwezig"
       },
       "choose": "Kies een objecttype",
       "choose_relation": "Kies een ouderrelatie",
-      "details": "Meer informatie (Engels)",
       "display_name": {
         "direction": "{direction}",
         "from_to": "van {from} naar {to}",
@@ -1122,7 +798,6 @@
       },
       "role": "Rol",
       "search": "Zoek",
-      "show_more": "Toon meer",
       "tags": "Tags",
       "title_count": "{title} ({count})",
       "unknown": "Onbekend",
@@ -1135,7 +810,7 @@
       "wiki_reference": "Bekijk documentatie",
       "zoom_to": {
         "no_selection": "Niets om naar te zoomen.",
-        "title": "Zoom op de selectie"
+        "title": "Zoom naar de selectie"
       }
     },
     "intro": {
@@ -1381,7 +1056,7 @@
         "title": "Navigatie",
         "zoom": "Je kan in- en uitzoomen door te scrollen met het {mousewheel_icon} muiswiel of de touchpad, of met de knoppen {plus} en {minus}. **Zoom in of uit!**"
       },
-      "ok": "Oké",
+      "ok": "OK",
       "points": {
         "add_close": "De objectbewerker onthoudt al je aanpassingen vanzelf. **Als je klaar bent met de naam toevoegen, sluit de objectbewerker dan door op op de {button}-knop te klikken, of `{esc}` te drukken.**",
         "add_name": "Laten we aannemen dat je lokale kennis hebt van dit cafetaria, en je de naam weet. **Voeg een naam toe voor de cafetaria.**",
@@ -1451,10 +1126,10 @@
           "reference": "Luchtvaartwegen die gebouwen kruisen, moeten bruggen of verschillende lagen gebruiken."
         },
         "aeroway-highway": {
-          "reference": "Luchtwegen die spoorwegen kruisen moeten verbonden worden."
+          "reference": "Luchtwegen die spoorwegen kruisen moeten verboden worden."
         },
         "aeroway-railway": {
-          "reference": "Luchtwegen die wegen kruisen moeten verbonden worden."
+          "reference": "Luchtwegen die wegen kruisen moeten verboden worden."
         },
         "aeroway-waterway": {
           "reference": "Luchtwegen die waterwegen kruisen moeten tunnels gebruiken."
@@ -1524,7 +1199,6 @@
         "title": "Niet-aangesloten wegen"
       },
       "enable_all": "Schakel alles in",
-      "errors": "Foutmeldingen",
       "fix": {
         "add_a_bridge": {
           "annotation": "Brug toegevoegd.",
@@ -1655,10 +1329,6 @@
         "tag_this_as_lower": {
           "title": "Tag dit als lager"
         },
-        "upgrade_tags": {
-          "annotation": "Oude tags geüpgraded",
-          "title": "Werk de tags bij"
-        },
         "use_different_layers": {
           "title": "Gebruik verschillende lagen"
         },
@@ -1784,7 +1454,7 @@
           "edits_in_view": "Je aanpassingen binnen de huidige weergave zien er goed uit",
           "everything": "Alles ziet er goed uit",
           "everything_in_view": "Binnen de huidige weergave ziet alles er goed uit",
-          "no_edits": "Je hebt nog niks aangepast"
+          "no_edits": "Er zijn geen niet-opgeslagen aanpassingen"
         }
       },
       "old_multipolygon": {
@@ -1837,8 +1507,6 @@
         "title": "Privé-informatie"
       },
       "reset_ignored": "Herstel negeerlijst",
-      "resolved_tooltip": "Problemen die zijn opgelost door jouw aanpassingen",
-      "rules": "Regels",
       "suggested": "Voorgestelde updates:",
       "suspicious_name": {
         "tip": "Vind objecten met generieke of verdachte namen",
@@ -1868,341 +1536,10 @@
       "vertex_as_point": {
         "message": "{feature} zou verbonden moeten zijn met een lijn of vlak op basis van zijn tags",
         "reference": "Sommige objecten mogen geen alleenstaande punten zijn."
-      },
-      "warnings": "Waarschuwingen"
+      }
     },
     "kartaview": {
-      "title": "KartaView",
-      "tooltip": "Foto's op straatniveau van KartaView"
-    },
-    "languageNames": {
-      "ab": "Abchazisch",
-      "ace": "Atjehs",
-      "ach": "Akoli",
-      "ady": "Adygees",
-      "ae": "Avestisch",
-      "aeb": "Tunesisch Arabisch",
-      "ain": "Aino",
-      "ajp": "Zuid-Levantijns-Arabisch",
-      "akk": "Akkadisch",
-      "ale": "Aleoetisch",
-      "aln": "Gegisch",
-      "alt": "Zuid-Altaïsch",
-      "am": "Amhaars",
-      "an": "Aragonees",
-      "ang": "Oudengels",
-      "apc": "Levantijns-Arabisch",
-      "ar": "Arabisch",
-      "ar-001": "modern standaard Arabisch",
-      "arc": "Aramees",
-      "arn": "Mapudungun",
-      "arq": "Algerijns Arabisch",
-      "ars": "Arabisch, Nadjdi",
-      "ary": "Marokkaans Arabisch",
-      "arz": "Egyptisch Arabisch",
-      "as": "Assamees",
-      "ast": "Asturisch",
-      "av": "Avarisch",
-      "az": "Azerbeidzjaans",
-      "ba": "Basjkiers",
-      "bal": "Beloetsji",
-      "ban": "Balinees",
-      "bar": "Beiers",
-      "bas": "Basa",
-      "bax": "Bamoun",
-      "bbj": "Ghomala’",
-      "be": "Belarussisch",
-      "bew": "Bataviaans",
-      "bg": "Bulgaars",
-      "bgn": "Westers Beloetsji",
-      "bla": "Siksika",
-      "bn": "Bengaals",
-      "bo": "Tibetaans",
-      "br": "Bretons",
-      "bs": "Bosnisch",
-      "bua": "Boerjatisch",
-      "bug": "Buginees",
-      "ca": "Catalaans",
-      "car": "Caribisch",
-      "ce": "Tsjetsjeens",
-      "chk": "Chuukees",
-      "ckb": "Koerdisch, Soranî",
-      "co": "Corsicaans",
-      "cop": "Koptisch",
-      "crh": "Krim-Tataars",
-      "crj": "Zuidoost-Cree",
-      "crl": "Noordoost-Cree",
-      "crr": "Carolina Algonkisch",
-      "crs": "Seychellencreools",
-      "cs": "Tsjechisch",
-      "csb": "Kasjoebisch",
-      "cu": "Kerkslavisch",
-      "cv": "Tsjoevasjisch",
-      "da": "Deens",
-      "de": "Duits",
-      "den": "Slavey",
-      "dsb": "Nedersorbisch",
-      "dtp": "Dusun",
-      "dum": "Middelnederlands",
-      "egl": "Emiliano",
-      "egy": "Oudegyptisch",
-      "el": "Grieks",
-      "elx": "Elamitisch",
-      "en": "Engels",
-      "enm": "Middelengels",
-      "es": "Spaans",
-      "esu": "Yupik",
-      "et": "Estisch",
-      "eu": "Baskisch",
-      "ext": "Extremeens",
-      "fa": "Perzisch",
-      "ff": "Fulah",
-      "fi": "Fins",
-      "fil": "Filipijns",
-      "fit": "Tornedal-Fins",
-      "fj": "Fijisch",
-      "fo": "Faeröers",
-      "fr": "Frans",
-      "frc": "Cajun-Frans",
-      "frm": "Middelfrans",
-      "fro": "Oudfrans",
-      "frp": "Arpitaans",
-      "frr": "Noord-Fries",
-      "frs": "Oost-Fries",
-      "fur": "Friulisch",
-      "fy": "Fries",
-      "ga": "Iers",
-      "gag": "Gagaoezisch",
-      "gan": "Ganyu",
-      "gbz": "Zoroastrisch Dari",
-      "gd": "Schots-Gaelisch",
-      "gez": "Ge’ez",
-      "gil": "Gilbertees",
-      "gl": "Galicisch",
-      "gmh": "Middelhoogduits",
-      "gn": "Guaraní",
-      "goh": "Oudhoogduits",
-      "got": "Gothisch",
-      "grc": "Oudgrieks",
-      "gsw": "Zwitserduits",
-      "gur": "Gurune",
-      "hak": "Hakka",
-      "haw": "Hawaïaans",
-      "hax": "Zuid-Haida",
-      "he": "Hebreeuws",
-      "hif": "Fijisch Hindi",
-      "hit": "Hettitisch",
-      "hr": "Kroatisch",
-      "hsb": "Oppersorbisch",
-      "hsn": "Xiangyu",
-      "ht": "Haïtiaans Creools",
-      "hu": "Hongaars",
-      "hy": "Armeens",
-      "id": "Indonesisch",
-      "ii": "Yi",
-      "ikt": "Westelijk Canadees Inuktitut",
-      "inh": "Ingoesjetisch",
-      "is": "IJslands",
-      "it": "Italiaans",
-      "izh": "Ingrisch",
-      "ja": "Japans",
-      "jam": "Jamaicaans Creools",
-      "jpr": "Judeo-Perzisch",
-      "jrb": "Judeo-Arabisch",
-      "jut": "Jutlands",
-      "jv": "Javaans",
-      "ka": "Georgisch",
-      "kaa": "Karakalpaks",
-      "kab": "Kabylisch",
-      "kbd": "Kabardisch",
-      "kea": "Kaapverdisch Creools",
-      "kho": "Khotanees",
-      "ki": "Gikuyu",
-      "kiu": "Kirmanckî",
-      "kk": "Kazachs",
-      "kl": "Groenlands",
-      "ko": "Koreaans",
-      "koi": "Komi-Permjaaks",
-      "kos": "Kosraeaans",
-      "krc": "Karatsjaj-Balkarisch",
-      "krl": "Karelisch",
-      "ks": "Kasjmiri",
-      "ksh": "Kölsch",
-      "ku": "Koerdisch",
-      "kum": "Koemuks",
-      "ky": "Kirgizisch",
-      "la": "Latijn",
-      "lah": "Lahnda",
-      "lb": "Luxemburgs",
-      "lez": "Lezgisch",
-      "lg": "Luganda",
-      "li": "Limburgs",
-      "lij": "Ligurisch",
-      "liv": "Lijfs",
-      "lmo": "Lombardisch",
-      "lo": "Laotiaans",
-      "lou": "Louisiana-Creools",
-      "lrc": "Noordelijk Luri",
-      "lt": "Litouws",
-      "ltg": "Letgaals",
-      "lv": "Lets",
-      "lzh": "Klassiek Chinees",
-      "lzz": "Lazisch",
-      "mad": "Madoerees",
-      "mak": "Makassaars",
-      "mas": "Maa",
-      "mdf": "Moksja",
-      "mg": "Malagassisch",
-      "mga": "Middeliers",
-      "mgo": "Meta’",
-      "mh": "Marshallees",
-      "mi": "Maori",
-      "mic": "Mi’kmaq",
-      "mk": "Macedonisch",
-      "mn": "Mongools",
-      "mnc": "Mantsjoe",
-      "mni": "Meitei",
-      "mrj": "West-Mari",
-      "ms": "Maleis",
-      "mt": "Maltees",
-      "mus": "Creek",
-      "mwl": "Mirandees",
-      "my": "Birmaans",
-      "myv": "Erzja",
-      "na": "Nauruaans",
-      "nan": "Minnanyu",
-      "nap": "Napolitaans",
-      "nb": "Noors - Bokmål",
-      "nd": "Noord-Ndebele",
-      "nds": "Nedersaksisch",
-      "nds-NL": "Nederduits",
-      "ne": "Nepalees",
-      "niu": "Niueaans",
-      "nl": "Nederlands",
-      "nl-BE": "Vlaams",
-      "nmg": "Ngumba",
-      "nn": "Noors - Nynorsk",
-      "no": "Noors",
-      "non": "Oudnoors",
-      "nr": "Zuid-Ndbele",
-      "nso": "Noord-Sotho",
-      "nwc": "Klassiek Nepalbhasa",
-      "oc": "Occitaans",
-      "ojb": "Noordwest-Ojibwe",
-      "ojc": "Centraal Ojibwa",
-      "ojw": "West-Ojibwe",
-      "om": "Afaan Oromo",
-      "os": "Ossetisch",
-      "ota": "Ottomaans-Turks",
-      "pap": "Papiaments",
-      "pau": "Palaus",
-      "pcd": "Picardisch",
-      "pcm": "Nigeriaans Pidgin",
-      "pdc": "Pennsylvania-Duits",
-      "peo": "Oudperzisch",
-      "pfl": "Paltsisch",
-      "phn": "Foenicisch",
-      "pl": "Pools",
-      "pms": "Piëmontees",
-      "pnt": "Pontisch",
-      "pon": "Pohnpeiaans",
-      "prg": "Oudpruisisch",
-      "pro": "Oudprovençaals",
-      "ps": "Pasjtoe",
-      "pt": "Portugees",
-      "quc": "K’iche’",
-      "qug": "Kichwa",
-      "rif": "Riffijns",
-      "rm": "Reto-Romaans",
-      "rn": "Kirundi",
-      "ro": "Roemeens",
-      "rom": "Romani",
-      "rtm": "Rotumaans",
-      "ru": "Russisch",
-      "rue": "Roetheens",
-      "rup": "Aroemeens",
-      "sa": "Sanskriet",
-      "sah": "Jakoets",
-      "sam": "Samaritaans-Aramees",
-      "sc": "Sardijns",
-      "scn": "Siciliaans",
-      "sco": "Schots",
-      "sdc": "Sassarees",
-      "sdh": "Pahlavani",
-      "se": "Noord-Samisch",
-      "sel": "Selkoeps",
-      "sga": "Oudiers",
-      "sgs": "Samogitisch",
-      "sh": "Servo-Kroatisch",
-      "shi": "Tashelhiyt",
-      "shu": "Tsjadisch Arabisch",
-      "si": "Singalees",
-      "sk": "Slowaaks",
-      "sl": "Sloveens",
-      "slh": "Zuid-Lushootseed",
-      "sli": "Silezisch Duits",
-      "sm": "Samoaans",
-      "sma": "Zuid-Samisch",
-      "smj": "Lule-Samisch",
-      "smn": "Inari-Samisch",
-      "sms": "Skolt-Samisch",
-      "so": "Somalisch",
-      "sog": "Sogdisch",
-      "sq": "Albanees",
-      "sr": "Servisch",
-      "srn": "Sranantongo",
-      "ss": "Swazi",
-      "st": "Zuid-Sotho",
-      "stq": "Saterfries",
-      "su": "Soendanees",
-      "sus": "Soesoe",
-      "sux": "Soemerisch",
-      "sv": "Zweeds",
-      "swb": "Shimaore",
-      "syc": "Klassiek Syrisch",
-      "syr": "Syrisch",
-      "szl": "Silezisch",
-      "tce": "Zuid-Tutchone",
-      "tet": "Tetun",
-      "tg": "Tadzjieks",
-      "tk": "Turkmeens",
-      "tkl": "Tokelaus",
-      "to": "Tongaans",
-      "tr": "Turks",
-      "tsd": "Tsakonisch",
-      "tt": "Tataars",
-      "ttm": "Noord-Tutchone",
-      "ttt": "Moslim Tat",
-      "tum": "Toemboeka",
-      "tvl": "Tuvaluaans",
-      "ty": "Tahitiaans",
-      "tyv": "Toevaans",
-      "tzm": "Tamazight (Centraal-Marokko)",
-      "udm": "Oedmoerts",
-      "ug": "Oeigoers",
-      "uga": "Oegaritisch",
-      "uk": "Oekraïens",
-      "uz": "Oezbeeks",
-      "vec": "Venetiaans",
-      "vep": "Wepsisch",
-      "vi": "Vietnamees",
-      "vls": "West-Vlaams",
-      "vmf": "Opperfrankisch",
-      "vot": "Votisch",
-      "wa": "Waals",
-      "wuu": "Wuyu",
-      "xal": "Kalmuks",
-      "xmf": "Mingreels",
-      "yap": "Yapees",
-      "yi": "Jiddisch",
-      "yue": "Kantonees",
-      "zbl": "Blissymbolen",
-      "zea": "Zeeuws",
-      "zgh": "Standaard Marokkaanse Tamazight",
-      "zh": "Mandarijn",
-      "zh-Hans": "Mandarijn (vereenvoudigd)",
-      "zh-Hant": "Mandarijn (traditioneel)",
-      "zu": "Zoeloe"
+      "title": "KartaView"
     },
     "loading_auth": "Aan het verbinden met OpenStreetMap…",
     "login": "Log in",
@@ -2220,15 +1557,11 @@
         "custom": {
           "title": "Aangepaste kaartgegevens",
           "tooltip": "Sleep een databestand naar de pagina of klik op de knop om te starten",
-          "zoom": "Zoom in op data"
+          "zoom": "Zoom naar data"
         },
         "keepRight": {
           "title": "KeepRight-problemen",
           "tooltip": "Gegevensproblemen gedetecteerd door keepright.at"
-        },
-        "maproulette": {
-          "cancel": "Annuleer",
-          "detail_title": "Meer informatie (Engels)"
         },
         "notes": {
           "title": "OpenStreetMap-kaartopmerkingen",
@@ -2253,11 +1586,7 @@
     },
     "mapillary": {
       "title": "Mapillary",
-      "tooltip": "Foto's op straatniveau van Mapillary",
       "view_on_mapillary": "Bekijk deze afbeelding op Mapillary"
-    },
-    "mapillary_signs": {
-      "title": "Verkeersborden"
     },
     "merge_remote_changes": {
       "conflict": {
@@ -2271,7 +1600,7 @@
     "modes": {
       "add_area": {
         "description": "Voeg parken, gebouwen, meren of andere vlakken toe aan de kaart.",
-        "title": "Vlak"
+        "title": "Gebied"
       },
       "add_line": {
         "description": "Voeg snelwegen, straten, voetpaden, kanalen of andere lijnen toe aan de kaart.",
@@ -2301,14 +1630,14 @@
       "close": "Kaartopmerking afsluiten",
       "close_comment": "Sluit met commentaar",
       "closed": "(Gesloten)",
-      "comment": "Voeg commentaar toe",
-      "commentTitle": "Commentaren",
+      "comment": "Opmerking",
+      "commentTitle": "Commentaar",
       "inputPlaceholder": "Voeg commentaar toe om te delen met anderen.",
       "login": "Je kunt deze kaartopmerking alleen aanpassen of erop reageren als je ingelogd bent.",
       "new": "Nieuwe kaartopmerking",
       "newComment": "Nieuwe commentaar",
       "newDescription": "Omschrijf het probleem.",
-      "note": "Kaartopmerking",
+      "note": "Opmerking",
       "open": "Kaartopmerking heropenen",
       "open_comment": "Heropen met commentaar",
       "report": "Meld",
@@ -2319,7 +1648,7 @@
         "opened": "geopened {when}",
         "reopened": "heropend {when}"
       },
-      "title": "Kaartopmerking bewerken",
+      "title": "Bewerk opmerking",
       "upload_explanation": "Je opmerkingen zijn zichtbaar voor alle OpenStreetMap-gebruikers.",
       "upload_explanation_with_user": "Je opmerkingen als {user} zijn zichtbaar voor alle OpenStreetMap-gebruikers."
     },
@@ -2394,10 +1723,6 @@
           "one": "Eén object gekopieerd.",
           "other": "{n} objecten gekopieerd."
         },
-        "description": {
-          "one": "Stel dit object in om te plakken.",
-          "other": "Stel deze objecten in om te plakken."
-        },
         "title": "Kopieer",
         "too_large": {
           "one": "Dit kan niet gekopieerd worden omdat slechts een deel ervan momenteel zichtbaar is.",
@@ -2416,7 +1741,7 @@
           "relation": "Relatie verwijderd.",
           "vertex": "Knoop weggehaald uit weg."
         },
-        "title": "Verwijder"
+        "title": "Verwijderen"
       },
       "delete_member": {
         "annotation": {
@@ -2495,11 +1820,6 @@
           "one": "Een punt is geëxtraheerd.",
           "other": "{n} punten zijn geëxtraheerd."
         },
-        "description": {
-          "feature": {
-            "other": "Extraheer punten van deze objecten."
-          }
-        },
         "title": "Extraheer"
       },
       "merge": {
@@ -2531,7 +1851,7 @@
           "relation": "Relatie verschoven.",
           "vertex": "Knooppunt van een weg verschoven."
         },
-        "title": "Verschuif"
+        "title": "Verplaats"
       },
       "orthogonalize": {
         "annotation": {
@@ -2609,7 +1929,7 @@
           "point": "Draai de richting van dit point om",
           "points": "Draai de richting van deze punten om."
         },
-        "title": "Keer om"
+        "title": "Omgekeerd"
       },
       "rotate": {
         "annotation": {
@@ -2738,13 +2058,7 @@
         "tooltip": "Toon foto's genomen door deze gebruiker"
       }
     },
-    "photos": {
-      "hires": "Hoge resolutie"
-    },
     "preferences": {
-      "color_selection": {
-        "default": "Standaard"
-      },
       "description": "Instellingen",
       "key": "P",
       "privacy": {
@@ -2756,12 +2070,6 @@
         "title": "Privacy"
       },
       "title": "Instellingen"
-    },
-    "rapid_menu": {
-      "category": {
-        "roads": "wegen"
-      },
-      "remove": "Verwijder"
     },
     "redo": {
       "nothing": "Niets om opnieuw te doen.",
@@ -2800,11 +2108,9 @@
           "allowed_u_turn": "Omkeren toegestaan {indirect}",
           "no_left_turn": "NIET links afslaan {indirect}",
           "no_right_turn": "NIET rechts afslaan {indirect}",
-          "no_straight_on": "NIET rechtdoor gaan {indirect}",
           "no_u_turn": "NIET omkeren {indirect}",
           "only_left_turn": "ALLEEN links afslaan {indirect}",
           "only_right_turn": "ALLEEN rechts afslaan {indirect}",
-          "only_straight_on": "ALLEEN rechtdoor gaan {indirect}",
           "only_u_turn": "ALLEEN omkeren {indirect}"
         },
         "via": "VIA",
@@ -2822,8 +2128,7 @@
         "keep_local": "Behoud mijn versie",
         "keep_remote": "Gebruik hun versie",
         "next": "Volgende >",
-        "previous": "< Vorige",
-        "restore": "Herstel"
+        "previous": "< Vorige"
       },
       "conflict_progress": "Bezig met controleren op conflicten: {num} van {total}",
       "error": "Er zijn fouten opgetreden bij het opslaan",
@@ -2835,109 +2140,10 @@
       "unsaved_changes": "Er zijn niet-opgeslagen aanpassingen",
       "uploading": "Bezig met uploaden naar OpenStreetMap…"
     },
-    "scriptNames": {
-      "Afak": "Defaka",
-      "Aghb": "Kaukasisch Albanees",
-      "Arab": "Arabisch",
-      "Armi": "Keizerlijk Aramees",
-      "Armn": "Armeens",
-      "Avst": "Avestaans",
-      "Bali": "Balinees",
-      "Bamu": "Bamoun",
-      "Beng": "Bengaals",
-      "Blis": "Blissymbolen",
-      "Brai": "braille",
-      "Bugi": "Buginees",
-      "Cans": "Verenigde Canadese Aboriginal-symbolen",
-      "Cari": "Carisch",
-      "Chrs": "Chorasmisch",
-      "Copt": "Koptisch",
-      "Cpmn": "Cypro-Minoïsch",
-      "Cprt": "Cyprisch",
-      "Cyrl": "Cyrillisch",
-      "Cyrs": "Oudkerkslavisch Cyrillisch",
-      "Dupl": "Duployan snelschrift",
-      "Egyd": "Egyptisch demotisch",
-      "Egyh": "Egyptisch hiëratisch",
-      "Egyp": "Egyptische hiërogliefen",
-      "Elym": "Elymaisch",
-      "Ethi": "Ethiopisch",
-      "Geok": "Georgisch Khutsuri",
-      "Geor": "Georgisch",
-      "Glag": "Glagolitisch",
-      "Goth": "Gothisch",
-      "Grek": "Grieks",
-      "Hanb": "Han met Bopomofo",
-      "Hans": "vereenvoudigd Chinees",
-      "Hant": "traditioneel Chinees",
-      "Hebr": "Hebreeuws",
-      "Hluw": "Anatolische hiërogliefen",
-      "Hrkt": "Katakana of Hiragana",
-      "Hung": "Oudhongaars",
-      "Ital": "Oud-italisch",
-      "Java": "Javaans",
-      "Jpan": "Japans",
-      "Kawi": "Kawi-taal",
-      "Kits": "Kitaans kleinschrift",
-      "Kore": "Koreaans",
-      "Laoo": "Laotiaans",
-      "Latf": "Gotisch Latijns",
-      "Latg": "Gaelisch Latijns",
-      "Latn": "Latijns",
-      "Lina": "Lineair A",
-      "Linb": "Lineair B",
-      "Lyci": "Lycisch",
-      "Lydi": "Lydisch",
-      "Mand": "Mandaeans",
-      "Mani": "Manicheaans",
-      "Maya": "Mayahiërogliefen",
-      "Merc": "Meroitisch cursief",
-      "Mero": "Meroïtisch",
-      "Mong": "Mongools",
-      "Mtei": "Meitei",
-      "Mymr": "Birmaans",
-      "Narb": "Oud Noord-Arabisch",
-      "Nbat": "Nabateaans",
-      "Newa": "Newari",
-      "Ougr": "Oud Oeigoers",
-      "Palm": "Palmyreens",
-      "Perm": "Oudpermisch",
-      "Phli": "Inscriptioneel Pahlavi",
-      "Phlp": "Psalmen Pahlavi",
-      "Phlv": "Boek Pahlavi",
-      "Phnx": "Foenicisch",
-      "Plrd": "Pollard-fonetisch",
-      "Prti": "Inscriptioneel Parthisch",
-      "Samr": "Samaritaans",
-      "Sarb": "Oud Zuid-Arabisch",
-      "Sind": "Sindhi",
-      "Sinh": "Singalees",
-      "Sogd": "Sogdisch",
-      "Sogo": "Oud Sogdisch",
-      "Sund": "Soendanees",
-      "Syre": "Estrangelo Aramees",
-      "Syrj": "West-Aramees",
-      "Syrn": "Oost-Aramees",
-      "Talu": "Nieuw Tai Lue",
-      "Tibt": "Tibetaans",
-      "Toto": "Totoschrift",
-      "Ugar": "Ugaritisch",
-      "Visp": "Zichtbare spraak",
-      "Xpeo": "Oudperzisch",
-      "Yezi": "Jezidi",
-      "Zanb": "vierkant Zanabazar",
-      "Zinh": "Overgeërfd",
-      "Zmth": "wiskundige notatie",
-      "Zsye": "emoji",
-      "Zsym": "symbolen",
-      "Zxxx": "ongeschreven",
-      "Zyyy": "algemeen",
-      "Zzzz": "onbekend schriftsysteem"
-    },
     "self_intersection": {
       "error": {
         "areas": "Vlakken kunnen zichzelf niet kruisen. ",
-        "lines": "Lijken kunnen zichzelf niet kruisen."
+        "lines": "Lijnen kunnen zichzelf niet kruisen."
       }
     },
     "settings": {
@@ -2985,178 +2191,17 @@
       }
     },
     "shortcuts": {
-      "browsing": "Rondbewegen",
-      "command": {
-        "add_area": {
-          "label": "‘Vlak toevoegen’-modus"
-        },
-        "add_line": {
-          "label": "‘Lijn toevoegen’-modus"
-        },
-        "add_note": {
-          "label": "‘Kaartopmerking toevoegen’-modus"
-        },
-        "add_point": {
-          "label": "‘Punt toevoegen’-modus"
-        },
-        "change_parent": {
-          "label": "Van lijn wisselen"
-        },
-        "circularize": {
-          "label": "Vlak of gesloten lijn rond maken"
-        },
-        "continue_line": {
-          "label": "Vervolg een lijn op het geselecteerde eindpunt"
-        },
-        "copy": {
-          "label": "Geselecteerde objecten kopiëren"
-        },
-        "delete": {
-          "label": "Geselecteerde objecten verwijderen"
-        },
-        "disable_snap": {
-          "label": "Houd ingedrukt om punt-magnetisme uit te schakelen"
-        },
-        "disconnect": {
-          "label": "Maak geselecteerde objecten los"
-        },
-        "edit_menu": {
-          "label": "Bewerkmenu open/dicht"
-        },
-        "extract": {
-          "key": "O",
-          "label": "Extraheer een punt uit een object"
-        },
-        "find": {
-          "label": "Objecten zoeken"
-        },
-        "first_node": {
-          "label": "Naar eerste knoop springen"
-        },
-        "highlight_edits": {
-          "label": "Markeer onopgeslagen wijzigingen"
-        },
-        "keyboard_shortcuts": {
-          "label": "Toon sneltoetsen"
-        },
-        "lasso": {
-          "label": "Objecten selecteren met lasso"
-        },
-        "last_node": {
-          "label": "Naar laatste knoop springen"
-        },
-        "merge": {
-          "label": "Geselecteerde objecten samenvoegen"
-        },
-        "move": {
-          "label": "Geselecteerde objecten verplaatsen"
-        },
-        "orthogonalize": {
-          "label": "Hoeken van lijn of vlak haaks maken"
-        },
-        "pan": {
-          "label": "Verschuif kaart"
-        },
-        "paste": {
-          "label": "Geselecteerde objecten plakken"
-        },
-        "place_point": {
-          "label": "Plaats punt of kaartopmerking"
-        },
-        "redo": {
-          "label": "Ongedaan gemaakte actie opnieuw uitvoeren"
-        },
-        "reflect_long": {
-          "label": "Spiegel objecten langs de lange as"
-        },
-        "reflect_short": {
-          "label": "Spiegel objecten langs de korte as"
-        },
-        "reverse": {
-          "label": "Keer geselecteerde objecten om"
-        },
-        "rotate": {
-          "label": "Geselecteerde objecten draaien"
-        },
-        "save": {
-          "label": "Sla aanpassingen op"
-        },
-        "select_children": {
-          "label": "Selecteer subknopen"
-        },
-        "select_multi": {
-          "label": "Meerdere objecten selecteren"
-        },
-        "select_one": {
-          "label": "Eén object selecteren"
-        },
-        "select_parent": {
-          "label": "Selecteer parent weg"
-        },
-        "split": {
-          "label": "Splits objecten bij de geselecteerde punten"
-        },
-        "stop_line": {
-          "label": "Beëindig tekenen van lijn of vlak"
-        },
-        "straighten": {
-          "key": "Z",
-          "label": "Trek een lijn of punten recht"
-        },
-        "toggle_all_cards": {
-          "label": "Alle informatiepanelen open/dicht"
-        },
-        "toggle_background": {
-          "label": "Achtergrondafbeeldingenpaneel open/dicht"
-        },
-        "toggle_background_card": {
-          "label": "Achtergrondpaneel open/dicht"
-        },
-        "toggle_history_card": {
-          "label": "Geschiedenispaneel open/dicht"
-        },
-        "toggle_issues": {
-          "label": "Toon'Verberg validatiepaneel"
-        },
-        "toggle_location_card": {
-          "label": "Locatiepaneel open/dicht"
-        },
-        "toggle_map_data": {
-          "label": "Kaartgegevenspaneel open/dicht"
-        },
-        "toggle_measurement_card": {
-          "label": "Meetpaneel open/dicht"
-        },
-        "toggle_osm_data": {
-          "label": "OpenStreetMap-gegevens aan/uit"
-        },
-        "toggle_preferences": {
-          "label": "Gebruikersinstellingenpaneel open/dicht"
-        },
-        "toggle_streetside": {
-          "key": "Z"
-        },
-        "undo": {
-          "label": "Laatste actie ongedaan maken"
-        }
-      },
-      "commands": "Opdrachten",
-      "display_options": "Weergave-opties",
-      "drawing": "Tekenen",
-      "editing": "Bewerken",
       "gesture": {
         "drag": "sleep"
       },
-      "help": "Hulp",
-      "info": "Informatie",
       "key": {
         "alt": "Alt",
         "backspace": "Backspace",
         "cmd": "Cmd",
         "ctrl": "Ctrl",
         "del": "Del",
-        "delete": "Verwijder",
-        "end": "End",
+        "delete": "Verwijderen",
+        "end": "Einde",
         "enter": "Enter",
         "esc": "Esc",
         "home": "Home",
@@ -3169,14 +2214,9 @@
         "shift": "Shift",
         "space": "Spatiebalk"
       },
-      "navigation": "Navigatie",
       "or": "-of-",
-      "selecting_features": "Objecten selecteren",
       "title": "Sneltoetsen",
-      "tooltip": "Toon het sneltoetsoverzicht.",
-      "with_features_selected": "Met objecten geselecteerd",
-      "with_node_selected": "Met knoop geselecteerd",
-      "with_way_selected": "Met geselecteerde weg"
+      "tooltip": "Toon het sneltoetsoverzicht."
     },
     "source_switch": {
       "dev": "dev",
@@ -3190,15 +2230,6 @@
       "text": "iD biedt een gebruiksvriendelijke manier om bij te dragen aan de beste, open wereldkaart ter wereld. Je maakt gebruik van versie {version}. Ga voor meer informatie naar {website}. Meld fouten (bugs) op {github}.",
       "walkthrough": "Start de rondleiding",
       "welcome": "Welkom bij de iD OpenStreetMap-bewerker"
-    },
-    "status": {
-      "message": {
-        "error": "Er kan geen verbinding worden gemaakt met de OpenStreetMap-api. Je aanpassingen zijn lokaal opgeslagen. Controleer je internetverbinding.",
-        "local_storage_full": "Je hebt te veel wijzigingen aangebracht om bij te houden. Overweeg om je wijzigingen nu op te slaan.",
-        "offline": "De OpenStreetMap-api is offline. Je aanpassingen zijn lokaal opgeslagen. Probeer het later opnieuw.",
-        "readonly": "De OpenStreetMap-api is momenteel 'alleen-lezen'. Je kunt aanpassingen blijven doen, maar ze nog niet opslaan."
-      },
-      "retry": "Probeer opnieuw"
     },
     "streetside": {
       "title": "Bing Streetside",
@@ -3223,7 +2254,7 @@
       "view_on_osm": "Bekijk wijzigingen op OSM"
     },
     "tag_reference": {
-      "description": "Omschrijving",
+      "description": "Beschrijving",
       "on_wiki": "{tag} op wiki.osm.org",
       "used_with": "gebruikt met {type}"
     },
@@ -3242,8 +2273,8 @@
       "add_feature": "Voeg object toe",
       "favorites": "Favorieten",
       "inspect": "Beoordeel",
-      "recent": "Recent",
-      "undo_redo": "Ongedaan/Opnieuw"
+      "recent": "Recente",
+      "undo_redo": "Ongedaan maken/Opnieuw"
     },
     "tooltip_keyhint": "Sneltoets:",
     "translate": {
@@ -3266,7 +2297,7 @@
       "area_pair": "{area1} ({area2})",
       "coordinate": "{coordinate}{direction}",
       "coordinate_pair": "{latitude}, {longitude}",
-      "east": "O",
+      "east": "E",
       "feet": "{quantity} ft",
       "hectares": "{quantity} ha",
       "kilometers": "{quantity} km",
