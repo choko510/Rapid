@@ -98,21 +98,11 @@ export class UiPluginManagerModal {
     const catalog = plugins?.getRegistryCatalog() ?? [];
     const $content = this.$modal.select('.content');
 
-    const allTags = Array.from(new Set(catalog.flatMap(plugin => plugin.tags || []))).sort((a, b) => a.localeCompare(b));
+    let { allTags, filteredCatalog } = this._filterCatalog(catalog);
     if (this._tagFilter !== '*' && !allTags.includes(this._tagFilter)) {
       this._tagFilter = '*';
+      ({ allTags, filteredCatalog } = this._filterCatalog(catalog));
     }
-
-    const search = this._searchText.toLowerCase();
-    const filteredCatalog = catalog.filter(plugin => {
-      const name = (plugin.name || '').toLowerCase();
-      const description = (plugin.description || '').toLowerCase();
-      const id = (plugin.id || '').toLowerCase();
-      const tags = (plugin.tags || []).map(tag => String(tag).toLowerCase());
-      const matchesText = !search || name.includes(search) || description.includes(search) || id.includes(search);
-      const matchesTag = this._tagFilter === '*' || tags.includes(this._tagFilter.toLowerCase());
-      return matchesText && matchesTag;
-    });
 
     let registryFetchedAt = l10n.t('plugin_manager.registry_never_updated');
     if (registryState.fetchedAt) {
@@ -964,6 +954,49 @@ export class UiPluginManagerModal {
   _clearStatus() {
     this._statusText = '';
     this._statusKind = 'info';
+  }
+
+
+  _filterCatalog(catalog) {
+    const allTagSet = new Set();
+    const filteredCatalog = [];
+    const searchToken = this._normalizeSearchToken(this._searchText);
+    const tagToken = this._normalizeTagToken(this._tagFilter);
+    const useTagFilter = tagToken !== '*';
+
+    for (const plugin of catalog) {
+      const pluginTags = Array.isArray(plugin?.tags) ? plugin.tags : [];
+      const normalizedTags = [];
+      for (const rawTag of pluginTags) {
+        const tag = String(rawTag).trim();
+        if (!tag) continue;
+        allTagSet.add(tag);
+        normalizedTags.push(tag.toLowerCase());
+      }
+
+      const searchText = `${plugin?.name ?? ''}\n${plugin?.description ?? ''}\n${plugin?.id ?? ''}`.toLowerCase();
+      const matchesText = !searchToken || searchText.includes(searchToken);
+      const matchesTag = !useTagFilter || normalizedTags.includes(tagToken);
+      if (matchesText && matchesTag) {
+        filteredCatalog.push(plugin);
+      }
+    }
+
+    return {
+      allTags: Array.from(allTagSet).sort((a, b) => a.localeCompare(b)),
+      filteredCatalog: filteredCatalog
+    };
+  }
+
+
+  _normalizeSearchToken(value) {
+    return String(value ?? '').trim().toLowerCase();
+  }
+
+
+  _normalizeTagToken(value) {
+    const token = String(value ?? '').trim().toLowerCase();
+    return token || '*';
   }
 
 

@@ -169,9 +169,7 @@ export class PluginSystem extends AbstractSystem {
    * @return {Array<Object>}
    */
   getPlugins() {
-    return Array.from(this._plugins.values())
-      .map(record => this._toPublicPlugin(record))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return this._collectPublicPlugins();
   }
 
 
@@ -179,7 +177,7 @@ export class PluginSystem extends AbstractSystem {
    * @return {Array<Object>}
    */
   getBundledPlugins() {
-    return this.getPlugins().filter(plugin => plugin.source === 'bundled');
+    return this._collectPublicPlugins('bundled');
   }
 
 
@@ -187,7 +185,7 @@ export class PluginSystem extends AbstractSystem {
    * @return {Array<Object>}
    */
   getRegistryPlugins() {
-    return this.getPlugins().filter(plugin => plugin.source === 'registry');
+    return this._collectPublicPlugins('registry');
   }
 
 
@@ -195,7 +193,9 @@ export class PluginSystem extends AbstractSystem {
    * @return {Array<Object>}
    */
   getRegistryCatalog() {
-    const installedPlugins = new Map(this.getRegistryPlugins().map(plugin => [plugin.id, plugin]));
+    const installedPlugins = new Map(
+      this._collectPublicPlugins('registry', false).map(plugin => [plugin.id, plugin])
+    );
     const ids = new Set([
       ...this._registryEntries.keys(),
       ...this._registryCatalog.keys(),
@@ -231,6 +231,20 @@ export class PluginSystem extends AbstractSystem {
     }
 
     return rows.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+
+  _collectPublicPlugins(source = null, sortByName = true) {
+    const rows = [];
+    for (const record of this._plugins.values()) {
+      if (source && record.source !== source) continue;
+      rows.push(this._toPublicPlugin(record));
+    }
+
+    if (sortByName) {
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return rows;
   }
 
 
