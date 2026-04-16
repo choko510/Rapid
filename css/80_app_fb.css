@@ -78,7 +78,8 @@ button.rapid-features.layer-off use {
   color: #eee;
   font-size: 16px;
   border-radius: 30px;
-  height: 3rem;
+  height: 2rem;
+  padding: 0 1rem;
 }
 .rapid-inspector button svg,
 .modal.rapid-modal button svg {

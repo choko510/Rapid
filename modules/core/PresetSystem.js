@@ -108,6 +108,7 @@ export class PresetSystem extends AbstractSystem {
         osmSetAreaKeys(this.areaKeys());
         osmSetPointTags(this.pointTags());
         osmSetVertexTags(this.vertexTags());
+        this._clearGeometryCaches();
       });
   }
 
@@ -258,7 +259,41 @@ if (c.icon) c.icon = c.icon.replace(/^iD-/, 'rapid-');
       locations.mergeLocationSets(newLocationSets);
     }
 
+    this._clearGeometryCaches();
+
     return this;
+  }
+
+
+  /**
+   * _clearGeometryCaches
+   * Refresh graph caches that depend on preset-derived geometry rules.
+   */
+  _clearGeometryCaches() {
+    const editor = this.context.systems.editor;
+    const gfx = this.context.systems.gfx;
+    const scene = gfx?.scene;
+
+    if (editor) {
+      const graphs = editor.history.map(edit => edit.graph);
+      if (editor.staging?.graph) {
+        graphs.push(editor.staging.graph);
+      }
+      for (const graph of graphs) {
+        graph?.clearTransients?.();
+      }
+    }
+
+    if (scene) {
+      for (const layer of scene.layers.values()) {
+        if (layer._resolved instanceof Map) {
+          layer._resolved.clear();
+        }
+      }
+      scene.dirtyScene();
+    }
+
+    gfx?.deferredRedraw?.();
   }
 
 

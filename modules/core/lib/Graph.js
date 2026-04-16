@@ -144,6 +144,15 @@ export class Graph {
 
 
   /**
+   * clearTransients
+   * Clears cached transient values for the graph.
+   */
+  clearTransients() {
+    this._transients.clear();
+  }
+
+
+  /**
    * isPoi
    * Returns `true` if the Entity is a Node with no parents
    * @param   entity

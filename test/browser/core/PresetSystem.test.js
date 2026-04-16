@@ -218,6 +218,48 @@ describe('PresetSystem', () => {
       matched = presets.match(surfShop, new Rapid.Graph([surfShop]));
       expect(matched.id).to.eql('amenity/shop/surf');
     });
+
+    it('clears geometry caches after merging preset rules', () => {
+      const localContext = new MockContext();
+      const graph = new Rapid.Graph([Rapid.osmNode({ id: 'n1' })]);
+      const entity = graph.entity('n1');
+      let transientCalls = 0;
+
+      graph.transient(entity, 'geometry-test', () => ++transientCalls);
+      graph.transient(entity, 'geometry-test', () => ++transientCalls);
+      expect(transientCalls).to.eql(1);
+
+      const layer = { _resolved: new Map([['w-1', { geometry: 'line' }]]) };
+      const scene = {
+        layers: new Map([['osm', layer]]),
+        dirtySceneCalled: 0,
+        dirtyScene() { this.dirtySceneCalled += 1; }
+      };
+      const gfx = {
+        scene,
+        deferredRedrawCalled: 0,
+        deferredRedraw() { this.deferredRedrawCalled += 1; }
+      };
+
+      localContext.systems.editor = {
+        history: [{ graph }],
+        staging: { graph }
+      };
+      localContext.systems.gfx = gfx;
+
+      const presets = new Rapid.PresetSystem(localContext);
+      presets.merge({
+        presets: {
+          building: { tags: { building: 'yes' }, geometry: ['area'] }
+        }
+      });
+
+      graph.transient(entity, 'geometry-test', () => ++transientCalls);
+      expect(transientCalls).to.eql(2);
+      expect(layer._resolved.size).to.eql(0);
+      expect(scene.dirtySceneCalled).to.eql(1);
+      expect(gfx.deferredRedrawCalled).to.eql(1);
+    });
   });
 
 
