@@ -215,8 +215,8 @@ export class PluginSystem extends AbstractSystem {
       rows.push({
         id: id,
         source: 'registry',
-        name: installed?.name || catalog.name || id,
-        description: installed?.description || catalog.description || '',
+        name: this._localizedPluginText(installed?.name || catalog.name || id, installed?.jaName || catalog.jaName),
+        description: this._localizedPluginText(installed?.description || catalog.description || '', installed?.jaDescription || catalog.jaDescription),
         pluginVersion: installed?.pluginVersion || catalog.pluginVersion || '1.0.0',
         kinds: [...kinds],
         tags: [...tags],
@@ -597,7 +597,9 @@ export class PluginSystem extends AbstractSystem {
           version: stored?.version,
           id: stored?.id,
           name: stored?.name,
+          'ja-name': stored?.jaName,
           description: stored?.description,
+          'ja-description': stored?.jaDescription,
           pluginVersion: stored?.pluginVersion,
           kinds: stored?.kinds,
           tags: stored?.tags,
@@ -702,7 +704,9 @@ export class PluginSystem extends AbstractSystem {
           id: record.id,
           version: record.manifest.version,
           name: record.manifest.name,
+          jaName: record.manifest.jaName,
           description: record.manifest.description,
+          jaDescription: record.manifest.jaDescription,
           pluginVersion: record.manifest.pluginVersion,
           kinds: [...record.manifest.kinds],
           tags: [...record.manifest.tags],
@@ -1055,21 +1059,23 @@ export class PluginSystem extends AbstractSystem {
 
     const capabilities = missing.map(capability => this._describeCapability(capability));
     const l10n = this.context.systems.l10n;
-    let accepted = false;
+    let accepted;
 
     if (typeof this._permissionPromptHandler === 'function') {
+      const pluginName = this._localizedPluginText(record.manifest.name, record.manifest.jaName);
       accepted = await this._permissionPromptHandler({
         pluginID: record.id,
-        pluginName: record.manifest.name,
+        pluginName: pluginName,
         capabilities: capabilities
       });
     } else {
+      const pluginName = this._localizedPluginText(record.manifest.name, record.manifest.jaName);
       const summary = capabilities
         .map(item => `${item.label}: ${item.description}`)
         .join('\n');
 
       const message = l10n.t('plugin_manager.permissions.prompt', {
-        name: record.manifest.name,
+        name: pluginName,
         capabilities: summary
       });
       accepted = window.confirm(message);
@@ -1099,7 +1105,7 @@ export class PluginSystem extends AbstractSystem {
         this._enabledFromStorage.delete(record.id);
         this._notify(
           this.context.systems.l10n.t('plugin_manager.revoked_notice', {
-            name: record.manifest.name
+            name: this._localizedPluginText(record.manifest.name, record.manifest.jaName)
           }),
           'error'
         );
@@ -1137,7 +1143,9 @@ export class PluginSystem extends AbstractSystem {
         signature: signature || null,
         keyID: keyID || null,
         name: this._cleanString(entry?.name) || id,
+        jaName: this._cleanString(entry?.['ja-name']),
         description: this._cleanString(entry?.description),
+        jaDescription: this._cleanString(entry?.['ja-description']),
         pluginVersion: this._cleanString(entry?.pluginVersion || entry?.versionName || '1.0.0'),
         kinds: this._cleanStringArray(entry?.kinds).filter(kind => ALLOWED_PLUGIN_KINDS.has(kind)),
         tags: this._cleanStringArray(entry?.tags),
@@ -1177,7 +1185,9 @@ export class PluginSystem extends AbstractSystem {
         id: entry.id,
         registryURL: entry.registryURL || this._activeRegistryURL,
         name: entry.name || entry.id,
+        jaName: entry.jaName || '',
         description: entry.description || '',
+        jaDescription: entry.jaDescription || '',
         pluginVersion: entry.pluginVersion || '1.0.0',
         kinds: [...(entry.kinds ?? [])],
         tags: [...(entry.tags ?? [])],
@@ -1192,7 +1202,9 @@ export class PluginSystem extends AbstractSystem {
           const parsedManifest = JSON.parse(manifestText);
           const manifest = this._normalizePluginManifest(parsedManifest, 'registry');
           catalog.name = manifest.name;
+          catalog.jaName = manifest.jaName;
           catalog.description = manifest.description;
+          catalog.jaDescription = manifest.jaDescription;
           catalog.pluginVersion = manifest.pluginVersion;
           catalog.kinds = [...manifest.kinds];
           catalog.tags = [...manifest.tags];
@@ -1235,7 +1247,9 @@ export class PluginSystem extends AbstractSystem {
 
     const id = this._cleanString(raw.id);
     const name = this._cleanString(raw.name);
+    const jaName = this._cleanString(raw['ja-name']);
     const description = this._cleanString(raw.description);
+    const jaDescription = this._cleanString(raw['ja-description']);
     const pluginVersion = this._cleanString(raw.pluginVersion || raw.versionName || '1.0.0');
     const kinds = new Set((Array.isArray(raw.kinds) ? raw.kinds : ['ui']).map(kind => this._cleanString(kind)).filter(Boolean));
     const tags = new Set((Array.isArray(raw.tags) ? raw.tags : [...kinds]).map(tag => this._cleanString(tag)).filter(Boolean));
@@ -1264,7 +1278,9 @@ export class PluginSystem extends AbstractSystem {
       version: Number(raw.version) || 1,
       id: id,
       name: name,
+      jaName: jaName,
       description: description,
+      jaDescription: jaDescription,
       pluginVersion: pluginVersion,
       kinds: kinds,
       tags: tags,
@@ -1284,8 +1300,10 @@ export class PluginSystem extends AbstractSystem {
       revocationMessage: record.revocationMessage,
       installedAt: record.installedAt,
       registryURL: record.registryURL || null,
-      name: record.manifest.name,
-      description: record.manifest.description,
+      name: this._localizedPluginText(record.manifest.name, record.manifest.jaName),
+      description: this._localizedPluginText(record.manifest.description, record.manifest.jaDescription),
+      jaName: record.manifest.jaName,
+      jaDescription: record.manifest.jaDescription,
       pluginVersion: record.manifest.pluginVersion,
       kinds: [...record.manifest.kinds],
       tags: [...record.manifest.tags],
@@ -1309,6 +1327,16 @@ export class PluginSystem extends AbstractSystem {
 
   _buildSignaturePayload(id, manifestURL, manifestHash) {
     return `${id}\n${manifestURL}\n${manifestHash}`;
+  }
+
+
+  _localizedPluginText(defaultText = '', jaText = '') {
+    const l10n = this.context.systems.l10n;
+    const locale = this._cleanString(l10n?.localeCode?.() || l10n?.languageCode?.()).toLowerCase();
+    if (locale.startsWith('ja')) {
+      return jaText || defaultText || '';
+    }
+    return defaultText || '';
   }
 
 
@@ -1433,4 +1461,3 @@ export class PluginSystem extends AbstractSystem {
   }
 
 }
-
