@@ -71,7 +71,7 @@ export class UiCommandPalette {
       }
     };
 
-    return [
+    const actions = [
       {
         id: 'add-point',
         label: l10n.t('modes.add_point.title'),
@@ -155,8 +155,28 @@ export class UiCommandPalette {
         shortcut: '',
         keywords: 'rapid datasets catalog',
         run: () => ui.MapToolbar?.Rapid?.RapidModal?.show()
+      },
+      {
+        id: 'open-plugin-manager',
+        label: l10n.t('plugin_manager.heading'),
+        shortcut: '',
+        keywords: 'plugin manager extensions',
+        run: () => ui.MapToolbar?.Rapid?.PluginModal?.show()
       }
     ];
+
+    const pluginCommands = context.systems.plugins?.getCommands?.() ?? [];
+    for (const pluginCommand of pluginCommands) {
+      actions.push({
+        id: `plugin-${pluginCommand.id}`,
+        label: pluginCommand.label,
+        shortcut: pluginCommand.shortcut || '',
+        keywords: pluginCommand.keywords || 'plugin',
+        run: pluginCommand.run
+      });
+    }
+
+    return actions;
   }
 
 

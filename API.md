@@ -255,7 +255,7 @@ Rapid Assist catalog can import external datasets from:
 * A manifest URL
 * A local JSON file
 
-This import is session-scoped (in-memory only). Imported datasets are not persisted across page reloads.
+Imported manifest URLs are remembered and restored on later page loads.
 
 ### Manifest shape
 
@@ -309,3 +309,96 @@ Each dataset object must include:
 * Duplicate IDs are replaced by the imported definition.
 * Imported datasets are automatically added and enabled.
 * Invalid dataset entries are skipped; valid entries are still imported.
+
+
+## Plugin Registry and Manifest (Plugin Manager)
+
+Rapid includes a dedicated **Plugin Manager** (separate from Assist dataset catalog).
+
+### Distribution and trust model
+
+* Distribution channel: **configurable registry list** (default: `https://raw.githubusercontent.com/choko510/customRapid-plugin/main/registry.json`)
+* Verification: plugin entries with `manifestHash` + `signature` + `keyID` are signature-verified
+* Execution model: JavaScript plugins can run from the active configured registry
+* Revocation policy: revoked plugins are disabled immediately and users are notified
+
+### Registry index shape
+
+```json
+{
+  "version": 1,
+  "plugins": [
+    {
+      "id": "my-plugin",
+      "manifestURL": "https://raw.githubusercontent.com/choko510/customRapid-plugin/main/plugins/my-plugin/manifest.json",
+      "name": "My Plugin",
+      "description": "Optional catalog preview text",
+      "kinds": ["ui", "operation"],
+      "tags": ["qa", "productivity"],
+      "manifestHash": "BASE64_SHA256_OF_MANIFEST_TEXT",
+      "signature": "BASE64_ECDSA_SIGNATURE",
+      "keyID": "rapid-official-2026"
+    }
+  ],
+  "revoked": [
+    {
+      "id": "old-plugin",
+      "reason": "security",
+      "message": "Revoked by plugin registry"
+    }
+  ]
+}
+```
+
+`manifestHash`, `signature`, and `keyID` are optional for external registries.
+`name`, `description`, `kinds`, and `tags` are optional preview fields used by catalog UI.
+
+### Plugin manifest shape
+
+```json
+{
+  "version": 1,
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "description": "Example plugin",
+  "pluginVersion": "1.0.0",
+  "kinds": ["data", "ui", "operation"],
+  "tags": ["qa", "productivity"],
+  "capabilities": ["ui.toolbar", "ui.commandPalette"],
+  "entrypoint": "https://raw.githubusercontent.com/choko510/customRapid-plugin/main/plugins/my-plugin/index.mjs"
+}
+```
+
+### Supported kinds
+
+* `data`
+* `ui`
+* `operation`
+
+### Plugin module lifecycle exports
+
+The entrypoint module must export `enable` (direct export, or as `default` function/object method):
+
+```js
+export function enable(api, manifest) {
+  // register commands / toolbar buttons / datasets
+}
+
+export function disable(api, manifest) {
+  // optional cleanup hook
+}
+
+export function dispose(api, manifest) {
+  // optional final cleanup hook
+}
+```
+
+### Host API (available in `enable`)
+
+* `api.registerCommand({ id, label, keywords?, shortcut?, run })`
+* `api.registerOperation(...)` (alias of `registerCommand`)
+* `api.registerToolbarButton({ id, label, title?, run })`
+* `api.registerDatasetManifest(manifest)` (imports datasets via Rapid data pipeline)
+* `api.notify(message, kind?)`
+* `api.t(stringID, replacements?)`
+* `api.context`

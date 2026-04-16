@@ -1,6 +1,7 @@
 import { selection } from 'd3-selection';
 
 import { UiRapidDatasetToggle } from '../UiRapidDatasetToggle.js';
+import { UiPluginManagerModal } from '../UiPluginManagerModal.js';
 import { UiRapidPowerUserFeatures } from '../UiRapidPowerUserFeatures.js';
 import { uiTooltip } from '../tooltip.js';
 import { utilCmd } from '../../util/cmd.js';
@@ -22,13 +23,16 @@ export class UiRapidTool {
     this.stringID = 'toolbar.rapid_features';
 
     const scene = context.systems.gfx.scene;
+    const plugins = context.systems.plugins;
     const ui = context.systems.ui;
     const urlhash = context.systems.urlhash;
 
     // Create child components
     this.RapidModal = new UiRapidDatasetToggle(context);
+    this.PluginModal = new UiPluginManagerModal(context);
     this.PowerUserModal = new UiRapidPowerUserFeatures(context);
     this.RapidTooltip = uiTooltip(context);
+    this.PluginTooltip = uiTooltip(context);
     this.PowerUserTooltip = uiTooltip(context);
 
     // D3 selections
@@ -43,6 +47,7 @@ export class UiRapidTool {
     ui.on('uichange', this.rerender);
     urlhash.on('hashchange', this.rerender);
     scene.on('layerchange', this.rerender);
+    plugins?.on('pluginschange', this.rerender);
     context.on('modechange', this.rerender);
   }
 
@@ -63,6 +68,7 @@ export class UiRapidTool {
     const context = this.context;
     const l10n = context.systems.l10n;
     const urlhash = context.systems.urlhash;
+    const plugins = context.systems.plugins;
     const ui = context.systems.ui;
     const $container = context.container();
 
@@ -81,6 +87,11 @@ export class UiRapidTool {
       .placement('bottom')
       .scrollContainer($container.select('.map-toolbar'))
       .title(l10n.t('rapid_poweruser.heading.label'));
+
+    this.PluginTooltip
+      .placement('bottom')
+      .scrollContainer($container.select('.map-toolbar'))
+      .title(l10n.t('plugin_manager.button'));
 
 
     // Button group
@@ -120,6 +131,55 @@ export class UiRapidTool {
       .attr('xlink:href',  isNarrow ? `#rapid-logo-rapid${rtl}` : `#rapid-logo-rapid-wordmark${rtl}` );
 
 
+    // Plugin Manager Button
+    let $pluginButton = $joined.selectAll('button.rapid-plugin-manager')
+      .data([this.PluginModal]);
+
+    let $$pluginButton = $pluginButton.enter()
+      .append('button')
+      .attr('class', 'bar-button rapid-plugin-manager')
+      .on('click', this.choose)
+      .call(this.PluginTooltip);
+
+    $$pluginButton
+      .append('span')
+      .attr('class', 'rapid-plugin-label');
+
+    $pluginButton = $pluginButton.merge($$pluginButton);
+
+    $pluginButton
+      .selectAll('.rapid-plugin-label')
+      .text(l10n.t('plugin_manager.button'));
+
+
+    // Plugin-contributed toolbar buttons
+    const pluginButtons = plugins?.getToolbarButtons?.() ?? [];
+    let $pluginContribButtons = $joined.selectAll('button.rapid-plugin-contrib')
+      .data(pluginButtons, d => d.id);
+
+    $pluginContribButtons.exit()
+      .remove();
+
+    const $$pluginContribButtons = $pluginContribButtons.enter()
+      .append('button')
+      .attr('class', 'bar-button rapid-plugin-contrib')
+      .on('click', (e, d) => {
+        e.preventDefault();
+        d.run?.();
+      });
+
+    $$pluginContribButtons
+      .append('span')
+      .attr('class', 'rapid-plugin-label');
+
+    $pluginContribButtons = $pluginContribButtons.merge($$pluginContribButtons)
+      .attr('title', d => d.title || d.label);
+
+    $pluginContribButtons
+      .selectAll('.rapid-plugin-label')
+      .text(d => d.label);
+
+
     // Poweruser Button
     let $poweruserButton = $joined.selectAll('button.rapid-poweruser-features')
       .data(isPowerUser ? [this.PowerUserModal] : []);
@@ -136,7 +196,10 @@ export class UiRapidTool {
       .attr('class', 'beta');
 
     // If we are adding/removing any buttons, check if toolbar has overflowed..
-    if ($poweruserButton.enter().size() || $poweruserButton.exit().size()) {
+    if (
+      $poweruserButton.enter().size() || $poweruserButton.exit().size() ||
+      $pluginContribButtons.enter().size() || $pluginContribButtons.exit().size()
+    ) {
       ui.checkOverflow('.map-toolbar', true);
     }
   }

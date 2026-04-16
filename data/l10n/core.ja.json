@@ -22,7 +22,8 @@
       "favorites": "お気に入り",
       "add_feature": "地物を追加",
       "lasso_selection": "囲って選択",
-      "rapid_features": "アシスト"
+      "rapid_features": "アシスト",
+      "plugin_manager": "プラグイン"
     },
     "title": {
       "format": {
@@ -4750,6 +4751,109 @@
       "allowLargeEdits": {
         "label": "大規模編集を許可",
         "description": "現在表示されていない地物を編集することに関する制限を削除します"
+      }
+    },
+    "plugin_manager": {
+      "button": "Plugin",
+      "heading": "プラグイン管理",
+      "description": "現在のレジストリからプラグインを参照し、名前やタグで絞り込んでオン・オフできます。",
+      "advanced_warning": "レジストリプラグインは上級者向け機能です。信頼できる配布元のみ利用してください。",
+      "advanced_confirm": "リスクを理解したうえで、レジストリプラグインを管理します。",
+      "advanced_controls_show": "詳細レジストリ設定を表示",
+      "advanced_controls_hide": "詳細レジストリ設定を非表示",
+      "advanced_modal_heading": "詳細レジストリ設定",
+      "advanced_modal_description": "この設定は上級者向けです。",
+      "advanced_required_error": "レジストリ管理を行う前に上級者モード確認を有効化してください。",
+      "registry_select_label": "プラグインレジストリ",
+      "registry_add_placeholder": "https://example.com/registry.json",
+      "registry_add_button": "レジストリ追加",
+      "remove_registry_button": "現在のレジストリを削除",
+      "registry_selected_success": "有効レジストリを {url} に切り替えました。",
+      "registry_add_missing": "追加するレジストリURLを入力してください。",
+      "registry_add_success": "レジストリを追加しました: {url}",
+      "registry_remove_success": "レジストリを削除しました: {url}",
+      "install_label": "有効レジストリからインストール",
+      "install_placeholder": "プラグインID",
+      "install_button": "インストール",
+      "refresh_button": "レジストリ更新",
+      "registry_never_updated": "未更新",
+      "registry_status": "レジストリ: {url}\n最終更新: {updated}",
+      "registry_error": "レジストリエラー",
+      "search_placeholder": "プラグイン名・ID・説明で検索",
+      "filter_tag_all": "すべてのタグ",
+      "section_bundled": "標準プラグイン",
+      "section_registry": "導入済みレジストリプラグイン",
+      "section_registry_catalog": "レジストリプラグイン一覧",
+      "empty_filtered": "検索条件に一致するプラグインがありません。",
+      "meta_source_bundled": "標準",
+      "meta_source_registry": "レジストリ",
+      "meta_installed": "導入済み",
+      "meta_not_installed": "未導入",
+      "meta_revoked": "失効",
+      "install_missing_id": "インストールするプラグインIDを入力してください。",
+      "install_success": "「{name}」をインストールしました。",
+      "install_enable_success": "「{name}」をインストールして有効化しました。",
+      "refresh_success": "レジストリを更新しました（{count}件、失効 {revoked}件）。",
+      "enable_success": "「{name}」を有効化しました。",
+      "disable_success": "「{name}」を無効化しました。",
+      "uninstall_button": "削除",
+      "uninstall_success": "「{name}」を削除しました。",
+      "revoked_notice": "「{name}」は失効したため即時無効化されました。",
+      "permissions": {
+        "prompt": "プラグイン「{name}」が以下の権限を要求しています:\n\n{capabilities}\n\n許可して有効化しますか？",
+        "heading": "「{name}」に必要な権限",
+        "description": "このプラグインは次の権限を必要とします。",
+        "allow_button": "許可して有効化",
+        "deny_button": "キャンセル",
+        "capabilities": {
+          "default_label": "{capability}",
+          "default_description": "このプラグインが {capability} を利用できるようになります。",
+          "ui_toolbar": {
+            "label": "ツールバー操作",
+            "description": "上部ツールバーにボタンを追加できます。"
+          },
+          "map_layers": {
+            "label": "地図レイヤー操作",
+            "description": "地図レイヤーの表示切替や関連設定を操作できます。"
+          },
+          "ui_commandpalette": {
+            "label": "コマンドパレット操作",
+            "description": "コマンドパレットに実行可能なコマンドを追加できます。"
+          },
+          "ui_panes_issues": {
+            "label": "Issueペイン操作",
+            "description": "Issueペインを開いたり、関連ワークフローを操作できます。"
+          }
+        }
+      },
+      "tags": {
+        "rapid": "Rapid",
+        "layers": "レイヤー",
+        "qa": "品質確認",
+        "issues": "Issue",
+        "ui": "UI",
+        "operation": "操作",
+        "data": "データ",
+        "tools": "ツール",
+        "command": "コマンド",
+        "command_palette": "コマンドパレット",
+        "imagery": "航空画像",
+        "productivity": "生産性",
+        "validation": "検証",
+        "workflow": "ワークフロー"
+      },
+      "bundled": {
+        "command_palette": {
+          "toolbar_label": "Cmd",
+          "command_label": "コマンドパレットを開く"
+        },
+        "rapid_layer": {
+          "toolbar_label": "AI",
+          "command_label": "Rapid AIレイヤー切替"
+        },
+        "issues_pane": {
+          "command_label": "Issueペインを開く"
+        }
       }
     },
     "version": {

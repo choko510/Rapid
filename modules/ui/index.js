@@ -52,6 +52,7 @@ export { uiOsmoseDetails } from './osmose_details.js';
 export { uiOsmoseEditor } from './osmose_editor.js';
 export { uiOsmoseHeader } from './osmose_header.js';
 export { UiOvermap } from './UiOvermap.js';
+export { UiPluginManagerModal } from './UiPluginManagerModal.js';
 export { uiPane } from './pane.js';
 export { UiPhotoViewer } from './UiPhotoViewer.js';
 export { uiPopover } from './popover.js';
