@@ -124,10 +124,10 @@ export class RapidSystem extends AbstractSystem {
     // This code is written in a way that we can work with whatever
     // data-providing services are installed.
     const services = [];
+    if (overture)  services.push(overture);
     if (esri)      services.push(esri);
     if (external)  services.push(external);
     if (mapwithai) services.push(mapwithai);
-    if (overture)  services.push(overture);
 
     const prerequisites = Promise.all(services.map(service => service.startAsync()));
 
@@ -151,7 +151,7 @@ export class RapidSystem extends AbstractSystem {
             this._addedDatasetIDs = storedDatasetState.addedDatasetIDs;
             this._enabledDatasetIDs = storedDatasetState.enabledDatasetIDs;
           } else {
-            this._addedDatasetIDs = new Set(['fbRoads', 'esri-buildings', 'ml-buildings-overture', 'omdFootways', 'tomtom-roads']);  // on menu
+            this._addedDatasetIDs = new Set(['ml-buildings-overture', 'esri-buildings']);  // on menu
             this._enabledDatasetIDs = new Set(['ml-buildings-overture']);  // checked
           }
           this._datasetsChanged();

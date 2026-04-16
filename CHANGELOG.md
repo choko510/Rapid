@@ -89,6 +89,13 @@ _Breaking developer changes, which may affect downstream projects or sites that 
 [iD#12118]: https://github.com/openstreetmap/iD/pull/12118
 [iD#12139]: https://github.com/openstreetmap/iD/pull/12139
 [iD#12141]: https://github.com/openstreetmap/iD/pull/12141
+# [2.5.7](https://github.com/facebook/Rapid/releases/tag/rapid-2.5.7)
+#### 2026-Apr-15
+
+#### :bug: More XSS Vulnerability fixes
+* Sanitizes HTML before rendering to mitigate XSS vulnerabilities.
+
+#### :hammer: Remove dependency on conflation through `https://mapwith.ai`
 
 # [2.5.6](https://github.com/facebook/Rapid/releases/tag/rapid-2.5.6)
 #### 2026-Feb-03

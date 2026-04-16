@@ -173,10 +173,10 @@ export class PixiLayerRapid extends AbstractLayer {
     // Gather data
     const data = { points: [], vertices: new Set(), lines: [], polygons: [] };
 
-    /* Facebook AI/ML */
+    /* Facebook AI/ML Roads (PMTiles) and Tutorial (rapid_intro_graph) */
     if (dataset.service === 'mapwithai') {
-      if (zoom >= 15) {  // avoid firing off too many API requests
-        service.loadTiles(datasetID);  // fetch more
+      if (zoom >= 14) {
+        service.loadTiles(datasetID);
       }
 
       const entities = service.getData(datasetID);
@@ -212,6 +212,8 @@ export class PixiLayerRapid extends AbstractLayer {
           }
         }
       }
+
+      dsGraph = service.graph(datasetID);
 
     /* ESRI ArcGIS */
     } else if (dataset.service === 'esri') {
