@@ -1675,38 +1675,30 @@
         "other": "gt;{n} 件のデータセットが見つかりました"
       },
       "fbRoads": {
-        "label": "Facebook 道路",
-        "description": "Maxarプレミアム画像から検出されたAI予測道路で、80か国以上で利用可能です。"
+        "description": "Maxarの高解像度衛星画像をもとにAIが推定した道路データで、80か国以上で利用できます。"
       },
       "msBuildings": {
-        "label": "Microsoft 建物",
-        "description": "世界中のオープンな建物フットプリント。2014年から2024年の間にBing Maps画像（Maxar、Airbus、IGN Franceの画像を含む）から検出されました。"
+        "description": "世界各地のオープンな建物ポリゴンデータです。2014年から2024年にかけて、Bing Mapsの画像（Maxar、Airbus、IGN Franceなどを含む）から抽出されています。"
       },
       "overture": {
         "places": {
-          "label": "Overture プレイス",
-          "description": "Overture Mapsからのポイント・オブ・インタレスト。様々な商業およびコミュニティ貢献者から提供されています。"
+          "description": "Overture Mapsが提供するポイント・オブ・インタレスト（POI）データで、商業事業者やコミュニティなど多様な提供元によって構成されています。"
         },
         "esri_buildings": {
-          "label": "Esri コミュニティマップ 建物",
-          "description": "Esriのコミュニティマッププログラムから提供された建物フットプリント。Overture Maps Foundationを通じて利用可能です。"
+          "description": "Esriのコミュニティマッププログラムから提供された建物ポリゴンデータで、Overture Maps Foundationを通じて利用できます。"
         },
         "ml_buildings": {
-          "label": "Microsoft ML + Google オープン建物",
-          "description": "MicrosoftおよびGoogleオープン建物からのML派生建物フットプリント。Overture Maps Foundationによって照合されました。"
+          "description": "MicrosoftおよびGoogleのオープンデータをもとに機械学習で生成された建物ポリゴンを、Overture Maps Foundationが統合・整理したものです。"
         },
         "tomtom_roads": {
-          "label": "TomTom 道路",
-          "description": "TomTomから提供された道路ネットワークデータ。Overture Maps Foundationを通じて利用可能です。"
+          "description": "TomTomが提供する道路ネットワークデータで、Overture Maps Foundationを通じて利用可能です。"
         }
       },
       "omdFootways": {
-        "label": "オープンデータ歩道",
-        "description": "様々な地方政府機関から収集されたオープン歩道データ。"
+        "description": "各地の自治体などから収集されたオープンな歩道データです。"
       },
       "metaSyntheticFootways": {
-        "label": "Metaからの合成歩道",
-        "description": "様々な地方政府機関から収集された合成歩道データ。"
+        "description": "各地の自治体データをもとに生成された、合成的な歩道データです。"
       },
       "ignored_ids": {
         "link": "{count} 件の無視されたOverture ID",
