@@ -1,11 +1,12 @@
 import { geoOrthoNormalizedDotProduct } from '../geo/index.js';
 import { actionDeleteNode } from './delete_node.js';
+import { geoSphericalDistance } from '@rapid-sdk/math';
 
 
 export function actionSimplify(wayID, viewport, degThresh) {
     var threshold = degThresh || 5;   // degrees within straight to simplify
-    var upperThreshold = Math.cos(threshold * Math.PI / 180);
-
+    var thresholdCos = Math.cos(threshold * Math.PI / 180);
+    var thresholdFarCos = Math.cos(2 * Math.PI / 180);
 
     function shouldKeepNode(node, graph) {
         return graph.parentWays(node).length > 1 ||
@@ -14,13 +15,12 @@ export function actionSimplify(wayID, viewport, degThresh) {
     }
 
 
-    function isNearlyStraight(prevNode, node, nextNode) {
-        var prevPoint = viewport.project(prevNode.loc);
-        var point = viewport.project(node.loc);
-        var nextPoint = viewport.project(nextNode.loc);
+    function isNearlyStraight(prevNode, nextNode, prevPoint, point, nextPoint) {
+        var dist = geoSphericalDistance(prevNode.loc, nextNode.loc);
+        var currentUpperThreshold = dist > 20 ? thresholdFarCos : thresholdCos;
 
         var dotp = Math.abs(geoOrthoNormalizedDotProduct(prevPoint, nextPoint, point));
-        return dotp > upperThreshold;
+        return dotp > currentUpperThreshold;
     }
 
 
@@ -40,9 +40,11 @@ export function actionSimplify(wayID, viewport, degThresh) {
         if (nodes.length <= minNodes) return [];
 
         var nodeCount = new Map();
+        var points = new Array(nodes.length);
         for (var i = 0; i < nodes.length; i++) {
             var node = nodes[i];
             nodeCount.set(node.id, (nodeCount.get(node.id) || 0) + 1);
+            points[i] = viewport.project(node.loc);
         }
 
         var toDelete = [];
@@ -53,11 +55,13 @@ export function actionSimplify(wayID, viewport, degThresh) {
             if (shouldKeepNode(node, graph)) continue;                        // keep important/shared nodes
             if ((nodeCount.get(node.id) || 0) > 1) continue;                 // keep self-intersection nodes
 
-            var prevNode = nodes[(i - 1 + nodes.length) % nodes.length];
-            var nextNode = nodes[(i + 1) % nodes.length];
+            var prevIdx = (i - 1 + nodes.length) % nodes.length;
+            var nextIdx = (i + 1) % nodes.length;
+            var prevNode = nodes[prevIdx];
+            var nextNode = nodes[nextIdx];
             if (!prevNode || !nextNode || prevNode.id === nextNode.id) continue;
 
-            if (isNearlyStraight(prevNode, node, nextNode)) {
+            if (isNearlyStraight(prevNode, nextNode, points[prevIdx], points[i], points[nextIdx])) {
                 toDelete.push(node.id);
             }
         }

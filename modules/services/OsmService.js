@@ -16,7 +16,7 @@ import RBush from 'rbush';
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { JXON } from '../util/jxon.js';
 import { osmEntity, osmNode, osmRelation, osmWay, QAItem } from '../osm/index.js';
-import { utilFetchResponse } from '../util/index.js';
+import { FetchError, utilFetchResponse, utilLRUSetAdd, utilLRUSetTrim } from '../util/index.js';
 
 
 /**
@@ -61,6 +61,12 @@ export class OsmService extends AbstractSystem {
     this._connectionID = 0;
     this._tileZoom = 16;
     this._noteZoom = 12;
+    this._maxTileCacheEntries = 240;
+    this._maxSeenEntityIDs = 300000;
+    this._jsonParseRequests = new Map();   // Map(requestID -> {resolve, reject})
+    this._jsonParseRequestID = 1;
+    this._jsonParseWorker = null;
+    this._jsonParseWorkerURL = null;
     this._apiStatus = null;
     this._rateLimit = null;
     this._userChangesets = null;
@@ -82,6 +88,11 @@ export class OsmService extends AbstractSystem {
 
     this.reloadApiStatus = this.reloadApiStatus.bind(this);
     this.throttledReloadApiStatus = _throttle(this.reloadApiStatus, 500);
+    this._deferLoadUsers = _throttle(() => {
+      const uids = [...this._userCache.toLoad.values()];
+      if (!uids.length) return;
+      this.loadUsers(uids, () => {});  // eagerly load user details
+    }, 750);
 
     // Calculate the deafult OAuth2 `redirect_uri`.
     // - `redirect_uri` should be a page that the authorizing server (e.g. `openstreetmap.org`)
@@ -171,6 +182,11 @@ export class OsmService extends AbstractSystem {
       this._deferred.delete(handle);
     }
 
+    for (const pending of this._jsonParseRequests.values()) {
+      pending.reject(new Error('Cancelled'));
+    }
+    this._jsonParseRequests.clear();
+
     this._connectionID++;
     this._apiStatus = null;
     this._rateLimit = null;
@@ -216,6 +232,7 @@ export class OsmService extends AbstractSystem {
     };
 
     this._changeset = {};
+    this._deferLoadUsers.cancel();
 
     return Promise.resolve();
   }
@@ -383,9 +400,10 @@ export class OsmService extends AbstractSystem {
     const resource = this._apiroot + path;
     const controller = new AbortController();
     const _fetch = this.authenticated() ? this._oauth.fetch : window.fetch;
+    const wantsJSON = path.includes('.json');
 
     _fetch(resource, { signal: controller.signal })
-      .then(utilFetchResponse)
+      .then(response => wantsJSON ? this._fetchJSONResponse(response) : utilFetchResponse(response))
       .then(result => gotResult(null, result))
       .catch(err => {
         if (err.name === 'AbortError') return;  // ok
@@ -396,6 +414,126 @@ export class OsmService extends AbstractSystem {
       });
 
     return controller;
+  }
+
+
+  _fetchJSONResponse(response) {
+    if (!response.ok) {
+      throw new FetchError(response);
+    }
+    if (response.status === 204 || response.status === 205) return '';
+    return response.text();
+  }
+
+
+  _extractJSONPayload(json) {
+    if (!json || typeof json !== 'object') {
+      throw new Error('No JSON');
+    }
+
+    const elements = Array.isArray(json.elements) ? json.elements : [];
+    const users = (json.user ? [json.user] : json.users) ?? [];
+    const changesets = json?.changesets || [];
+    const hasError = elements.some(el => el?.type === 'error');
+
+    if (!Array.isArray(users) || !Array.isArray(changesets)) {
+      throw new Error('No JSON');
+    }
+
+    return { elements, users, changesets, hasError };
+  }
+
+
+  _parseJSONPayloadAsync(payload) {
+    if (!payload) {
+      return Promise.reject(new Error('No JSON'));
+    }
+
+    if (typeof payload === 'object') {
+      return Promise.resolve(this._extractJSONPayload(payload));
+    }
+
+    if (typeof payload !== 'string') {
+      return Promise.reject(new Error('No JSON'));
+    }
+
+    const worker = this._getJSONParseWorker();
+    if (!worker) {
+      return Promise.resolve(this._extractJSONPayload(JSON.parse(payload)));
+    }
+
+    return new Promise((resolve, reject) => {
+      const requestID = this._jsonParseRequestID++;
+      this._jsonParseRequests.set(requestID, { resolve, reject });
+      worker.postMessage({ requestID, payload });
+    });
+  }
+
+
+  _getJSONParseWorker() {
+    if (this._jsonParseWorker) return this._jsonParseWorker;
+    if (typeof window.Worker !== 'function' || typeof window.Blob !== 'function' || !window.URL?.createObjectURL) {
+      return null;
+    }
+
+    const source = `
+      self.onmessage = (event) => {
+        const requestID = event?.data?.requestID;
+        const payload = event?.data?.payload;
+        try {
+          const json = (typeof payload === 'object') ? payload : JSON.parse(payload);
+          const elements = Array.isArray(json?.elements) ? json.elements : [];
+          const users = (json?.user ? [json.user] : json?.users) ?? [];
+          const changesets = json?.changesets || [];
+          if (!Array.isArray(users) || !Array.isArray(changesets)) {
+            throw new Error('No JSON');
+          }
+          const hasError = elements.some(el => el && el.type === 'error');
+          self.postMessage({ requestID, ok: true, elements, users, changesets, hasError });
+        } catch (err) {
+          const message = (err && err.message) ? err.message : 'No JSON';
+          self.postMessage({ requestID, ok: false, message });
+        }
+      };
+    `;
+
+    const blob = new Blob([source], { type: 'text/javascript' });
+    this._jsonParseWorkerURL = window.URL.createObjectURL(blob);
+    const worker = new window.Worker(this._jsonParseWorkerURL);
+
+    worker.onmessage = (event) => {
+      const requestID = event?.data?.requestID;
+      const pending = this._jsonParseRequests.get(requestID);
+      if (!pending) return;
+
+      this._jsonParseRequests.delete(requestID);
+      if (event.data.ok) {
+        pending.resolve({
+          elements: event.data.elements,
+          users: event.data.users,
+          changesets: event.data.changesets,
+          hasError: event.data.hasError
+        });
+      } else {
+        pending.reject(new Error(event.data.message || 'No JSON'));
+      }
+    };
+
+    worker.onerror = () => {
+      for (const pending of this._jsonParseRequests.values()) {
+        pending.reject(new Error('No JSON'));
+      }
+      this._jsonParseRequests.clear();
+      worker.terminate();
+      this._jsonParseWorker = null;
+      if (this._jsonParseWorkerURL) {
+        window.URL.revokeObjectURL(this._jsonParseWorkerURL);
+        this._jsonParseWorkerURL = null;
+      }
+    };
+
+    this._jsonParseWorker = worker;
+    return worker;
   }
 
 
@@ -927,6 +1065,8 @@ export class OsmService extends AbstractSystem {
     for (const tile of tiles) {
       this.loadTile(tile, callback);
     }
+
+    this._trimTileCache(tiles);
   }
 
 
@@ -1008,7 +1148,7 @@ export class OsmService extends AbstractSystem {
     const corners = tile.wgs84Extent.polygon().slice(0, 4);
     const tileBlocked = corners.every(loc => locations.blocksAt(loc).length);
     if (tileBlocked) {
-      cache.loaded.add(tile.id);   // don't try again
+      utilLRUSetAdd(cache.loaded, tile.id);   // don't try again
       return;
     }
 
@@ -1020,7 +1160,7 @@ export class OsmService extends AbstractSystem {
       delete cache.inflight[tile.id];
       if (!err) {
         cache.toLoad.delete(tile.id);
-        cache.loaded.add(tile.id);
+        utilLRUSetAdd(cache.loaded, tile.id);
         const bbox = tile.wgs84Extent.bbox();
         bbox.id = tile.id;
         cache.rbush.insert(bbox);
@@ -1082,11 +1222,6 @@ export class OsmService extends AbstractSystem {
     noteOptions = Object.assign({ limit: 10000, closed: 7 }, noteOptions);
 
     const cache = this._noteCache;
-    const deferLoadUsers = _throttle(() => {
-      const uids = [...this._userCache.toLoad.values()];
-      if (!uids.length) return;
-      this.loadUsers(uids, function() {});  // eagerly load user details
-    }, 750);
 
     const viewport = this.context.viewport;
     if (cache.lastv === viewport.v) return;  // exit early if the view is unchanged
@@ -1131,7 +1266,7 @@ export class OsmService extends AbstractSystem {
             this._parseNoteJSON(noteObj);
           }
 
-          // deferLoadUsers();
+          this._deferLoadUsers();
           const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
           this.emit('loadedNotes');
@@ -1170,6 +1305,7 @@ export class OsmService extends AbstractSystem {
 
         if (callback) {
           callback(null, { data: { data: [note], seenIDs: new Set([note.id]) } });
+          this._deferLoadUsers();
           const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
           this.emit('loadedNotes');
@@ -1215,6 +1351,7 @@ export class OsmService extends AbstractSystem {
           return callback({ message: 'No JSON', status: -1 });
         }
 
+        this._deferLoadUsers();
         const gfx = this.context.systems.gfx;
         gfx.deferredRedraw();
         this.emit('loadedNotes');
@@ -1523,6 +1660,38 @@ export class OsmService extends AbstractSystem {
   }
 
 
+  _trimTileCache(visibleTiles) {
+    const cache = this._tileCache;
+    const visibleIDs = new Set(visibleTiles.map(tile => tile.id));
+
+    // Touch visible tiles so frequently used ones stay in cache longer.
+    for (const tileID of visibleIDs) {
+      if (cache.loaded.has(tileID)) {
+        utilLRUSetAdd(cache.loaded, tileID);
+      }
+    }
+
+    const protectedIDs = new Set([
+      ...visibleIDs,
+      ...cache.toLoad,
+      ...Object.keys(cache.inflight)
+    ]);
+
+    let over = cache.loaded.size - this._maxTileCacheEntries;
+    if (over <= 0) return;
+
+    for (const tileID of cache.loaded) {
+      if (over <= 0) break;
+      if (protectedIDs.has(tileID)) continue;
+
+      cache.loaded.delete(tileID);
+      cache.toLoad.delete(tileID);
+      cache.rbush.remove({ id: tileID }, (a, b) => a.id === b.id);
+      over--;
+    }
+  }
+
+
   _getLoc(attrs) {
     const lon = attrs.lon?.value;
     const lat = attrs.lat?.value;
@@ -1633,90 +1802,84 @@ export class OsmService extends AbstractSystem {
       return callback({ message: 'No JSON', status: -1 });
     }
 
-    let json = payload;
-    if (typeof json !== 'object') {
-      json = JSON.parse(payload);
-    }
-
-    // The payload may contain Elements, Users, or Changesets
-    const elements = json.elements ?? [];
-    const users = (json.user ? [json.user] : json.users) ?? [];
-    const changesets = json?.changesets || [];
-
-    if (!elements || !users || !changesets) {
-      return callback({ message: 'No JSON', status: -1 });
-    }
-    if (elements.some(el => el.type === 'error')) {
-      return callback({ message: 'Partial JSON', status: -1 });
-    }
-
-    // Defer parsing until later (todo: move all this to a worker)
-    const handle = window.requestIdleCallback(() => {
-      this._deferred.delete(handle);
-
-      let results = { data: [], seenIDs: new Set() };
-
-      // Parse elements
-      for (const element of elements) {
-        let parser;
-        if (element.type === 'node') {
-          parser = this._parseNodeJSON;
-        } else if (element.type === 'way') {
-          parser = this._parseWayJSON;
-        } else if (element.type === 'relation') {
-          parser = this._parseRelationJSON;
-        }
-        if (!parser) continue;
-
-        const uid = osmEntity.id.fromOSM(element.type, element.id);
-        results.seenIDs.add(uid);
-
-        if (options.skipSeen) {
-          if (this._tileCache.seen.has(uid)) continue;  // avoid reparsing a "seen" entity
-          this._tileCache.seen.add(uid);
+    this._parseJSONPayloadAsync(payload)
+      .then(parsedPayload => {
+        const { elements, users, changesets, hasError } = parsedPayload;
+        if (hasError) {
+          callback({ message: 'Partial JSON', status: -1 });
+          return;
         }
 
-        const parsed = parser(element, uid);
-        if (parsed) {
-          results.data.push(parsed);
-        }
-      }
+        // Defer entity construction until browser idle.
+        const handle = window.requestIdleCallback(() => {
+          this._deferred.delete(handle);
 
-      // Parse users
-      for (const user of users) {
-        const uid = user.id?.toString();
-        if (!uid) continue;
+          let results = { data: [], seenIDs: new Set() };
 
-        this._userCache.toLoad.delete(uid);
-        results.seenIDs.add(uid);
+          // Parse elements
+          for (const element of elements) {
+            let parser;
+            if (element.type === 'node') {
+              parser = this._parseNodeJSON;
+            } else if (element.type === 'way') {
+              parser = this._parseWayJSON;
+            } else if (element.type === 'relation') {
+              parser = this._parseRelationJSON;
+            }
+            if (!parser) continue;
 
-        if (options.skipSeen && this._userCache.user[uid]) {  // avoid reparsing a "seen" entity
-          continue;
-        }
+            const uid = osmEntity.id.fromOSM(element.type, element.id);
+            results.seenIDs.add(uid);
 
-        const parsed = {
-          id: uid,
-          display_name: user.display_name,
-          account_created: user.account_created,
-          image_url: user.img?.href,
-          changesets_count: user.changesets?.count?.toString() ?? '0',
-          active_blocks: user.blocks?.received?.active?.toString() ?? '0'
-        };
+            if (options.skipSeen) {
+              if (this._tileCache.seen.has(uid)) continue;  // avoid reparsing a "seen" entity
+              utilLRUSetAdd(this._tileCache.seen, uid);
+            }
 
-        this._userCache.user[uid] = parsed;
-        results.data.push(parsed);
-      }
+            const parsed = parser(element, uid);
+            if (parsed) {
+              results.data.push(parsed);
+            }
+          }
 
-      // Parse changesets
-      for (const changeset of changesets) {
-        if (!changeset?.tags?.comment) continue;   // only include changesets with comment
-        results.data.push(changeset);
-      }
+          // Parse users
+          for (const user of users) {
+            const uid = user.id?.toString();
+            if (!uid) continue;
 
-      callback(null, results);
-    });
+            this._userCache.toLoad.delete(uid);
+            results.seenIDs.add(uid);
 
-    this._deferred.add(handle);
+            if (options.skipSeen && this._userCache.user[uid]) {  // avoid reparsing a "seen" entity
+              continue;
+            }
+
+            const parsed = {
+              id: uid,
+              display_name: user.display_name,
+              account_created: user.account_created,
+              image_url: user.img?.href,
+              changesets_count: user.changesets?.count?.toString() ?? '0',
+              active_blocks: user.blocks?.received?.active?.toString() ?? '0'
+            };
+
+            this._userCache.user[uid] = parsed;
+            results.data.push(parsed);
+          }
+
+          // Parse changesets
+          for (const changeset of changesets) {
+            if (!changeset?.tags?.comment) continue;   // only include changesets with comment
+            results.data.push(changeset);
+          }
+
+          utilLRUSetTrim(this._tileCache.seen, this._maxSeenEntityIDs);
+          callback(null, results);
+        });
+
+        this._deferred.add(handle);
+      })
+      .catch(() => callback({ message: 'No JSON', status: -1 }));
   }
 
 
@@ -1780,7 +1943,7 @@ export class OsmService extends AbstractSystem {
 
           if (options.skipSeen) {
             if (this._tileCache.seen.has(uid)) continue;  // avoid reparsing a "seen" entity
-            this._tileCache.seen.add(uid);
+            utilLRUSetAdd(this._tileCache.seen, uid);
           }
         }
 
@@ -1790,6 +1953,7 @@ export class OsmService extends AbstractSystem {
         }
       }
 
+      utilLRUSetTrim(this._tileCache.seen, this._maxSeenEntityIDs);
       callback(null, results);
     });
 

@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import deepEqual from 'fast-deep-equal';
 import { GlowFilter } from 'pixi-filters';
 
 import { AbstractFeature } from './AbstractFeature.js';
@@ -100,6 +101,18 @@ export class PixiFeaturePoint extends AbstractFeature {
 
     this.updateGeometry(viewport, zoom);
     this.updateStyle(viewport, zoom);
+
+    // At low zoom this feature may be intentionally hidden.
+    // Skip expensive bounds/hitArea work but still keep halo state in sync.
+    if (!this.visible) {
+      this.container.hitArea = null;
+      this.sceneBounds.x = this.container.position.x;
+      this.sceneBounds.y = this.container.position.y;
+      this.sceneBounds.width = 0;
+      this.sceneBounds.height = 0;
+      this.updateHalo();
+      return;
+    }
 
     // Recalculate local and scene bounds
     // (note that the local bounds automatically includes children like viewfields too)
@@ -433,7 +446,9 @@ export class PixiFeaturePoint extends AbstractFeature {
     return this._style;
   }
   set style(obj) {
-    this._style = Object.assign({}, STYLE_DEFAULTS, obj);
+    const nextStyle = Object.assign({}, STYLE_DEFAULTS, obj);
+    if (this._style && deepEqual(this._style, nextStyle)) return;
+    this._style = nextStyle;
     this._styleDirty = true;
   }
 

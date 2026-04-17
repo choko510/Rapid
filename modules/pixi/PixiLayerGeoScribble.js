@@ -25,6 +25,7 @@ export class PixiLayerGeoScribble extends AbstractLayer {
     super(scene, layerID);
 
     this.scribblesContainer = null;
+    this._colorCache = new Map();
   }
 
 
@@ -85,6 +86,7 @@ export class PixiLayerGeoScribble extends AbstractLayer {
     geoscribbles.sortableChildren = false;
     geoscribbles.interactiveChildren = true;
     this.scribblesContainer = geoscribbles;
+    this._colorCache.clear();
 
     groupContainer.addChild(geoscribbles);
   }
@@ -132,7 +134,7 @@ export class PixiLayerGeoScribble extends AbstractLayer {
       labelTint: CUSTOM_COLOR
     };
 
-    const color = line.properties.color ? new PIXI.Color(line.properties.color) : CUSTOM_COLOR;
+    const color = line.properties.color ? this._getColor(line.properties.color) : CUSTOM_COLOR;
     const thin = line.properties.thin;
     const dashed = line.properties.dashed;
 
@@ -144,6 +146,16 @@ export class PixiLayerGeoScribble extends AbstractLayer {
       lineStyle.stroke.dash = thin ? [12,6] : [24,12]; // Thinner lines get shorter dashes
     }
     return lineStyle;
+  }
+
+
+  _getColor(colorVal) {
+    let color = this._colorCache.get(colorVal);
+    if (!color) {
+      color = new PIXI.Color(colorVal);
+      this._colorCache.set(colorVal, color);
+    }
+    return color;
   }
 
 

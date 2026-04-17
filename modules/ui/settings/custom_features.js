@@ -1,8 +1,8 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
-import { marked } from 'marked';
 
 import { uiConfirm } from '../confirm.js';
 import { utilNoAuto, utilRebind } from '../../util/index.js';
+import { parseMarkdownAsync } from '../../util/markdown.js';
 
 
 export function uiSettingsCustomFeatures(context) {
@@ -23,17 +23,20 @@ export function uiSettingsCustomFeatures(context) {
 
     const textSection = modal.select('.modal-section.message-text');
 
-    const instructions = marked.parse(`
+    const instructions = `
 ${l10n.t('settings.custom_features.instructions.info')}
 <code>building=yes</code>
 
 ${l10n.t('settings.custom_features.instructions.additional_info')}
-`);
+`;
 
-    textSection
+    const $instructions = textSection
       .append('div')
-      .attr('class', 'instructions-template')
-      .html(instructions);
+      .attr('class', 'instructions-template');
+
+    parseMarkdownAsync(instructions).then(html => {
+      $instructions.html(html);
+    });
 
     textSection
       .append('input')

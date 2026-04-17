@@ -5,7 +5,7 @@ import Protobuf from 'pbf';
 import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
-import { utilFetchResponse } from '../util/index.js';
+import { utilFetchResponse, utilLRUMapSet, utilLRUSetAdd, utilLRUSetTrim } from '../util/index.js';
 
 const accessToken = 'MLY|3376030635833192|f13ab0bdf6b2f7b99e0d8bd5868e1d88';
 const apiUrl = 'https://graph.mapillary.com/';
@@ -58,6 +58,13 @@ export class MapillaryService extends AbstractSystem {
     this._viewerFilter = ['all'];
     this._keydown = this._keydown.bind(this);
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
+    this._activeTileURLs = new Set();
+    this._maxActiveTileURLs = 480;
+    this._maxLoadedTileURLs = 1200;
+    this._maxImageCacheItems = 30000;
+    this._maxDetectionCacheItems = 30000;
+    this._maxSequenceCacheItems = 12000;
+    this._maxSegmentationCacheItems = 24000;
 
     // Make sure the event handlers have `this` bound correctly
     this.navigateForward = this.navigateForward.bind(this);
@@ -160,14 +167,15 @@ export class MapillaryService extends AbstractSystem {
     }
 
     this._cache = {
-      images:        { lastv: null, data: new Map(), rbush: new RBush() },
-      detections:    { lastv: null, data: new Map(), rbush: new RBush() },
+      images:        { lastv: null, data: new Map(), rbush: new RBush(), boxes: new Map() },
+      detections:    { lastv: null, data: new Map(), rbush: new RBush(), boxes: new Map() },
       signs:         { lastv: null  /* signs are now stored in `detections` cache */ },
-      sequences:     { data: new Map() },   // Map<sequenceID, Array<LineStrings>>
+      sequences:     { data: new Map(), refCount: new Map() },   // Map<sequenceID, Array<LineStrings>>
       segmentations: { data: new Map() },
       inflight: new Map(),  // Map<url, {tileID, promise, controller}>
       loaded:   new Set()   // Set<url>
     };
+    this._activeTileURLs.clear();
 
     return Promise.resolve();
   }
@@ -201,7 +209,11 @@ export class MapillaryService extends AbstractSystem {
    * @return  {Object?} The image, or `undefined` if not found
    */
   getImage(imageID) {
-    return this._cache.images.data.get(imageID);
+    const image = this._cache.images.data.get(imageID);
+    if (image) {
+      utilLRUMapSet(this._cache.images.data, imageID, image);
+    }
+    return image;
   }
 
 
@@ -212,7 +224,11 @@ export class MapillaryService extends AbstractSystem {
    * @return  {Object?} The sequence, or `undefined` if not found
    */
   getSequence(sequenceID) {
-    return this._cache.sequences.data.get(sequenceID);
+    const sequence = this._cache.sequences.data.get(sequenceID);
+    if (sequence) {
+      utilLRUMapSet(this._cache.sequences.data, sequenceID, sequence);
+    }
+    return sequence;
   }
 
 
@@ -223,7 +239,11 @@ export class MapillaryService extends AbstractSystem {
    * @return  {Object?} The detection, or `undefined` if not found
    */
   getDetection(detectionID) {
-    return this._cache.detections.data.get(detectionID);
+    const detection = this._cache.detections.data.get(detectionID);
+    if (detection) {
+      utilLRUMapSet(this._cache.detections.data, detectionID, detection);
+    }
+    return detection;
   }
 
 
@@ -265,6 +285,7 @@ export class MapillaryService extends AbstractSystem {
       const sequence = this._cache.sequences.data.get(sequenceID);
       if (!sequence) continue;  // sequence not ready
 
+      utilLRUMapSet(this._cache.sequences.data, sequenceID, sequence);
       if (!results.has(sequenceID)) {
         results.set(sequenceID, sequence);
       }
@@ -356,8 +377,15 @@ export class MapillaryService extends AbstractSystem {
     }
 
     for (const tile of tiles) {
+      const tileURL = this._tileURL(datasetID, tile);
+      if (tileURL) {
+        utilLRUSetAdd(this._activeTileURLs, tileURL);
+      }
       this._loadTileAsync(datasetID, tile);
     }
+
+    utilLRUSetTrim(this._activeTileURLs, this._maxActiveTileURLs);
+    this._trimCache();
   }
 
 
@@ -514,6 +542,7 @@ export class MapillaryService extends AbstractSystem {
 
           this._selectedImageID = imageID;
           this._updatePhotoFooter(imageID);
+          this._trimCache();
 
           return Promise.resolve(image);  // pass the image to anything that chains off this Promise
         })
@@ -655,6 +684,7 @@ export class MapillaryService extends AbstractSystem {
     for (const segmentationID of segmentationIDs) {
       const data = this._cache.segmentations.data.get(segmentationID);
       if (!data) continue;
+      utilLRUMapSet(this._cache.segmentations.data, segmentationID, data);
       const tag = this._makeTag(data);
       if (tag) {
         tagComponent.add([tag]);
@@ -717,10 +747,8 @@ export class MapillaryService extends AbstractSystem {
    * @param  {Tile}   tile - a tile object
    * @return {Promise}  Promise settled when the request is completed
    */
-  _loadTileAsync(datasetID, tile) {
-    if (!['images', 'signs', 'detections'].includes(datasetID)) {
-      return Promise.resolve();  // nothing to do
-    }
+  _tileURL(datasetID, tile) {
+    if (!['images', 'signs', 'detections'].includes(datasetID)) return null;
 
     let url = {
       images: imageTileUrl,
@@ -728,14 +756,23 @@ export class MapillaryService extends AbstractSystem {
       detections: detectionTileUrl
     }[datasetID];
 
-    url = url
+    return url
       .replace('{x}', tile.xyz[0])
       .replace('{y}', tile.xyz[1])
       .replace('{z}', tile.xyz[2]);
+  }
+
+
+  _loadTileAsync(datasetID, tile) {
+    const url = this._tileURL(datasetID, tile);
+    if (!url) {
+      return Promise.resolve();  // nothing to do
+    }
 
     const cache = this._cache;
 
     if (cache.loaded.has(url)) {
+      utilLRUSetAdd(cache.loaded, url);
       return Promise.resolve();  // already done
     }
 
@@ -752,7 +789,7 @@ export class MapillaryService extends AbstractSystem {
     const prom = fetch(url, { signal: req.controller.signal })
       .then(utilFetchResponse)
       .then(buffer => {
-        cache.loaded.add(url);
+        utilLRUSetAdd(cache.loaded, url);
         if (!buffer) {
           throw new Error('No Data');
         }
@@ -769,11 +806,13 @@ export class MapillaryService extends AbstractSystem {
         } else if (datasetID === 'detections') {
           this.emit('loadedDetections');
         }
+
+        this._trimCache();
       })
       .catch(err => {
         if (err.name === 'AbortError') return;          // ok
         if (err instanceof Error) console.error(err);   // eslint-disable-line no-console
-        cache.loaded.add(url);  // don't retry
+        utilLRUSetAdd(cache.loaded, url);  // don't retry
       })
       .finally(() => {
         cache.inflight.delete(url);
@@ -832,8 +871,8 @@ export class MapillaryService extends AbstractSystem {
             v:        0,
             features: []
           };
-          cache.data.set(sequenceID, sequence);
         }
+        utilLRUMapSet(cache.data, sequenceID, sequence);
         sequence.features.push(feature);
         sequence.v++;
       }
@@ -911,6 +950,7 @@ export class MapillaryService extends AbstractSystem {
 
         const gfx = this.context.systems.gfx;
         gfx.immediateRedraw();
+        this._trimCache();
         return detection;
       })
       .catch(err => {
@@ -967,6 +1007,7 @@ export class MapillaryService extends AbstractSystem {
           }
         }
 
+        this._trimCache();
         return image.segmentationIDs;
       })
       .catch(err => {
@@ -1023,6 +1064,7 @@ export class MapillaryService extends AbstractSystem {
           }
         }
 
+        this._trimCache();
         return detection.segmentationIDs;
       })
       .catch(err => {
@@ -1158,6 +1200,7 @@ export class MapillaryService extends AbstractSystem {
    */
   _cacheImage(cache, props) {
     let image = cache.data.get(props.id);
+    const prevSequenceID = image?.sequenceID;
     if (!image) {
       image = {
         type:    'photo',
@@ -1166,21 +1209,28 @@ export class MapillaryService extends AbstractSystem {
         loc:     props.loc
       };
 
-      cache.data.set(image.id, image);
-
       const [x, y] = props.loc;
-      cache.rbush.insert({ minX: x, minY: y, maxX: x, maxY: y, data: image });
+      const box = { minX: x, minY: y, maxX: x, maxY: y, data: image };
+      cache.boxes.set(image.id, box);
+      cache.rbush.insert(box);
     }
 
     // Allow 0, but not things like NaN, null, Infinity
     const caIsNumber = (!isNaN(props.ca) && isFinite(props.ca));
 
     // Update whatever additional props we were passed..
+    if (props.sequenceID && props.sequenceID !== prevSequenceID) {
+      if (prevSequenceID) {
+        this._decrementSequenceRef(prevSequenceID);
+      }
+      this._incrementSequenceRef(props.sequenceID);
+    }
     if (props.sequenceID)   image.sequenceID  = props.sequenceID;
     if (props.captured_at)  image.captured_at = props.captured_at;
     if (props.captured_by)  image.captured_by = props.captured_by;
     if (caIsNumber)         image.ca          = props.ca;
     if (props.isPano)       image.isPano      = props.isPano;
+    utilLRUMapSet(cache.data, image.id, image);
 
     return image;
   }
@@ -1202,8 +1252,6 @@ export class MapillaryService extends AbstractSystem {
         id:          props.id,
         object_type: props.object_type   // 'point' or 'traffic_sign'
       };
-
-      cache.data.set(detection.id, detection);
     }
 
     // If we haven't locked in the location yet, try here..
@@ -1213,7 +1261,9 @@ export class MapillaryService extends AbstractSystem {
       detection.loc = loc;
 
       const [x, y] = loc;
-      cache.rbush.insert({ minX: x, minY: y, maxX: x, maxY: y, data: detection });
+      const box = { minX: x, minY: y, maxX: x, maxY: y, data: detection };
+      cache.boxes.set(detection.id, box);
+      cache.rbush.insert(box);
     }
 
     // Update whatever additional props we were passed..
@@ -1241,6 +1291,8 @@ export class MapillaryService extends AbstractSystem {
       }
       detection.bestImageID = bestImageID;
      }
+
+    utilLRUMapSet(cache.data, detection.id, detection);
 
     return detection;
   }
@@ -1281,15 +1333,180 @@ export class MapillaryService extends AbstractSystem {
         geometry:  geometry,
         value:     props.value
       };
-
-      cache.data.set(segmentation.id, segmentation);
     }
 
     // Update whatever additional props we were passed..
     if (props.created_at)   segmentation.created_at   = props.created_at;
     if (props.detectionID)  segmentation.detectionID  = props.detectionID;
+    if (props.imageID)      segmentation.imageID      = props.imageID;
+    utilLRUMapSet(cache.data, segmentation.id, segmentation);
 
     return segmentation;
+  }
+
+
+  _trimCache() {
+    const cache = this._cache;
+    const photos = this.context.systems.photos;
+    const selectedImage = cache.images.data.get(this._selectedImageID);
+    const selectedSequenceID = selectedImage?.sequenceID;
+
+    const protectedTileURLs = new Set([
+      ...cache.inflight.keys(),
+      ...this._activeTileURLs
+    ]);
+
+    this._trimLRUSet(cache.loaded, this._maxLoadedTileURLs, url => !protectedTileURLs.has(url));
+
+    this._trimLRUMap(cache.images.data, this._maxImageCacheItems,
+      (image, imageID) => imageID !== this._selectedImageID,
+      (image, imageID) => this._evictImage(image, imageID)
+    );
+
+    this._trimLRUMap(cache.detections.data, this._maxDetectionCacheItems,
+      (detection, detectionID) => detectionID !== photos?.currDetectionID,
+      (detection, detectionID) => this._evictDetection(detection, detectionID)
+    );
+
+    this._trimLRUMap(cache.sequences.data, this._maxSequenceCacheItems,
+      (sequence, sequenceID) => {
+        const refCount = cache.sequences.refCount.get(sequenceID) || 0;
+        return sequenceID !== selectedSequenceID && refCount === 0;
+      },
+      (sequence, sequenceID) => cache.sequences.refCount.delete(sequenceID)
+    );
+
+    this._trimLRUMap(cache.segmentations.data, this._maxSegmentationCacheItems,
+      segmentation => !this._isSegmentationActive(segmentation),
+      (segmentation, segmentationID) => this._evictSegmentation(segmentation, segmentationID)
+    );
+  }
+
+
+  _trimLRUSet(set, maxSize, canEvict) {
+    if (!(set instanceof Set)) return;
+    if (!Number.isFinite(maxSize) || maxSize < 0) return;
+
+    let guard = set.size * 2;
+    while (set.size > maxSize && guard-- > 0) {
+      const value = set.values().next().value;
+      set.delete(value);
+      if (canEvict && !canEvict(value)) {
+        set.add(value);
+      }
+    }
+  }
+
+
+  _trimLRUMap(map, maxSize, canEvict, onEvict) {
+    if (!(map instanceof Map)) return;
+    if (!Number.isFinite(maxSize) || maxSize < 0) return;
+
+    let guard = map.size * 2;
+    while (map.size > maxSize && guard-- > 0) {
+      const first = map.entries().next().value;
+      if (!first) break;
+
+      const [key, value] = first;
+      map.delete(key);
+      if (canEvict && !canEvict(value, key)) {
+        map.set(key, value);
+        continue;
+      }
+
+      if (onEvict) onEvict(value, key);
+    }
+  }
+
+
+  _isSegmentationActive(segmentation) {
+    if (!segmentation) return false;
+    const photos = this.context.systems.photos;
+    const currImage = this._cache.images.data.get(photos?.currPhotoID);
+    if (currImage?.segmentationIDs?.has(segmentation.id)) return true;
+
+    const currDetection = this._cache.detections.data.get(photos?.currDetectionID);
+    return currDetection?.segmentationIDs?.has(segmentation.id);
+  }
+
+
+  _incrementSequenceRef(sequenceID) {
+    if (!sequenceID) return;
+    const counts = this._cache.sequences.refCount;
+    const curr = counts.get(sequenceID) || 0;
+    counts.set(sequenceID, curr + 1);
+  }
+
+
+  _decrementSequenceRef(sequenceID) {
+    if (!sequenceID) return;
+    const counts = this._cache.sequences.refCount;
+    const curr = counts.get(sequenceID) || 0;
+    if (curr <= 1) {
+      counts.delete(sequenceID);
+      this._cache.sequences.data.delete(sequenceID);
+    } else {
+      counts.set(sequenceID, curr - 1);
+    }
+  }
+
+
+  _evictImage(image, imageID) {
+    const imageCache = this._cache.images;
+    const box = imageCache.boxes.get(imageID);
+    if (box) {
+      imageCache.boxes.delete(imageID);
+      imageCache.rbush.remove(box);
+    }
+
+    for (const segmentationID of image?.segmentationIDs ?? []) {
+      const segmentation = this._cache.segmentations.data.get(segmentationID);
+      if (segmentation?.imageID === imageID) {
+        delete segmentation.imageID;
+        if (!segmentation.detectionID) {
+          this._cache.segmentations.data.delete(segmentationID);
+        } else {
+          utilLRUMapSet(this._cache.segmentations.data, segmentationID, segmentation);
+        }
+      }
+    }
+
+    this._decrementSequenceRef(image?.sequenceID);
+  }
+
+
+  _evictDetection(detection, detectionID) {
+    const detectionCache = this._cache.detections;
+    const box = detectionCache.boxes.get(detectionID);
+    if (box) {
+      detectionCache.boxes.delete(detectionID);
+      detectionCache.rbush.remove(box);
+    }
+
+    for (const segmentationID of detection?.segmentationIDs ?? []) {
+      const segmentation = this._cache.segmentations.data.get(segmentationID);
+      if (segmentation?.detectionID === detectionID) {
+        delete segmentation.detectionID;
+        if (!segmentation.imageID) {
+          this._cache.segmentations.data.delete(segmentationID);
+        } else {
+          utilLRUMapSet(this._cache.segmentations.data, segmentationID, segmentation);
+        }
+      }
+    }
+  }
+
+
+  _evictSegmentation(segmentation, segmentationID) {
+    const image = this._cache.images.data.get(segmentation?.imageID);
+    if (image?.segmentationIDs) {
+      image.segmentationIDs.delete(segmentationID);
+    }
+
+    const detection = this._cache.detections.data.get(segmentation?.detectionID);
+    if (detection?.segmentationIDs) {
+      detection.segmentationIDs.delete(segmentationID);
+    }
   }
 
 

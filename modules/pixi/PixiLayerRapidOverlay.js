@@ -24,6 +24,7 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     this.overlaysContainer = null;
     this._overlayFeatures = new Map();   // Map<featureID, PIXI.Graphics>
     this._overlayRetained = new Map();   // Map<featureID, frame>
+    this._datasetColors = new Map();     // Map<colorKey, PIXI.Color>
   }
 
 
@@ -53,6 +54,7 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     this._overlaysDefined = null;
     this._overlayFeatures.clear();
     this._overlayRetained.clear();
+    this._datasetColors.clear();
 
     groupContainer.addChild(overlays);
   }
@@ -74,7 +76,7 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     for (const dataset of this.context.systems.rapid.catalog.values()) {
       if (dataset.overlay && dataset.enabled && dataset.added) {
         const colorKey = dataset.color;
-        const customColor = new PIXI.Color(dataset.color);
+        const customColor = this._getDatasetColor(colorKey);
         const overlay = dataset.overlay;
         if ((zoom >= overlay.minZoom ) && (zoom <= overlay.maxZoom)) {  // avoid firing off too many API requests
           vtService.loadTiles(overlay.url);
@@ -172,6 +174,16 @@ export class PixiLayerRapidOverlay extends AbstractLayer {
     }
 
     return this._overlaysDefined;
+  }
+
+
+  _getDatasetColor(colorKey) {
+    let color = this._datasetColors.get(colorKey);
+    if (!color) {
+      color = new PIXI.Color(colorKey);
+      this._datasetColors.set(colorKey, color);
+    }
+    return color;
   }
 
 }

@@ -1,5 +1,4 @@
 import { select, selection } from 'd3-selection';
-import { marked } from 'marked';
 
 import { actionNoop, actionRapidAcceptFeature } from '../actions/index.js';
 import { uiIcon } from './icon.js';
@@ -7,6 +6,7 @@ import { uiFlash } from './flash.js';
 //import { uiRapidFirstEditDialog } from './rapid_first_edit_dialog.js';
 import { uiTooltip } from './tooltip.js';
 import { utilKeybinding } from '../util/keybinding.js';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 const ACCEPT_FEATURES_LIMIT = Number.POSITIVE_INFINITY;
 
@@ -35,6 +35,7 @@ export class UiRapidInspector {
 
     this.datum = null;
     this._keys = null;
+    this._noticeRenderID = 0;
     // Need a "private" keybinding for this component because these keys conflict with
     // the main keys used by the operations when editing OSM. ('A','D','M','R')
     this._keybinding = utilKeybinding('UiRapidInspector');
@@ -479,11 +480,20 @@ export class UiRapidInspector {
       // update
       $notice = $notice.merge($$notice);
 
-      $notice
-        .html(marked.parse(l10n.t('rapid_inspector.notice.open_data', { url: dataset.licenseUrl })));
+      const noticeMarkdown = l10n.t('rapid_inspector.notice.open_data', { url: dataset.licenseUrl });
+      const expectedDatasetID = datasetID;
+      const renderID = ++this._noticeRenderID;
 
-      $notice.selectAll('a')   // links in markdown should open in new page
-        .attr('target', '_blank');
+      $notice.text('');
+      parseMarkdownAsync(noticeMarkdown).then(html => {
+        if (renderID !== this._noticeRenderID) return;
+        if (this.datum?.__datasetid__?.replace('-conflated', '') !== expectedDatasetID) return;
+
+        $notice
+          .html(html)
+          .selectAll('a')
+          .attr('target', '_blank');   // links in markdown should open in new page
+      });
     }
 
   }

@@ -1,7 +1,7 @@
 import { select as d3_select } from 'd3-selection';
 
 import { utilHighlightEntities, utilSanitizeHTML } from '../util/index.js';
-import { marked } from 'marked';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 export function uiMapRouletteDetails(context) {
   const l10n = context.systems.l10n;
@@ -131,7 +131,7 @@ export function uiMapRouletteDetails(context) {
 
     details = details.merge(detailsEnter);
 
-    maproulette.loadTaskDetailAsync(_qaItem).then(task => {
+    maproulette.loadTaskDetailAsync(_qaItem).then(async task => {
       if (!task) return;
       if (_qaItem.id !== task.id) return;
       const selection = details.selectAll('.qa-details-subsection');
@@ -153,8 +153,16 @@ export function uiMapRouletteDetails(context) {
           .attr('target', '_blank');
       }
 
-      const descriptionHtml = utilSanitizeHTML(generateDynamicContent(marked.parse(replaceMustacheTags(task.description, task), { async: false })));
-      const instructionHtml = utilSanitizeHTML(generateDynamicContent(marked.parse(replaceMustacheTags(task.instruction, task), { async: false })));
+      const descriptionSource = replaceMustacheTags(task.description || '', task);
+      const instructionSource = replaceMustacheTags(task.instruction || '', task);
+      const [ descriptionParsed, instructionParsed ] = await Promise.all([
+        parseMarkdownAsync(descriptionSource, { async: false }),
+        parseMarkdownAsync(instructionSource, { async: false })
+      ]);
+      if (_qaItem.id !== task.id) return;
+
+      const descriptionHtml = utilSanitizeHTML(generateDynamicContent(descriptionParsed));
+      const instructionHtml = utilSanitizeHTML(generateDynamicContent(instructionParsed));
 
       // We show the challenge description when user select an unkown challenge.
       // But we hide it if a specific (assumed to be know) challenge is selected.

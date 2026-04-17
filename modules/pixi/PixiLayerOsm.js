@@ -194,6 +194,8 @@ export class PixiLayerOsm extends AbstractLayer {
       }
     }
 
+    const allowPointFeatures = zoom >= 16;
+
 // experiment for benchmarking
 //    // Instructions to save 'canned' entity data for use in the renderer test suite:
 //    // Set a breakpoint at the next line, then modify `this._saveCannedData` to be 'true'
@@ -220,10 +222,13 @@ export class PixiLayerOsm extends AbstractLayer {
 
     this.renderPolygons(frame, viewport, zoom, data);
     this.renderLines(frame, viewport, zoom, data);
-    this.renderPoints(frame, viewport, zoom, data);
+    if (allowPointFeatures) {
+      this.renderPoints(frame, viewport, zoom, data);
+    }
 
     // At this point, all the visible linear features have been accounted for,
     // and parent-child data links have been established.
+    if (!allowPointFeatures) return;
 
     // Gather ids related for the selected/hovered/drawing features.
     const selectedIDs = this.getDataWithClass('select', false);
@@ -362,7 +367,7 @@ export class PixiLayerOsm extends AbstractLayer {
         this.syncFeatureClasses(feature);
 
         if (feature.dirty) {
-          const preset = presets.match(entity, graph);
+          const preset = (zoom >= 16 && showPoints) ? presets.match(entity, graph) : null;
 
           const style = styles.styleMatch(entity.tags);
           style.labelTint = style.fill.color ?? style.stroke.color ?? 0xeeeeee;
@@ -374,7 +379,7 @@ export class PixiLayerOsm extends AbstractLayer {
           // POI = "Point of Interest" -and- "Pole of Inaccessability"
           // For POIs mapped as polygons, we can create a virtual point feature at the pole of inaccessability.
           // Try to show a virtual pin if there is a label or if the preset is interesting enough..
-          if (showPoints && (label || isInterestingPreset(preset))) {
+          if (zoom >= 16 && showPoints && (label || isInterestingPreset(preset))) {
             feature.poiFeatureID = `${this.layerID}-${entityID}-poi-${i}`;
             feature.poiPreset = preset;
           } else {
@@ -388,7 +393,7 @@ export class PixiLayerOsm extends AbstractLayer {
 
         // Same as above, but for the virtual POI, if any
         // Confirm that `feature.geometry.origPoi` exists - we may have skipped it if `feature.geometry.lod = 0`
-        if (feature.poiFeatureID && feature.poiPreset && feature.geometry.origPoi) {
+        if (zoom >= 16 && feature.poiFeatureID && feature.poiPreset && feature.geometry.origPoi) {
           let poiFeature = this.features.get(feature.poiFeatureID);
 
           if (!poiFeature) {
@@ -556,6 +561,8 @@ export class PixiLayerOsm extends AbstractLayer {
    * @param  realated   Collections of related OSM IDs
    */
   renderVertices(frame, viewport, zoom, data, related) {
+    if (zoom < 16) return;
+
     const entities = data.vertices;
     const context = this.context;
     const graph = context.systems.editor.staging.graph;
@@ -671,6 +678,8 @@ export class PixiLayerOsm extends AbstractLayer {
    * @param  data       Visible OSM data to render, sorted by type
    */
   renderPoints(frame, viewport, zoom, data) {
+    if (zoom < 16) return;
+
     const entities = data.points;
     const context = this.context;
     const graph = context.systems.editor.staging.graph;
@@ -759,6 +768,8 @@ export class PixiLayerOsm extends AbstractLayer {
    * @param  related    Collections of related OSM IDs
    */
   renderMidpoints(frame, viewport, zoom, data, related) {
+    if (zoom < 16) return;
+
     const MIN_MIDPOINT_DIST = 40;   // distance in pixels
     const MIN_MIDPOINT_DIST_SQ = MIN_MIDPOINT_DIST * MIN_MIDPOINT_DIST;
     const context = this.context;

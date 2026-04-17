@@ -1,8 +1,8 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
-import { marked } from 'marked';
 
 import { uiConfirm } from '../confirm.js';
 import { utilNoAuto, utilRebind } from '../../util/index.js';
+import { parseMarkdownAsync } from '../../util/markdown.js';
 
 
 export function uiSettingsCustomBackground(context) {
@@ -40,7 +40,7 @@ export function uiSettingsCustomBackground(context) {
     const tms_scale = l10n.t(`${prefix}.tms.tokens.scale_factor`);
     const example = l10n.t('example');
 
-    const instructions = marked.parse(`
+    const instructions = `
 ${info}
 &nbsp;<br>
 &nbsp;<br>
@@ -61,15 +61,18 @@ ${info}
 &nbsp;<br>
 #### ${example}
 * \`https://{switch:a,b,c}.tile.openstreetmap.org/{zoom}/{x}/{y}.png\`
-`);
+`;
 
 
     let textSection = modal.select('.modal-section.message-text');
 
-    textSection
+    const $instructions = textSection
       .append('div')
-      .attr('class', 'instructions-template')
-      .html(instructions);
+      .attr('class', 'instructions-template');
+
+    parseMarkdownAsync(instructions).then(html => {
+      $instructions.html(html);
+    });
 
     textSection
       .append('textarea')

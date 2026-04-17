@@ -55,7 +55,7 @@ export class DashLine {
 
     this.lineLength = null;           // current length of the line
     this.cursor = new PIXI.Point();   // cursor location
-    this.start = null;
+    this.start = new PIXI.Point();
 
     this.graphics = graphics;
     this.dash = options.dash;
@@ -96,7 +96,7 @@ export class DashLine {
   moveTo(x, y) {
     this.lineLength = 0;
     this.cursor.set(x, y);
-    this.start = new PIXI.Point(x, y);
+    this.start.set(x, y);
     this.graphics.moveTo(this.cursor.x, this.cursor.y);
     return this;
   }

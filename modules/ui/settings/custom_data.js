@@ -1,8 +1,8 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
-import { marked } from 'marked';
 
 import { uiConfirm } from '../confirm.js';
 import { utilNoAuto, utilRebind } from '../../util/index.js';
+import { parseMarkdownAsync } from '../../util/markdown.js';
 
 
 export function uiSettingsCustomData(context) {
@@ -46,7 +46,7 @@ export function uiSettingsCustomData(context) {
     const file_types = l10n.t(`${prefix}.file.types`);
     const file_tip = l10n.t(`${prefix}.file.tip`);
 
-    const fileHtml = marked.parse(`
+    const fileMarkdown = `
 ${data_instructions}
 &nbsp;<br>
 &nbsp;<br>
@@ -56,12 +56,15 @@ ${file_instructions}
 &nbsp;<br>
 &nbsp;<br>
 ${file_tip}
-`);
+`;
 
-    textSection
+    const $fileInstructions = textSection
       .append('div')
-      .attr('class', 'instructions-template')
-      .html(fileHtml);
+      .attr('class', 'instructions-template');
+
+    parseMarkdownAsync(fileMarkdown).then(html => {
+      $fileInstructions.html(html);
+    });
 
     textSection
       .append('input')
@@ -90,7 +93,7 @@ ${file_tip}
     const url_example_pmtiles = l10n.t(`${prefix}.url.example_pmtiles`);
     const example = l10n.t('example');
 
-    const urlHtml = marked.parse(`
+    const urlMarkdown = `
 ### ${data_or}
 ### ${url_heading}
 ${url_instructions}
@@ -104,12 +107,15 @@ ${url_tokens}
 * \`${url_example_file}\`
 * \`${url_example_xyz}\`
 * \`${url_example_pmtiles}\`
-`);
+`;
 
-    textSection
+    const $urlInstructions = textSection
       .append('div')
-      .attr('class', 'instructions-template')
-      .html(urlHtml);
+      .attr('class', 'instructions-template');
+
+    parseMarkdownAsync(urlMarkdown).then(html => {
+      $urlInstructions.html(html);
+    });
 
     textSection
       .append('textarea')

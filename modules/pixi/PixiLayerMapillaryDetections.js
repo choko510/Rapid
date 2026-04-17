@@ -74,12 +74,12 @@ export class PixiLayerMapillaryDetections extends AbstractLayer {
   filterDetections(detections) {
     const photos = this.context.systems.photos;
     const fromDate = photos.fromDate;
-    const fromTimestamp = fromDate && new Date(fromDate).getTime();
+    const fromTimestamp = fromDate && Date.parse(fromDate);
     const toDate = photos.toDate;
-    const toTimestamp = toDate && new Date(toDate).getTime();
+    const toTimestamp = toDate && Date.parse(toDate);
 
     return detections.filter(detection => {
-      const detectionTimestamp = new Date(detection.first_seen_at).getTime();
+      const detectionTimestamp = Date.parse(detection.first_seen_at);
       if (fromTimestamp && fromTimestamp > detectionTimestamp) return false;
       if (toTimestamp && toTimestamp < detectionTimestamp) return false;
 
@@ -157,4 +157,3 @@ export class PixiLayerMapillaryDetections extends AbstractLayer {
   }
 
 }
-

@@ -210,4 +210,40 @@ describe('MapillaryService', () => {
     });
   });
 
+
+  describe('#trimCache', () => {
+    it('evicts least-recently-used images and cleans rbush boxes', () => {
+      _mapillary._maxImageCacheItems = 2;
+      const cache = _mapillary._cache.images;
+
+      _mapillary._cacheImage(cache, { id: 'image-1', loc: [10, 0] });
+      _mapillary._cacheImage(cache, { id: 'image-2', loc: [10, 0.1] });
+      _mapillary._cacheImage(cache, { id: 'image-3', loc: [10, 0.2] });
+
+      _mapillary._trimCache();
+
+      expect(cache.data.has('image-1')).to.be.false;
+      expect(cache.boxes.has('image-1')).to.be.false;
+      const remaining = cache.rbush.all().map(box => box.data.id);
+      expect(remaining).to.not.include('image-1');
+      expect(remaining).to.include('image-2');
+      expect(remaining).to.include('image-3');
+    });
+
+
+    it('keeps selected image while evicting older entries', () => {
+      _mapillary._maxImageCacheItems = 1;
+      const cache = _mapillary._cache.images;
+
+      _mapillary._cacheImage(cache, { id: 'image-1', loc: [10, 0] });
+      _mapillary._cacheImage(cache, { id: 'image-2', loc: [10, 0.1] });
+      _mapillary._selectedImageID = 'image-1';
+
+      _mapillary._trimCache();
+
+      expect(cache.data.has('image-1')).to.be.true;
+      expect(cache.data.has('image-2')).to.be.false;
+    });
+  });
+
 });

@@ -863,6 +863,7 @@ this.placeRopeLabel(feature, labelObj, coords);
       const label = new Label(labelID, 'rope', {
         str: feature.label,
         coords: coords,
+        points: null,
         labelObj: labelObj,
         tint: feature.style.labelTint || 0xeeeeee
       });
@@ -923,7 +924,8 @@ this.placeRopeLabel(feature, labelObj, coords);
 
       } else if (label.type === 'rope') {
         const labelObj = options.labelObj;  // a PIXI.Sprite, or PIXI.Text
-        const points = options.coords.map(([x,y]) => new PIXI.Point(x, y));
+        const points = options.points || options.coords.map(([x, y]) => new PIXI.Point(x, y));
+        options.points = points;
         const rope = new PIXI.MeshRope({ texture: labelObj.texture, points: points });
         rope.label = labelID;
         rope.autoUpdate = false;

@@ -46,14 +46,20 @@ jobs:
       run: python scripts/server.py &
     - name: Run Chromium Benchmarks
       continue-on-error: ${{ !(github.ref == 'refs/heads/benchmarking' || github.base_ref == 'benchmarking') }}
+      env:
+        RAPID_PERF_GUARDRAILS: ${{ (github.ref == 'refs/heads/benchmarking' || github.base_ref == 'benchmarking') && '1' || '0' }}
       run:
         pnpm exec playwright test --config=test/benchmark/playwright.config.mjs --project chromium
     - name: Run Firefox Benchmarks
       if: ${{ github.ref == 'refs/heads/benchmarking' || github.base_ref == 'benchmarking' }}
+      env:
+        RAPID_PERF_GUARDRAILS: '1'
       run:
         pnpm exec playwright test --config=test/benchmark/playwright.config.mjs --project firefox
     - name: Run Webkit Benchmarks
       if: ${{ github.ref == 'refs/heads/benchmarking' || github.base_ref == 'benchmarking' }}
+      env:
+        RAPID_PERF_GUARDRAILS: '1'
       run:
         pnpm exec playwright test --config=test/benchmark/playwright.config.mjs --project webkit
     - name: Upload benchmark results

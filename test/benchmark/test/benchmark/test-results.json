@@ -112,7 +112,7 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 35390,
+                  "duration": 33347,
                   "errors": [],
                   "stdout": [
                     {
@@ -122,10 +122,10 @@
                       "text": "benchmark zoom: 19\n"
                     },
                     {
-                      "text": "benchmark ops/sec: 4799\n"
+                      "text": "benchmark ops/sec: 3800\n"
                     },
                     {
-                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":4799,\"minOpsPerSec\":3000,\"passedBudget\":true}\n"
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":3800,\"minOpsPerSec\":3000,\"passedBudget\":true}\n"
                     },
                     {
                       "text": "benchmark placename: tokyo\n"
@@ -134,10 +134,10 @@
                       "text": "benchmark zoom: 17\n"
                     },
                     {
-                      "text": "benchmark ops/sec: 27.16\n"
+                      "text": "benchmark ops/sec: 28.96\n"
                     },
                     {
-                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":27.16,\"minOpsPerSec\":12,\"passedBudget\":true}\n"
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":28.96,\"minOpsPerSec\":12,\"passedBudget\":true}\n"
                     },
                     {
                       "text": "benchmark placename: tokyo\n"
@@ -146,18 +146,24 @@
                       "text": "benchmark zoom: 15\n"
                     },
                     {
-                      "text": "benchmark ops/sec: 2.56\n"
+                      "text": "benchmark ops/sec: 2.41\n"
                     },
                     {
-                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.56,\"minOpsPerSec\":1.8,\"passedBudget\":true}\n"
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.41,\"minOpsPerSec\":1.8,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "PERF_BASELINE_RESULT {\"startup\":{\"scenario\":\"context-init-and-first-render\",\"contextInitMs\":1176.1,\"firstRenderMs\":1186.1,\"interactiveReadyMs\":1196.7},\"cpuProxy\":{\"rendererBenchmarks\":[{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":3800,\"minOpsPerSec\":3000,\"passedBudget\":true},{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":28.96,\"minOpsPerSec\":12,\"passedBudget\":true},{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.41,\"minOpsPerSec\":1.8,\"passedBudget\":true}],\"longTasks\":{\"supported\":true,\"entryType\":\"longtask\",\"count\":116,\"totalDurationMs\":23876,\"maxDurationMs\":1683,\"unsupportedReason\":null}},\"memoryProxy\":{\"supported\":true,\"unsupportedReason\":null,\"snapshots\":[{\"label\":\"bootstrap_start\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"before_context_init\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"interactive_ready\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"suite_complete\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000}]},\"environment\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36\",\"benchmarkCount\":3}}\n"
                     },
                     {
                       "text": "BENCHMARK_SUMMARY {\"total\":3,\"failures\":0}\n"
+                    },
+                    {
+                      "text": "PERF_BASELINE_WRITTEN C:\\Users\\eita2\\Downloads\\fer\\Rapid\\test\\benchmark\\test\\benchmark\\perf-baseline-results.json\n"
                     }
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-04-13T10:03:49.434Z",
+                  "startTime": "2026-04-16T19:06:18.921Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -167,7 +173,167 @@
           ],
           "id": "c5fc9dfc02e868f7e7a2-3ce25c5778f694fb60b8",
           "file": "benchmark.spec.mjs",
-          "line": 3,
+          "line": 124,
+          "column": 1
+        },
+        {
+          "title": "Run benchmarks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 33083,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "benchmark placename: tokyo\n"
+                    },
+                    {
+                      "text": "benchmark zoom: 19\n"
+                    },
+                    {
+                      "text": "benchmark ops/sec: 3670\n"
+                    },
+                    {
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":3670,\"minOpsPerSec\":3000,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "benchmark placename: tokyo\n"
+                    },
+                    {
+                      "text": "benchmark zoom: 17\n"
+                    },
+                    {
+                      "text": "benchmark ops/sec: 28.15\n"
+                    },
+                    {
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":28.15,\"minOpsPerSec\":12,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "benchmark placename: tokyo\n"
+                    },
+                    {
+                      "text": "benchmark zoom: 15\n"
+                    },
+                    {
+                      "text": "benchmark ops/sec: 2.45\n"
+                    },
+                    {
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.45,\"minOpsPerSec\":1.8,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "PERF_BASELINE_RESULT {\"startup\":{\"scenario\":\"context-init-and-first-render\",\"contextInitMs\":819,\"firstRenderMs\":839.6,\"interactiveReadyMs\":928.1},\"cpuProxy\":{\"rendererBenchmarks\":[{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":3670,\"minOpsPerSec\":3000,\"passedBudget\":true},{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":28.15,\"minOpsPerSec\":12,\"passedBudget\":true},{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.45,\"minOpsPerSec\":1.8,\"passedBudget\":true}],\"longTasks\":{\"supported\":true,\"entryType\":\"longtask\",\"count\":108,\"totalDurationMs\":23553,\"maxDurationMs\":1664,\"unsupportedReason\":null}},\"memoryProxy\":{\"supported\":true,\"unsupportedReason\":null,\"snapshots\":[{\"label\":\"bootstrap_start\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"before_context_init\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"interactive_ready\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"suite_complete\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000}]},\"environment\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36\",\"benchmarkCount\":3}}\n"
+                    },
+                    {
+                      "text": "BENCHMARK_SUMMARY {\"total\":3,\"failures\":0}\n"
+                    },
+                    {
+                      "text": "PERF_BASELINE_WRITTEN C:\\Users\\eita2\\Downloads\\fer\\Rapid\\test\\benchmark\\test\\benchmark\\perf-baseline-results.json\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-16T19:06:53.129Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c5fc9dfc02e868f7e7a2-6152174a5cafbba4b188",
+          "file": "benchmark.spec.mjs",
+          "line": 124,
+          "column": 1
+        },
+        {
+          "title": "Run benchmarks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 32349,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "benchmark placename: tokyo\n"
+                    },
+                    {
+                      "text": "benchmark zoom: 19\n"
+                    },
+                    {
+                      "text": "benchmark ops/sec: 3873\n"
+                    },
+                    {
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":3873,\"minOpsPerSec\":3000,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "benchmark placename: tokyo\n"
+                    },
+                    {
+                      "text": "benchmark zoom: 17\n"
+                    },
+                    {
+                      "text": "benchmark ops/sec: 28.02\n"
+                    },
+                    {
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":28.02,\"minOpsPerSec\":12,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "benchmark placename: tokyo\n"
+                    },
+                    {
+                      "text": "benchmark zoom: 15\n"
+                    },
+                    {
+                      "text": "benchmark ops/sec: 2.39\n"
+                    },
+                    {
+                      "text": "BENCHMARK_RESULT {\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.39,\"minOpsPerSec\":1.8,\"passedBudget\":true}\n"
+                    },
+                    {
+                      "text": "PERF_BASELINE_RESULT {\"startup\":{\"scenario\":\"context-init-and-first-render\",\"contextInitMs\":794,\"firstRenderMs\":794.6,\"interactiveReadyMs\":817.6},\"cpuProxy\":{\"rendererBenchmarks\":[{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"19\",\"opsPerSec\":3873,\"minOpsPerSec\":3000,\"passedBudget\":true},{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"17\",\"opsPerSec\":28.02,\"minOpsPerSec\":12,\"passedBudget\":true},{\"name\":\"PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data\",\"placename\":\"tokyo\",\"zoom\":\"15\",\"opsPerSec\":2.39,\"minOpsPerSec\":1.8,\"passedBudget\":true}],\"longTasks\":{\"supported\":true,\"entryType\":\"longtask\",\"count\":110,\"totalDurationMs\":22899,\"maxDurationMs\":1618,\"unsupportedReason\":null}},\"memoryProxy\":{\"supported\":true,\"unsupportedReason\":null,\"snapshots\":[{\"label\":\"bootstrap_start\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"before_context_init\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"interactive_ready\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000},{\"label\":\"suite_complete\",\"usedJSHeapSize\":553000000,\"totalJSHeapSize\":588000000,\"jsHeapSizeLimit\":3760000000}]},\"environment\":{\"userAgent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36\",\"benchmarkCount\":3}}\n"
+                    },
+                    {
+                      "text": "BENCHMARK_SUMMARY {\"total\":3,\"failures\":0}\n"
+                    },
+                    {
+                      "text": "PERF_BASELINE_WRITTEN C:\\Users\\eita2\\Downloads\\fer\\Rapid\\test\\benchmark\\test\\benchmark\\perf-baseline-results.json\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-04-16T19:07:27.001Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c5fc9dfc02e868f7e7a2-ac83b1fa5ac9f7dec68c",
+          "file": "benchmark.spec.mjs",
+          "line": 124,
           "column": 1
         }
       ]
@@ -175,9 +341,9 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-04-13T10:03:48.672Z",
-    "duration": 36360.698000000004,
-    "expected": 1,
+    "startTime": "2026-04-16T19:06:17.166Z",
+    "duration": 102344.625,
+    "expected": 3,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

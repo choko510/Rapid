@@ -5,7 +5,7 @@ import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { uiIcon } from '../ui/icon.js';
-import { utilFetchResponse } from '../util/index.js';
+import { utilFetchResponse, utilLRUSetAdd } from '../util/index.js';
 
 const TILEZOOM = 16.5;
 
@@ -67,6 +67,7 @@ export class StreetsideService extends AbstractSystem {
 
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
     this._lastv = null;
+    this._maxLoadedTiles = 500;
   }
 
 
@@ -116,7 +117,7 @@ export class StreetsideService extends AbstractSystem {
     const ui = context.systems.ui;
 
     // create ms-wrapper, a photo wrapper class
-    let $wrapper = context.container().select('.photoviewer .middle-middle')
+    const $wrapper = context.container().select('.photoviewer .middle-middle')
       .selectAll('.ms-wrapper')
       .data([0]);
 
@@ -161,7 +162,7 @@ export class StreetsideService extends AbstractSystem {
 
 
     // create working canvas for stitching together images
-    $wrapper = $wrapper.merge($$wrapper)
+    $wrapper.merge($$wrapper)
       .call(this._setupCanvas);
 
     // Register viewer resize handler
@@ -196,6 +197,7 @@ export class StreetsideService extends AbstractSystem {
       rbush:     new RBush(),
       inflight:  new Map(),   // Map(tileID -> {Promise, AbortController})
       loaded:    new Set(),   // Set(tileID)
+      loadedOrder: new Set(), // Set(tileID) ordered least-recently-used -> most-recently-used
       bubbles:   new Map(),   // Map(bubbleID -> bubble data)
       sequences: new Map(),   // Map(sequenceID -> sequence data)
       unattachedBubbles:   new Set(),  // Set(bubbleID)
@@ -269,11 +271,16 @@ export class StreetsideService extends AbstractSystem {
     // Issue new requests..
     for (const tile of tiles) {
       const tileID = tile.id;
+      if (this._cache.loaded.has(tileID)) {
+        utilLRUSetAdd(this._cache.loadedOrder, tileID);
+      }
       if (this._cache.loaded.has(tileID) || this._cache.inflight.has(tileID)) continue;
 
       // Promise.all([this._fetchMetadataAsync(tile), this._loadTileAsync(tile)])
       this._loadTileAsync(tile);
     }
+
+    this._trimLoadedTiles(wantedTileIDs);
   }
 
 
@@ -707,6 +714,12 @@ export class StreetsideService extends AbstractSystem {
     const cache = this._cache;
 
     cache.loaded.add(results.tile.id);
+    utilLRUSetAdd(cache.loadedOrder, results.tile.id);
+    const wantedTileIDs = new Set(
+      this._tiler.zoomRange(TILEZOOM).margin(2).getTiles(this.context.viewport).tiles.map(tile => tile.id)
+    );
+    this._trimLoadedTiles(wantedTileIDs);
+
     const bubbles = results.data;
     if (!bubbles) return;
     if (bubbles.error) throw new Error(bubbles.error);
@@ -760,6 +773,29 @@ export class StreetsideService extends AbstractSystem {
     const gfx = this.context.systems.gfx;
     gfx.deferredRedraw();
     this.emit('loadedData');
+  }
+
+
+  _trimLoadedTiles(wantedTileIDs) {
+    const cache = this._cache;
+    const protectedTileIDs = new Set(wantedTileIDs);
+    for (const tileID of cache.inflight.keys()) {
+      protectedTileIDs.add(tileID);
+    }
+
+    let attempts = cache.loadedOrder.size;
+    while (cache.loadedOrder.size > this._maxLoadedTiles && attempts-- > 0) {
+      const oldestTileID = cache.loadedOrder.values().next().value;
+      if (oldestTileID === undefined) break;
+
+      if (protectedTileIDs.has(oldestTileID)) {
+        utilLRUSetAdd(cache.loadedOrder, oldestTileID);
+        continue;
+      }
+
+      cache.loadedOrder.delete(oldestTileID);
+      cache.loaded.delete(oldestTileID);
+    }
   }
 
 

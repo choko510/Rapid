@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import deepEqual from 'fast-deep-equal';
 import { GlowFilter } from 'pixi-filters';
 import { vecEqual, vecLength } from '@rapid-sdk/math';
 
@@ -283,7 +284,6 @@ export class PixiFeaturePolygon extends AbstractFeature {
     this._bufferdata = null;
 
     // STROKES
-    strokes.removeChildren();
     if (strokes.visible && rings.length) {
       strokes.eventMode = this._classes.has('drawing') ? 'none' : 'static';  // Rapid#648
 
@@ -305,9 +305,20 @@ export class PixiFeaturePolygon extends AbstractFeature {
         join: 'bevel'
       };
 
+      while (strokes.children.length < rings.length) {
+        const stroke = new PIXI.Graphics();
+        stroke.sortableChildren = false;
+        strokes.addChild(stroke);
+      }
+      while (strokes.children.length > rings.length) {
+        const stroke = strokes.removeChildAt(strokes.children.length - 1);
+        stroke.destroy();
+      }
+
       for (let i = 0; i < rings.length; i++) {
         const ring = rings[i];
-        const stroke = new PIXI.Graphics();
+        const stroke = strokes.getChildAt(i);
+        stroke.clear();
 
         if (dash) {
           strokeStyle.dash = dash;
@@ -328,8 +339,6 @@ export class PixiFeaturePolygon extends AbstractFeature {
 
         stroke.hitArea = new PIXI.Polygon(buffer.perimeter);
         stroke.label = `stroke${i}`;
-        stroke.sortableChildren = false;
-        strokes.addChild(stroke);
       }
     }
 
@@ -508,7 +517,9 @@ export class PixiFeaturePolygon extends AbstractFeature {
     return this._style;
   }
   set style(obj) {
-    this._style = Object.assign({}, STYLE_DEFAULTS, obj);
+    const nextStyle = Object.assign({}, STYLE_DEFAULTS, obj);
+    if (this._style && deepEqual(this._style, nextStyle)) return;
+    this._style = nextStyle;
     this._styleDirty = true;
   }
 

@@ -13,6 +13,70 @@ const PERFORMANCE_BUDGETS = {
 };
 const benchmarkResults = [];
 const benchmarkFailures = [];
+const roundMetric = value => Number(value.toFixed(2));
+
+const startupMetrics = {
+  scenario: 'context-init-and-first-render',
+  contextInitMs: null,
+  firstRenderMs: null,
+  interactiveReadyMs: null
+};
+
+const longTaskMetrics = {
+  supported: false,
+  entryType: 'longtask',
+  count: 0,
+  totalDurationMs: 0,
+  maxDurationMs: 0,
+  unsupportedReason: null
+};
+
+const heapSnapshots = [];
+
+function captureHeapSnapshot(label) {
+  const memory = globalThis.performance?.memory;
+  if (!memory) return;
+
+  heapSnapshots.push({
+    label: label,
+    usedJSHeapSize: memory.usedJSHeapSize,
+    totalJSHeapSize: memory.totalJSHeapSize,
+    jsHeapSizeLimit: memory.jsHeapSizeLimit
+  });
+}
+
+function waitForAnimationFrame() {
+  if (typeof requestAnimationFrame !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
+let longTaskObserver = null;
+const supportedEntryTypes = globalThis.PerformanceObserver?.supportedEntryTypes || [];
+if (globalThis.PerformanceObserver && supportedEntryTypes.includes('longtask')) {
+  longTaskMetrics.supported = true;
+  longTaskObserver = new PerformanceObserver(list => {
+    for (const entry of list.getEntries()) {
+      const duration = Number(entry.duration) || 0;
+      longTaskMetrics.count += 1;
+      longTaskMetrics.totalDurationMs += duration;
+      longTaskMetrics.maxDurationMs = Math.max(longTaskMetrics.maxDurationMs, duration);
+    }
+  });
+
+  try {
+    longTaskObserver.observe({ type: 'longtask', buffered: true });
+  } catch (error) {
+    longTaskObserver = null;
+    longTaskMetrics.supported = false;
+    longTaskMetrics.unsupportedReason = error?.message || 'Unable to observe longtask performance entries.';
+  }
+} else {
+  longTaskMetrics.unsupportedReason = 'PerformanceObserver longtask entries are not supported in this browser.';
+}
+
+captureHeapSnapshot('bootstrap_start');
 
 const values = [];
 for (let i = 0; i < 1000000; i++) {
@@ -71,6 +135,9 @@ if (!makeContext) {
 async function initContextAsync() {
   if (context) return;
 
+  const startupStart = performance.now();
+  captureHeapSnapshot('before_context_init');
+
   const ctx = makeContext();
   if (typeof ctx.assetPath === 'function' && typeof ctx.init === 'function') {
     context = ctx.assetPath('../../dist/').init().container(content);
@@ -96,6 +163,13 @@ async function initContextAsync() {
   } else if (typeof map?.render === 'function') {
     map.render(content);
   }
+
+  startupMetrics.contextInitMs = roundMetric(performance.now() - startupStart);
+  await waitForAnimationFrame();
+  startupMetrics.firstRenderMs = roundMetric(performance.now() - startupStart);
+  await waitForAnimationFrame();
+  startupMetrics.interactiveReadyMs = roundMetric(performance.now() - startupStart);
+  captureHeapSnapshot('interactive_ready');
 
   const osmLayer = context.scene?.().layers?.get?.('osm');
   if (osmLayer && !osmLayer.areaContainer && typeof osmLayer.reset === 'function') {
@@ -202,6 +276,33 @@ suite.on('error', event => {
 });
 
 suite.on('complete', () => {
+  if (longTaskObserver) {
+    longTaskObserver.disconnect();
+  }
+  captureHeapSnapshot('suite_complete');
+
+  const perfBaseline = {
+    startup: startupMetrics,
+    cpuProxy: {
+      rendererBenchmarks: benchmarkResults,
+      longTasks: {
+        ...longTaskMetrics,
+        totalDurationMs: roundMetric(longTaskMetrics.totalDurationMs),
+        maxDurationMs: roundMetric(longTaskMetrics.maxDurationMs)
+      }
+    },
+    memoryProxy: {
+      supported: heapSnapshots.length > 0,
+      unsupportedReason: heapSnapshots.length > 0 ? null : 'performance.memory is unavailable in this browser.',
+      snapshots: heapSnapshots
+    },
+    environment: {
+      userAgent: navigator.userAgent,
+      benchmarkCount: benchmarkResults.length
+    }
+  };
+  console.log(`PERF_BASELINE_RESULT ${JSON.stringify(perfBaseline)}`);
+
   console.log(`BENCHMARK_SUMMARY ${JSON.stringify({
     total: benchmarkResults.length,
     failures: benchmarkFailures.length

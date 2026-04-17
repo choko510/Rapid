@@ -1,11 +1,11 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
 import { utilArrayUniq, utilUniqueString } from '@rapid-sdk/util';
-import { iso1A2Code } from '@rapideditor/country-coder';
 
 import { uiIcon } from '../icon.js';
 import { uiTooltip } from '../tooltip.js';
 import { uiCombobox } from '../combobox.js';
+import { iso1A2CodeAsync } from '../../util/country_coder.js';
 import { utilGetSetValue, utilNoAuto, utilRebind } from '../../util/index.js';
 
 var _languagesArray = [];
@@ -28,6 +28,7 @@ export function uiFieldLocalized(context, uifield) {
     var input = d3_select(null);
     var localizedInputs = d3_select(null);
     var _countryCode;
+    var _countryCodeRequestID = 0;
     var _tags;
 
 
@@ -519,9 +520,21 @@ export function uiFieldLocalized(context, uifield) {
     };
 
     function loadCountryCode() {
+        _countryCode = null;
         var extent = uifield.entityExtent;
-        var countryCode = extent && iso1A2Code(extent.center());
-        _countryCode = countryCode && countryCode.toLowerCase();
+        var center = extent && extent.center();
+        if (!center) return;
+
+        var requestID = ++_countryCodeRequestID;
+        iso1A2CodeAsync(center)
+            .then(function(countryCode) {
+                if (requestID !== _countryCodeRequestID) return;
+                _countryCode = countryCode && countryCode.toLowerCase();
+                if (!_selection.empty()) {
+                    localizedInputs.call(renderMultilingual);
+                }
+            })
+            .catch(e => console.error(e));  // eslint-disable-line
     }
 
 

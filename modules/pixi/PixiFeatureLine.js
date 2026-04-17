@@ -1,4 +1,5 @@
 import * as PIXI from 'pixi.js';
+import deepEqual from 'fast-deep-equal';
 import { GlowFilter } from 'pixi-filters';
 
 import { AbstractFeature } from './AbstractFeature.js';
@@ -34,6 +35,7 @@ export class PixiFeatureLine extends AbstractFeature {
 
     this.type = 'line';
     this._bufferdata = null;
+    this.lineMarkers = null;
 
     const casing = new PIXI.Graphics();
     casing.label = 'casing';
@@ -64,6 +66,10 @@ export class PixiFeatureLine extends AbstractFeature {
     if (this.stroke) {
       this.stroke.destroy();
       this.stroke = null;
+    }
+    if (this.lineMarkers) {
+      this.lineMarkers.destroy({ children: true });
+      this.lineMarkers = null;
     }
 
     this._bufferdata = null;
@@ -138,7 +144,7 @@ export class PixiFeatureLine extends AbstractFeature {
       // Update line markers, if any..
       // Todo: left/right markers (like for coastlines, retaining walls, etc)
       //
-      let lineMarkers = container.getChildByLabel('lineMarkers');
+      let lineMarkers = this.lineMarkers;
 
       if (showMarkers && ((style.lineMarkerTexture || style.lineMarkerName) || (style.sidedMarkerTexture || style.sidedMarkerName))) {
         // Create line marker container, if necessary
@@ -149,29 +155,40 @@ export class PixiFeatureLine extends AbstractFeature {
           lineMarkers.sortableChildren = false;
           lineMarkers.roundPixels = false;
           container.addChild(lineMarkers);
+          this.lineMarkers = lineMarkers;
         }
+        lineMarkers.visible = true;
 
         const lineMarkerTexture = style.lineMarkerTexture || textureManager.get(style.lineMarkerName) || PIXI.Texture.WHITE;
         const sidedMarkerTexture = style.sidedMarkerTexture || textureManager.get(style.sidedMarkerName) || PIXI.Texture.WHITE;
         const sided = style.sidedMarkerName === 'sided';
         const oneway = style.lineMarkerName === 'oneway';
-        lineMarkers.removeChildren();
+        let markerIndex = 0;
+
+        const updateMarker = (texture, x, y, rotation, tint) => {
+          let arrow = lineMarkers.children[markerIndex];
+          if (!arrow) {
+            arrow = new PIXI.Sprite(texture);
+            arrow.eventMode = 'none';
+            arrow.sortableChildren = false;
+            arrow.anchor.set(0.5, 0.5); // middle, middle
+            lineMarkers.addChild(arrow);
+          }
+
+          arrow.texture = texture;
+          arrow.position.set(x, y);
+          arrow.rotation = rotation;
+          arrow.tint = tint;
+          arrow.visible = true;
+          markerIndex++;
+        };
 
         if (oneway) {
           const segments = getLineSegments(this.geometry.coords, ONEWAY_SPACING, false, true);  /* sided = false, limited = true */
 
           segments.forEach(segment => {
             segment.coords.forEach(([x, y]) => {
-              const arrow = new PIXI.Sprite(lineMarkerTexture);
-              arrow.eventMode = 'none';
-              arrow.sortableChildren = false;
-              arrow.anchor.set(0.5, 0.5); // middle, middle
-              arrow.position.set(x, y);
-              //segments with directional 'sides' get rotated 90 degrees
-              arrow.rotation = segment.angle;
-              // arrow.rotation = segment.angle;
-              arrow.tint = style.lineMarkerTint;
-              lineMarkers.addChild(arrow);
+              updateMarker(lineMarkerTexture, x, y, segment.angle, style.lineMarkerTint);
             });
           });
         }
@@ -181,21 +198,17 @@ export class PixiFeatureLine extends AbstractFeature {
 
           segments.forEach(segment => {
             segment.coords.forEach(([x, y]) => {
-              const arrow = new PIXI.Sprite(sidedMarkerTexture);
-              arrow.eventMode = 'none';
-              arrow.sortableChildren = false;
-              arrow.anchor.set(0.5, 0.5); // middle, middle
-              arrow.position.set(x, y);
-              arrow.rotation = segment.angle;
-              arrow.tint = style.stroke.color;
-              lineMarkers.addChild(arrow);
+              updateMarker(sidedMarkerTexture, x, y, segment.angle, style.stroke.color);
             });
           });
         }
 
-      } else if (lineMarkers) {  // No line markers, remove if it exists
-        container.removeChild(lineMarkers);
-        lineMarkers.destroy({ children: true });
+        for (let i = markerIndex; i < lineMarkers.children.length; i++) {
+          lineMarkers.children[i].visible = false;
+        }
+
+      } else if (lineMarkers) {  // No line markers, hide if it exists
+        lineMarkers.visible = false;
       }
 
       // Buffer around line, used for hit area and halo..
@@ -376,7 +389,9 @@ export class PixiFeatureLine extends AbstractFeature {
     return this._style;
   }
   set style(obj) {
-    this._style = Object.assign({}, STYLE_DEFAULTS, obj);
+    const nextStyle = Object.assign({}, STYLE_DEFAULTS, obj);
+    if (this._style && deepEqual(this._style, nextStyle)) return;
+    this._style = nextStyle;
     this._styleDirty = true;
   }
 
@@ -392,4 +407,3 @@ const STYLE_DEFAULTS = {
   casing: { width: 5, color: 0x444444, alpha: 1, cap: 'round', join: 'round' },
   stroke: { width: 3, color: 0xcccccc, alpha: 1, cap: 'round', join: 'round' }
 };
-

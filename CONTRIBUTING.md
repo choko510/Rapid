@@ -49,10 +49,27 @@ The benchmark harness now emits machine-readable lines:
 
 - `BENCHMARK_RESULT {...}`
 - `BENCHMARK_SUMMARY {...}`
+- `PERF_BASELINE_RESULT {...}`
+
+Running `pnpm run benchmark` also writes baseline snapshots to:
+
+- `test/benchmark/test/benchmark/perf-baseline-results.json`
+
+This file records startup timing, CPU proxy metrics (renderer ops/sec + long task stats), and heap snapshots where supported (`performance.memory` is typically Chromium-only).
 
 and reports `Benchmark suite failed.` if script execution errors occur or a performance budget is missed.
 
+Set `RAPID_PERF_GUARDRAILS=1` to compare the current run against the previously recorded baseline for the same Playwright project and fail on regressions. Tolerance ratios are configurable with:
+
+- `RAPID_PERF_CPU_MIN_RATIO` (default `0.9`)
+- `RAPID_PERF_STARTUP_MAX_RATIO` (default `1.25`)
+- `RAPID_PERF_LONGTASK_COUNT_MAX_RATIO` (default `1.35`)
+- `RAPID_PERF_LONGTASK_TOTAL_MAX_RATIO` (default `1.35`)
+- `RAPID_PERF_HEAP_USED_MAX_RATIO` (default `1.25`)
+
 In GitHub Actions, `.github/workflows/benchmark.yml` runs in report-only mode on `main`/PRs and remains strict on the `benchmarking` branch.
+
+For geometry-specific WASM experiments, run `pnpm run benchmark:geometry-wasm-poc` to compare `polyclip-ts` against `js-angusj-clipper` when that optional package is installed.
 
 ## Forking, cloning, and running Rapid
 This section suggests a toolset and method to start contributing to Rapid. However, you are welcome to use your own tools for the job. Here's what you could use:

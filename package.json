@@ -18,6 +18,7 @@
   "scripts": {
     "all": "run-s clean build dist",
     "benchmark": "run-p start:server test:benchmark",
+    "benchmark:geometry-wasm-poc": "node test/benchmark/tests/geometry-wasm-poc.mjs",
     "benchmark-cicd": "run-p start:server test:cicd-benchmark",
     "build": "run-p build:**",
     "build:css": "dotenvx run --quiet -- node scripts/build_css.js",

@@ -2,11 +2,11 @@ import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
 import { drag as d3_drag } from 'd3-drag';
 import { utilArrayUniq, utilUnicodeCharsCount } from '@rapid-sdk/util';
-import { iso1A2Code } from '@rapideditor/country-coder';
 
 import { osmEntity } from '../../osm/entity.js';
 import { uiCombobox } from '../combobox.js';
 import { uiIcon } from '../icon.js';
+import { iso1A2CodeAsync } from '../../util/country_coder.js';
 import { utilKeybinding } from '../../util/keybinding.js';
 import { utilGetSetValue, utilNoAuto, utilRebind } from '../../util/index.js';
 
@@ -45,6 +45,7 @@ export function uiFieldCombo(context, uifield) {
     var _entityIDs = [];
     var _tags;
     var _countryCode;
+    var _countryCodeRequestID = 0;
     var _staticPlaceholder;
     var _optionIcons = null;
 
@@ -454,9 +455,21 @@ export function uiFieldCombo(context, uifield) {
             .merge(_input);
 
         if (_isNetwork) {
+            _countryCode = null;
             var extent = uifield.entityExtent;
-            var countryCode = extent && iso1A2Code(extent.center());
-            _countryCode = countryCode && countryCode.toLowerCase();
+            var center = extent && extent.center();
+            if (center) {
+                var requestID = ++_countryCodeRequestID;
+                iso1A2CodeAsync(center)
+                    .then(function(countryCode) {
+                        if (requestID !== _countryCodeRequestID) return;
+                        _countryCode = countryCode && countryCode.toLowerCase();
+                        if (_showTagInfoSuggestions) {
+                            setTaginfoValues('', setPlaceholder);
+                        }
+                    })
+                    .catch(e => console.error(e));  // eslint-disable-line
+            }
         }
 
         _input

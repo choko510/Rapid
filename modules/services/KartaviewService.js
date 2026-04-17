@@ -5,7 +5,14 @@ import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { uiIcon } from '../ui/icon.js';
-import { utilFetchResponse, utilSetTransform } from '../util/index.js';
+import {
+  utilFetchResponse,
+  utilLRUMapSet,
+  utilLRUMapTrim,
+  utilLRUSetAdd,
+  utilLRUSetTrim,
+  utilSetTransform
+} from '../util/index.js';
 
 
 const KARTAVIEW_API = 'https://kartaview.org';
@@ -49,6 +56,8 @@ export class KartaviewService extends AbstractSystem {
     this._startPromise = null;
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
     this._lastv = null;
+    this._maxLoadedPages = 5000;
+    this._maxImages = 30000;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     this._zoomPan = this._zoomPan.bind(this);
@@ -164,6 +173,7 @@ export class KartaviewService extends AbstractSystem {
     this._cache = {
       inflight:  new Map(),   // Map(k, {Promise, AbortController})
       loaded:    new Set(),   // Set(k)  (where k is like `${tile.id},${nextPage}`)
+      loadedOrder: new Set(), // Set(k) ordered least-recently-used -> most-recently-used
       nextPage:  new Map(),   // Map(tileID, Number)
       images:    new Map(),   // Map(imageID, image data)
       sequences: new Map(),   // Map(sequenceID, sequence data)
@@ -498,6 +508,8 @@ export class KartaviewService extends AbstractSystem {
       .then(utilFetchResponse)
       .then(response => {
         cache.loaded.add(k);
+        utilLRUSetAdd(cache.loadedOrder, k);
+        utilLRUSetTrim(cache.loadedOrder, this._maxLoadedPages, evicted => cache.loaded.delete(evicted));
         const data = response?.currentPageItems || [];
         if (!data.length) return;
 
@@ -747,6 +759,23 @@ export class KartaviewService extends AbstractSystem {
     if (props.imageLowUrl)    image.imageLowUrl    = props.imageLowUrl;   // thumbnail
     if (props.imageMedUrl)    image.imageMedUrl    = props.imageMedUrl;   // large thumbnail
     if (props.imageHighUrl)   image.imageHighUrl   = props.imageHighUrl;  // full resolution
+
+    utilLRUMapSet(cache.images, image.id, image);
+    utilLRUMapTrim(cache.images, this._maxImages, evictedImage => {
+      cache.rbush.remove({ data: { id: evictedImage.id } }, (a, b) => a.data.id === b.data.id);
+
+      const sequenceID = evictedImage.sequenceID;
+      const sequence = sequenceID && cache.sequences.get(sequenceID);
+      if (!sequence) return;
+
+      if (Number.isInteger(evictedImage.sequenceIndex)) {
+        sequence.images[evictedImage.sequenceIndex] = undefined;
+      }
+
+      if (!sequence.images.some(photo => photo)) {
+        cache.sequences.delete(sequenceID);
+      }
+    });
 
     return image;
   }

@@ -87,6 +87,17 @@ export class PixiGeometry {
     this.width = 0;
     this.height = 0;
     this.lod = 0;
+
+    // Cached projected data reused between `update()` calls to reduce allocations.
+    this._projExtent = null;
+    this._extentTopLeft = null;
+    this._extentBottomRight = null;
+    this._projRings = null;
+    this._projFlatRings = null;
+    this._projHoles = null;
+    this._projFlatHoles = null;
+    this._projHull = null;
+    this._projSsr = null;
   }
 
 
@@ -114,7 +125,12 @@ export class PixiGeometry {
     // Points are simple, just project once.
     if (this.type === 'point') {
       this.coords = viewport.project(this.origCoords);
-      this.extent = new Extent(this.coords);
+      const extent = this._projExtent ?? (this._projExtent = new Extent());
+      extent.min[0] = this.coords[0];
+      extent.min[1] = this.coords[1];
+      extent.max[0] = this.coords[0];
+      extent.max[1] = this.coords[1];
+      this.extent = extent;
       this.centroid = this.coords;
       this.width = 0;
       this.height = 0;
@@ -125,14 +141,25 @@ export class PixiGeometry {
     // A line or a polygon.
 
     // First, project extent..
-    this.extent = new Extent();
+    const extent = this._projExtent ?? (this._projExtent = new Extent());
+    this.extent = extent;
     // Watch out, we can't project min/max directly (because Y is flipped).
     // Construct topLeft, bottomRight corners and project those.
-    this.extent.min = viewport.project([this.origExtent.min[0], this.origExtent.max[1]]);  // top-left
-    this.extent.max = viewport.project([this.origExtent.max[0], this.origExtent.min[1]]);  // bottom-right
+    const topLeft = this._extentTopLeft ?? (this._extentTopLeft = [0, 0]);
+    topLeft[0] = this.origExtent.min[0];
+    topLeft[1] = this.origExtent.max[1];
+    const bottomRight = this._extentBottomRight ?? (this._extentBottomRight = [0, 0]);
+    bottomRight[0] = this.origExtent.max[0];
+    bottomRight[1] = this.origExtent.min[1];
+    const projMin = viewport.project(topLeft);
+    const projMax = viewport.project(bottomRight);
+    extent.min[0] = projMin[0];
+    extent.min[1] = projMin[1];
+    extent.max[0] = projMax[0];
+    extent.max[1] = projMax[1];
 
-    const [minX, minY] = this.extent.min;
-    const [maxX, maxY] = this.extent.max;
+    const [minX, minY] = extent.min;
+    const [maxX, maxY] = extent.max;
     this.width = maxX - minX;
     this.height = maxY - minY;
 
@@ -147,19 +174,43 @@ export class PixiGeometry {
     // Generate both normal coordinate rings and flattened rings at the same time to avoid extra iterations.
     // Preallocate Arrays to avoid garbage collection formerly caused by excessive Array.push()
     const origRings = (this.type === 'line') ? [this.origCoords] : this.origCoords;
-    const projRings = new Array(origRings.length);
-    const projFlatRings = new Array(origRings.length);
+    let projRings = this._projRings;
+    if (!projRings || projRings.length !== origRings.length) {
+      projRings = new Array(origRings.length);
+      this._projRings = projRings;
+    }
+    let projFlatRings = this._projFlatRings;
+    if (!projFlatRings || projFlatRings.length !== origRings.length) {
+      projFlatRings = new Array(origRings.length);
+      this._projFlatRings = projFlatRings;
+    }
 
     for (let i = 0; i < origRings.length; ++i) {
       const origRing = origRings[i];
-      projRings[i] = new Array(origRing.length);
-      projFlatRings[i] = new Array(origRing.length * 2);
+      let projRing = projRings[i];
+      if (!projRing || projRing.length !== origRing.length) {
+        projRing = new Array(origRing.length);
+        projRings[i] = projRing;
+      }
+      let projFlatRing = projFlatRings[i];
+      if (!projFlatRing || projFlatRing.length !== (origRing.length * 2)) {
+        projFlatRing = new Array(origRing.length * 2);
+        projFlatRings[i] = projFlatRing;
+      }
 
       for (let j = 0; j < origRing.length; ++j) {
         const xy = viewport.project(origRing[j]);
-        projRings[i][j] = xy;
-        projFlatRings[i][j * 2] = xy[0];
-        projFlatRings[i][j * 2 + 1] = xy[1];
+        const prev = projRing[j];
+        if (prev) {
+          prev[0] = xy[0];
+          prev[1] = xy[1];
+        } else {
+          projRing[j] = xy;
+        }
+
+        const k = j * 2;
+        projFlatRing[k] = xy[0];
+        projFlatRing[k + 1] = xy[1];
       }
     }
 
@@ -176,8 +227,23 @@ export class PixiGeometry {
       this.flatCoords = projFlatRings;
       this.outer = projRings[0];
       this.flatOuter = projFlatRings[0];
-      this.holes = projRings.slice(1);
-      this.flatHoles = projFlatRings.slice(1);
+      const holeCount = Math.max(0, projRings.length - 1);
+      let holes = this._projHoles;
+      if (!holes || holes.length !== holeCount) {
+        holes = new Array(holeCount);
+        this._projHoles = holes;
+      }
+      let flatHoles = this._projFlatHoles;
+      if (!flatHoles || flatHoles.length !== holeCount) {
+        flatHoles = new Array(holeCount);
+        this._projFlatHoles = flatHoles;
+      }
+      for (let i = 0; i < holeCount; ++i) {
+        holes[i] = projRings[i + 1];
+        flatHoles[i] = projFlatRings[i + 1];
+      }
+      this.holes = holes;
+      this.flatHoles = flatHoles;
     }
 
     // Calculate hull, centroid, poi, ssr if possible
@@ -200,13 +266,26 @@ export class PixiGeometry {
 
       // Convex Hull
       if (this.origHull) {   // calculated already, reproject
-        this.hull = new Array(this.origHull.length);
-        for (let i = 0; i < this.origHull.length; ++i) {
-          this.hull[i] = viewport.project(this.origHull[i]);
+        let hull = this._projHull;
+        if (!hull || hull.length !== this.origHull.length) {
+          hull = new Array(this.origHull.length);
+          this._projHull = hull;
         }
+        for (let i = 0; i < this.origHull.length; ++i) {
+          const xy = viewport.project(this.origHull[i]);
+          const prev = hull[i];
+          if (prev) {
+            prev[0] = xy[0];
+            prev[1] = xy[1];
+          } else {
+            hull[i] = xy;
+          }
+        }
+        this.hull = hull;
       } else {               // recalculate and store as WGS84
         this.hull = polygonHull(this.outer);
         if (this.hull) {
+          this._projHull = this.hull;
           this.origHull = new Array(this.hull.length);
           for (let i = 0; i < this.origHull.length; ++i) {
             this.origHull[i] = viewport.unproject(this.hull[i]);
@@ -236,13 +315,27 @@ export class PixiGeometry {
 
       // Smallest Surrounding Rectangle
       if (this.origSsr) {        // calculated already, reproject
-        this.ssr = { angle: this.origSsr.angle, poly: new Array(this.origSsr.poly.length) };
-        for (let i = 0; i < this.origSsr.poly.length; ++i) {
-          this.ssr.poly[i] = viewport.project(this.origSsr.poly[i]);
+        let ssr = this._projSsr;
+        if (!ssr || !ssr.poly || ssr.poly.length !== this.origSsr.poly.length) {
+          ssr = { angle: this.origSsr.angle, poly: new Array(this.origSsr.poly.length) };
+          this._projSsr = ssr;
         }
+        ssr.angle = this.origSsr.angle;
+        for (let i = 0; i < this.origSsr.poly.length; ++i) {
+          const xy = viewport.project(this.origSsr.poly[i]);
+          const prev = ssr.poly[i];
+          if (prev) {
+            prev[0] = xy[0];
+            prev[1] = xy[1];
+          } else {
+            ssr.poly[i] = xy;
+          }
+        }
+        this.ssr = ssr;
       } else if (this.hull) {    // recalculate and store as WGS84
         this.ssr = geomGetSmallestSurroundingRectangle(this.hull);
         if (this.ssr) {
+          this._projSsr = this.ssr;
           this.origSsr = { angle: this.ssr.angle, poly: new Array(this.ssr.poly.length) };
           for (let i = 0; i < this.ssr.poly.length; ++i) {
             this.origSsr.poly[i] = viewport.unproject(this.ssr.poly[i]);

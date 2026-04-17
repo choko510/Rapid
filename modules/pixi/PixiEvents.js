@@ -52,6 +52,11 @@ export class PixiEvents extends EventEmitter {
     this._isMac = os === 'mac';
     this._wheelDefault = this._isMac ? 'auto' : 'zoom';
     this._wheelDelta = [0, 0];
+    this._cursorStyles = null;
+    this._lastCursorStyle = '';
+    this._rotationCacheR = NaN;
+    this._rotationCacheCos = 1;
+    this._rotationCacheSin = 0;
 
     // Make sure the event handlers have `this` bound correctly
     this._click = this._click.bind(this);
@@ -160,45 +165,32 @@ export class PixiEvents extends EventEmitter {
     // to whatever the .cursor property of the target is. (see EventBoundary.ts line 703)
     // We don't know when that event will be, next time user happens to shake the mouse?
     // So we'll also set it directly on the canvas so it locks in now
-    const path = this.context.assetPath;
     const surface = this.gfx.surface;
+    const cursorStyles = this._getCursorStyles();
+    const nextCursor = cursorStyles[style] ?? style;
+    if (nextCursor === this._lastCursorStyle) return;
 
-    const cursors = {
-      areaCursor: `url(${path}img/cursor-select-area.png), pointer`,
-      connectLineCursor: `url(${path}img/cursor-draw-connect-line.png) 9 9, crosshair`,
-      connectVertexCursor: `url(${path}img/cursor-draw-connect-vertex.png) 9 9, crosshair`,
-      lineCursor: `url(${path}img/cursor-select-line.png), pointer`,
-      pointCursor: `url(${path}img/cursor-select-point.png), pointer`,
-      selectSplitCursor: `url(${path}img/cursor-select-split.png), pointer`,
-      vertexCursor: `url(${path}img/cursor-select-vertex.png), pointer`,
-    };
+    surface.style.cursor = nextCursor;
+    this._lastCursorStyle = nextCursor;
+  }
 
-    switch (style) {
-      case 'areaCursor':
-        surface.style.cursor = cursors.areaCursor;
-        break;
-      case 'connectLineCursor':
-        surface.style.cursor = cursors.connectLineCursor;
-        break;
-      case 'connectVertexCursor':
-        surface.style.cursor = cursors.connectVertexCursor;
-        break;
-      case 'lineCursor':
-        surface.style.cursor = cursors.lineCursor;
-        break;
-      case 'pointCursor':
-        surface.style.cursor = cursors.pointCursor;
-        break;
-      case 'selectSplitCursor':
-        surface.style.cursor = cursors.selectSplitCursor;
-        break;
-      case 'vertexCursor':
-        surface.style.cursor = cursors.vertexCursor;
-        break;
-      default:
-        surface.style.cursor = style;
-        break;
-      }
+
+  _getCursorStyles() {
+    let cursorStyles = this._cursorStyles;
+    if (!cursorStyles) {
+      const path = this.context.assetPath;
+      cursorStyles = {
+        areaCursor: `url(${path}img/cursor-select-area.png), pointer`,
+        connectLineCursor: `url(${path}img/cursor-draw-connect-line.png) 9 9, crosshair`,
+        connectVertexCursor: `url(${path}img/cursor-draw-connect-vertex.png) 9 9, crosshair`,
+        lineCursor: `url(${path}img/cursor-select-line.png), pointer`,
+        pointCursor: `url(${path}img/cursor-select-point.png), pointer`,
+        selectSplitCursor: `url(${path}img/cursor-select-split.png), pointer`,
+        vertexCursor: `url(${path}img/cursor-select-vertex.png), pointer`,
+      };
+      this._cursorStyles = cursorStyles;
+    }
+    return cursorStyles;
   }
 
 
@@ -213,10 +205,19 @@ export class PixiEvents extends EventEmitter {
    */
   _observeModifierKeys(e) {
     const modifiers = this.modifierKeys;
+    const states = {
+      Alt: e.altKey,
+      Control: e.ctrlKey,
+      Meta: e.metaKey,
+      Shift: e.shiftKey
+    };
 
     let didChange = false;
     for (const key of MODIFIER_KEYS) {
-      const keyIsDown = e.getModifierState(key);
+      let keyIsDown = states[key];
+      if (typeof keyIsDown !== 'boolean') {
+        keyIsDown = e.getModifierState?.(key) ?? false;
+      }
       const keyWasDown = modifiers.has(key);
 
       if (keyIsDown && !keyWasDown) {
@@ -251,11 +252,19 @@ export class PixiEvents extends EventEmitter {
     const viewport = this.context.viewport;
     const r = viewport.transform.r;
     if (r) {
-      const [cx, cy] = viewport.center();
+      const dims = viewport.dimensions;
+      const cx = dims[0] * 0.5;
+      const cy = dims[1] * 0.5;
       const dx = x - cx;
       const dy = y - cy;
-      const cos = Math.cos(-r);
-      const sin = Math.sin(-r);
+
+      if (r !== this._rotationCacheR) {
+        this._rotationCacheR = r;
+        this._rotationCacheCos = Math.cos(-r);
+        this._rotationCacheSin = Math.sin(-r);
+      }
+      const cos = this._rotationCacheCos;
+      const sin = this._rotationCacheSin;
 
       map[0] = cx + ((dx * cos) - (dy * sin));
       map[1] = cy + ((dx * sin) + (dy * cos));
@@ -422,8 +431,8 @@ export class PixiEvents extends EventEmitter {
     // (NB: We observe modifier keys elsewhere and can know whether the user really did press ctrlKey)
     const isPinchZoom = !isRoundNumber && e.ctrlKey && !this.modifierKeys.has('Control');
 
-    let gesture = 'zoom';  // Detect this wheel event as 'zoom' or 'pan'
-    let speed = 3;         // Multiplier to adjust the zoom speed
+    let gesture;   // Detect this wheel event as 'zoom' or 'pan'
+    let speed;     // Multiplier to adjust the zoom speed
 
     if (isPinchZoom) {   // A pinch-zoom gesture on a trackpad...
       gesture = 'zoom';

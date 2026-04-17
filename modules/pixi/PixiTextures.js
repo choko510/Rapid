@@ -37,6 +37,10 @@ export class PixiTextures {
 
     // Because SVGs take some time to texturize, store the svg string and texturize only if needed
     this._svgIcons = new Map();   // Map<key, SVGSymbolElement>  (e.g. 'temaki-school')
+    this._svgIconLoading = new Set();   // Set<key>
+
+    this._scratchCanvas = null;
+    this._scratchContext = null;
 
     // DashLine plugin needs its own cache - we could eventually put these in an atlas.
     this._dashTextureCache = {};
@@ -98,7 +102,10 @@ export class PixiTextures {
 
     this._textureData.clear();
     this._svgIcons.clear();
+    this._svgIconLoading.clear();
     this._dashTextureCache = {};
+    this._scratchCanvas = null;
+    this._scratchContext = null;
 
     this._cacheGraphics();
 
@@ -160,7 +167,9 @@ export class PixiTextures {
 
     // Is this an svg icon that we haven't converted to a texture yet?
     if (this._svgIcons.has(textureID)) {
-      this._svgIconToTexture(textureID);
+      if (!this._svgIconLoading.has(textureID)) {
+        this._svgIconToTexture(textureID);
+      }
       return PIXI.Texture.EMPTY;   // return a placeholder
     }
 
@@ -233,16 +242,11 @@ export class PixiTextures {
     } else if (asset instanceof HTMLCanvasElement) {
       // note that the canvas dimensions may be larger than the passed-in dimensions
       const ctx = asset.getContext('2d');
+      if (!ctx) return null;
       imageData = ctx.getImageData(0, 0, width, height);  // not the canvas width/height
 
     } else if (asset instanceof HTMLImageElement) {
-      const [w, h] = [asset.naturalWidth, asset.naturalHeight];
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(asset, 0, 0);
-      imageData = ctx.getImageData(0, 0, w, h);
+      imageData = this._imageToImageData(asset);
 
     } else {
       return null;  // some other format?
@@ -259,6 +263,28 @@ export class PixiTextures {
     this._textureData.set(key, { texture: texture, refcount: 1 });
 
     return texture;
+  }
+
+
+  _imageToImageData(asset) {
+    const w = asset.naturalWidth;
+    const h = asset.naturalHeight;
+
+    let canvas = this._scratchCanvas;
+    let ctx = this._scratchContext;
+    if (!canvas || !ctx) {
+      canvas = document.createElement('canvas');
+      ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      this._scratchCanvas = canvas;
+      this._scratchContext = ctx;
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(asset, 0, 0);
+    return ctx.getImageData(0, 0, w, h);
   }
 
 
@@ -370,11 +396,11 @@ export class PixiTextures {
    * @param  textureID  Icon identifier (e.g. 'temaki-school')
    */
   _svgIconToTexture(textureID) {
+    if (this._svgIconLoading.has(textureID)) return;
+
     const symbol = this._svgIcons.get(textureID);
     if (!symbol) return;
-
-    // Remove it to ensure that we only do this once.
-    this._svgIcons.set(textureID, null);
+    this._svgIconLoading.add(textureID);
 
 // The old way, just put the SVG on an Image and pack that into the atlas.
 // see https://github.com/facebook/Rapid/commit/dd24e912
@@ -385,7 +411,7 @@ export class PixiTextures {
     const size = this.gfx.highQuality ? 64 : 32;
 
     // Make a new <svg> container
-    let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
     svg.setAttribute('width', size);
     svg.setAttribute('height', size);
@@ -398,44 +424,41 @@ export class PixiTextures {
     }
 
     const svgStr = (new XMLSerializer()).serializeToString(svg);
-    svg = null;
 
     let image = new Image();
-    image.src = `data:image/svg+xml,${encodeURIComponent(svgStr)}`;
-    image.onload = () => {
-      const w = image.naturalWidth;
-      const h = image.naturalHeight;
-      this.allocate('symbol', textureID, w, h, image);
-      this._svgIcons.delete(textureID);
-      this.gfx.deferredRedraw();
-      image = null;
+    image.decoding = 'async';
+
+    const finish = () => {
+      this._svgIconLoading.delete(textureID);
+      if (image) {
+        image.onload = null;
+        image.onerror = null;
+        image = null;
+      }
     };
 
-// various approaches using the new Pixi SVG Parser and texture generation:
-//    let svgString = this._svgIcons.get(textureID);
-//    if (!svgString) return;
-//
-//     // Create a new graphics instance from the svg String,
-//     // but first, sanitize the string to remove any 'currentColor', 'inherit', and 'url()' references.
-//     svgString = svgString.replace(/(inherit|currentColor|url\(.*\))/gi, '#fff');
-//     const size = 32;
-//     const graphics = new PIXI.Graphics().svg(svgString);
-//     graphics.setSize(size, size);
-//
-//     // Now, make a canvas and render the svg into it at higher resolution.
-//     const renderer = this.gfx.pixi.renderer;
-//     // const canvas = renderer.extract.canvas({ resolution: 2, target: svgGraphics });
-//     const texture = renderer.textureGenerator.generateTexture({ resolution: 2, target: graphics });
-// //    const canvas = renderer.texture.generateCanvas(texture);
-// //    this.allocate('symbol', textureID, canvas.width, canvas.height, canvas);
-//     const { pixels, width, height } = renderer.texture.getPixels(texture);
-//     this.allocate('symbol', textureID, width, height, pixels);
-//
-//     texture.destroy();
-//     graphics.destroy({ context: true });
-//
-//    this._svgIcons.delete(textureID);
-//    this.gfx.deferredRedraw();
+    image.onload = () => {
+      try {
+        const w = image.naturalWidth;
+        const h = image.naturalHeight;
+        this.allocate('symbol', textureID, w, h, image);
+        this._svgIcons.delete(textureID);
+        this.gfx.deferredRedraw();
+      } catch (e) {
+        this._svgIcons.delete(textureID);
+        console.error(e);  // eslint-disable-line no-console
+      } finally {
+        finish();
+      }
+    };
+
+    image.onerror = (e) => {
+      this._svgIcons.delete(textureID);
+      console.error(e);  // eslint-disable-line no-console
+      finish();
+    };
+
+    image.src = `data:image/svg+xml,${encodeURIComponent(svgStr)}`;
   }
 
 
@@ -448,37 +471,29 @@ export class PixiTextures {
    */
   _cacheGraphics() {
 
+    const drawViewfieldPath = (graphic) => graphic
+      .moveTo(-2, 26)
+      .lineTo(2, 26)
+      .lineTo(12, 4)
+      .bezierCurveTo(12, 0, -12, 0, -12, 4)
+      .closePath();
+
     //
     // Viewfields
     //
     const viewfieldRect = new PIXI.Rectangle(-13, 0, 26, 52);
     const viewfieldOptions = { frame: viewfieldRect };  // texture the whole 26x26 region
 
-    const viewfield = new PIXI.Graphics()       //   [-2,26]  ,---,  [2,26]
-      .moveTo(-2, 26)                           //           /     \
-      .lineTo(2, 26)                            //          /       \
-      .lineTo(12, 4)                            //         /         \
-      .bezierCurveTo(12, 0, -12, 0, -12, 4)     //        /           \
-      .closePath()                              //       /             \
+    const viewfield = drawViewfieldPath(new PIXI.Graphics())   //   [-2,26]  ,---,  [2,26]
       .fill({ color: 0xffffff, alpha: 1 })      //       ""--_______--""         +y
       .stroke({ color: 0x444444, width: 1 });   // [-12,4]              [12,4]    |
-                                                //            [0,0]               +-- +x
+                                                 //            [0,0]               +-- +x
 
-    const viewfieldDark = new PIXI.Graphics()
-      .moveTo(-2, 26)
-      .lineTo(2, 26)
-      .lineTo(12, 4)
-      .bezierCurveTo(12, 0, -12, 0, -12, 4)
-      .closePath()                              // same viewfield, but outline light gray
+    const viewfieldDark = drawViewfieldPath(new PIXI.Graphics())  // same viewfield, but outline light gray
       .fill({ color: 0x333333, alpha: 1 })      // and fill dark gray (not intended to be tinted)
       .stroke({ color: 0xcccccc, width: 1 });
 
-    const viewfieldOutline = new PIXI.Graphics()
-      .moveTo(-2, 26)
-      .lineTo(2, 26)
-      .lineTo(12, 4)
-      .bezierCurveTo(12, 0, -12, 0, -12, 4)
-      .closePath()
+    const viewfieldOutline = drawViewfieldPath(new PIXI.Graphics())
       .stroke({ color: 0xcccccc, width: 1 });
 
     this.graphicToTexture('viewfield', viewfield, viewfieldOptions);

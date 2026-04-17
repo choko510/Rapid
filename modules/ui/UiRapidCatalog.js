@@ -1,10 +1,10 @@
 import { EventEmitter } from 'pixi.js';
 import { select } from 'd3-selection';
-import { marked } from 'marked';
 
 import { uiIcon } from './icon.js';
 import { uiCombobox} from './combobox.js';
 import { utilKeybinding, utilNoAuto, utilSanitizeHTML } from '../util/index.js';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 const MAXRESULTS = 100;
 
@@ -30,6 +30,7 @@ export class UiRapidCatalog extends EventEmitter {
     this._filterCategory = null;
     this._importURL = '';
     this._importResult = null;
+    this._aboutMarkdownRenderID = 0;
     this._myClose = () => true;   // custom close handler
 
     // Child components
@@ -183,11 +184,19 @@ export class UiRapidCatalog extends EventEmitter {
     $header.selectAll('.rapid-catalog-header-text')
       .text(l10n.t('rapid_menu.add_manage_datasets'));
 
-    $header.selectAll('.rapid-catalog-header-about')
-      .html(marked.parse(l10n.t('rapid_menu.about_the_catalog')));
+    const $about = $header.selectAll('.rapid-catalog-header-about');
+    $about.text('');
 
-    $header.selectAll('.rapid-catalog-header-about a')
-      .attr('target', '_blank');   // make sure the markdown links go to a new page
+    const renderID = ++this._aboutMarkdownRenderID;
+    parseMarkdownAsync(l10n.t('rapid_menu.about_the_catalog')).then(html => {
+      if (renderID !== this._aboutMarkdownRenderID) return;
+      if (!this.$modal) return;
+
+      this.$modal.selectAll('.rapid-catalog-header-about')
+        .html(html)
+        .selectAll('a')
+        .attr('target', '_blank');   // make sure the markdown links go to a new page
+    });
 
 
     /* Filter section */

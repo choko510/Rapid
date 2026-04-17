@@ -160,10 +160,11 @@ export class PixiLayerMapillaryPhotos extends AbstractLayer {
   filterImages(images) {
     const photos = this.context.systems.photos;
     const fromDate = photos.fromDate;
-    const fromTimestamp = fromDate && new Date(fromDate).getTime();
+    const fromTimestamp = fromDate && Date.parse(fromDate);
     const toDate = photos.toDate;
-    const toTimestamp = toDate && new Date(toDate).getTime();
+    const toTimestamp = toDate && Date.parse(toDate);
     const usernames = photos.usernames;
+    const usernameSet = usernames?.length ? new Set(usernames) : null;
     const showFlatPhotos = photos.showsPhotoType('flat');
     const showPanoramicPhotos = photos.showsPhotoType('panoramic');
 
@@ -173,11 +174,11 @@ export class PixiLayerMapillaryPhotos extends AbstractLayer {
       if (!showFlatPhotos && !image.isPano) return false;
       if (!showPanoramicPhotos && image.isPano) return false;
 
-      const imageTimestamp = new Date(image.captured_at).getTime();
+      const imageTimestamp = Date.parse(image.captured_at);
       if (fromTimestamp && fromTimestamp > imageTimestamp) return false;
       if (toTimestamp && toTimestamp < imageTimestamp) return false;
 
-      if (usernames && !usernames.includes(image.captured_by)) return false;
+      if (usernameSet && !usernameSet.has(image.captured_by)) return false;
 
       return true;
     });
@@ -195,10 +196,11 @@ export class PixiLayerMapillaryPhotos extends AbstractLayer {
   filterSequences(sequences) {
     const photos = this.context.systems.photos;
     const fromDate = photos.fromDate;
-    const fromTimestamp = fromDate && new Date(fromDate).getTime();
+    const fromTimestamp = fromDate && Date.parse(fromDate);
     const toDate = photos.toDate;
-    const toTimestamp = toDate && new Date(toDate).getTime();
+    const toTimestamp = toDate && Date.parse(toDate);
     const usernames = photos.usernames;
+    const usernameSet = usernames?.length ? new Set(usernames) : null;
     const showFlatPhotos = photos.showsPhotoType('flat');
     const showPanoramicPhotos = photos.showsPhotoType('panoramic');
 
@@ -208,11 +210,11 @@ export class PixiLayerMapillaryPhotos extends AbstractLayer {
       if (!showFlatPhotos && !seq.properties.is_pano) return false;
       if (!showPanoramicPhotos && seq.properties.is_pano) return false;
 
-      const sequenceTimestamp = new Date(seq.properties.captured_at).getTime();
+      const sequenceTimestamp = Date.parse(seq.properties.captured_at);
       if (fromTimestamp && fromTimestamp > sequenceTimestamp) return false;
       if (toTimestamp && toTimestamp < sequenceTimestamp) return false;
 
-      if (usernames && !usernames.includes(seq.properties.captured_by)) return false;
+      if (usernameSet && !usernameSet.has(seq.properties.captured_by)) return false;
 
       return true;
     });

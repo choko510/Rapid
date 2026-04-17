@@ -67,20 +67,23 @@ export class PixiLayerMapillarySigns extends AbstractLayer {
   filterDetections(detections) {
     const photos = this.context.systems.photos;
     const fromDate = photos.fromDate;
+    const fromTimestamp = fromDate && Date.parse(fromDate);
     const toDate = photos.toDate;
+    const toTimestamp = toDate && Date.parse(toDate);
 
-    if (fromDate) {
-      const fromTimestamp = new Date(fromDate).getTime();
-      detections = detections
-        .filter(detection => new Date(detection.last_seen_at).getTime() >= fromTimestamp);
-    }
-    if (toDate) {
-      const toTimestamp = new Date(toDate).getTime();
-      detections = detections
-        .filter(detection => new Date(detection.first_seen_at).getTime() >= toTimestamp);
-    }
+    if (!fromTimestamp && !toTimestamp) return detections;
 
-    return detections;
+    return detections.filter(detection => {
+      if (fromTimestamp) {
+        const lastSeen = Date.parse(detection.last_seen_at);
+        if (lastSeen < fromTimestamp) return false;
+      }
+      if (toTimestamp) {
+        const firstSeen = Date.parse(detection.first_seen_at);
+        if (firstSeen < toTimestamp) return false;
+      }
+      return true;
+    });
   }
 
 

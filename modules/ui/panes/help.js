@@ -1,11 +1,11 @@
 import { select as d3_select } from 'd3-selection';
-import { marked } from 'marked';
 
 import { uiIcon } from '../icon.js';
 import { uiIntro } from '../intro/intro.js';
 import { uiPane } from '../pane.js';
 import { uiTooltip } from '../tooltip.js';
 import { helpHtml } from '../intro/helper.js';
+import { parseMarkdownAsync } from '../../util/markdown.js';
 
 
 export function uiPaneHelp(context) {
@@ -280,9 +280,9 @@ export function uiPaneHelp(context) {
 
     docs.push({
       title: l10n.t(`help.${section}.title`),
-      contentHtml: marked.parse(markdown.trim())
-        .replace(/<code>/g, '<kbd>')       // use <kbd> styling for shortcuts
-        .replace(/<\/code>/g, '<\/kbd>')
+      contentMarkdown: markdown.trim(),
+      contentHtml: null,
+      parsePromise: null
     });
   }
 
@@ -392,8 +392,30 @@ export function uiPaneHelp(context) {
     helpPane.selectAll('.pane-heading > h2').text(d.title);
 
     const content = _selection.selectAll('.help-content');
-    content.html(d.contentHtml);
-    content.selectAll('a').attr('target', '_blank');  // outbound links should open in new tab
+    if (d.contentHtml !== null) {
+      content.html(d.contentHtml);
+      content.selectAll('a').attr('target', '_blank');  // outbound links should open in new tab
+    } else {
+      content.text('');
+
+      if (!d.parsePromise) {
+        d.parsePromise = parseMarkdownAsync(d.contentMarkdown)
+          .then(html => html
+            .replace(/<code>/g, '<kbd>')       // use <kbd> styling for shortcuts
+            .replace(/<\/code>/g, '<\/kbd>')
+          )
+          .then(html => {
+            d.contentHtml = html;
+            return html;
+          });
+      }
+
+      d.parsePromise.then(html => {
+        if (docs[_currIndex] !== d) return;
+        content.html(html);
+        content.selectAll('a').attr('target', '_blank');  // outbound links should open in new tab
+      });
+    }
 
     _selection.selectAll('.toc > li')
       .classed('selected', item => item === d);

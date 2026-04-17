@@ -2,10 +2,10 @@ import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
 import { Extent, geoSphericalDistance } from '@rapid-sdk/math';
 import { utilArrayUniqBy } from '@rapid-sdk/util';
-import { iso1A2Code } from '@rapideditor/country-coder';
 
 import { geoChooseEdge } from '../../geo/index.js';
 import { uiCombobox } from '../combobox.js';
+import { iso1A2CodeAsync } from '../../util/country_coder.js';
 import { utilGetSetValue, utilNoAuto, utilRebind } from '../../util/index.js';
 
 
@@ -21,6 +21,7 @@ export function uiFieldAddress(context, uifield) {
   let _entityIDs = [];
   let _tags;
   let _countryCode;
+  let _countryCodeRequestID = 0;
   let _addressFormats = [{
     format: [
       ['housenumber', 'street'],
@@ -119,8 +120,6 @@ export function uiFieldAddress(context, uifield) {
 
 
   function updateForCountryCode() {
-    if (!_countryCode) return;
-
     let addressFormat;
     for (let i = 0; i < _addressFormats.length; i++) {
       let format = _addressFormats[i];
@@ -131,6 +130,12 @@ export function uiFieldAddress(context, uifield) {
         break;
       }
     }
+    addressFormat = addressFormat || _addressFormats[0] || {
+      format: [
+        ['housenumber', 'street'],
+        ['city', 'postcode']
+      ]
+    };
 
     const dropdowns = addressFormat.dropdowns || [
       'city', 'county', 'country', 'district', 'hamlet',
@@ -218,17 +223,29 @@ export function uiFieldAddress(context, uifield) {
       .attr('class', `form-field-input-wrap form-field-input-${uifield.type}`)
       .merge(_wrap);
 
-    const center = uifield.entityExtent.center();
-    let countryCode;
+    _countryCode = null;
+    updateForCountryCode();  // render immediately with default format
+
     if (context.inIntro) {  // localize the address format for the walkthrough
-      countryCode = l10n.t('intro.graph.countrycode');
-    } else {
-      countryCode = iso1A2Code(center);
+      const countryCode = l10n.t('intro.graph.countrycode');
+      if (countryCode) {
+        _countryCode = countryCode.toLowerCase();
+        updateForCountryCode();
+      }
+      return;
     }
-    if (countryCode) {
-      _countryCode = countryCode.toLowerCase();
-      updateForCountryCode();
-    }
+
+    const center = uifield.entityExtent.center();
+    const requestID = ++_countryCodeRequestID;
+    iso1A2CodeAsync(center)
+      .then(countryCode => {
+        if (requestID !== _countryCodeRequestID || !countryCode) return;
+        _countryCode = countryCode.toLowerCase();
+        if (!_selection.empty()) {
+          updateForCountryCode();
+        }
+      })
+      .catch(e => console.error(e));  // eslint-disable-line
   }
 
 

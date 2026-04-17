@@ -127,13 +127,18 @@ export function operationDockPondToForest(context, selectedIDs) {
     const tags = entity.tags ?? {};
     return (
       tags.landuse === 'pond' ||
-      (tags.natural === 'water' && tags.water === 'pond')
+      tags.landuse === 'reservoir' ||
+      (tags.natural === 'water' && (tags.water === 'pond' || tags.water === 'reservoir'))
     );
   }
 
 
   function _hasForestTags(tags = {}) {
-    return tags.landuse === 'forest' || tags.natural === 'wood';
+    return (
+      tags.landuse === 'forest' ||
+      tags.landuse === 'plantation' ||
+      tags.natural === 'wood'
+    );
   }
 
 

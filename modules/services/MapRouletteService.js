@@ -3,7 +3,7 @@ import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem';
 import { QAItem } from '../osm/qa_item.js';
-import { utilFetchResponse } from '../util';
+import { utilFetchResponse, utilLRUMapSet, utilLRUMapTrim, utilLRUSetAdd } from '../util';
 
 const TILEZOOM = 14;
 const MAPROULETTE_API = 'https://maproulette.org/api/v2';
@@ -35,6 +35,9 @@ export class MapRouletteService extends AbstractSystem {
 
     this._cache = null;   // cache gets replaced on init/reset
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
+    this._maxLoadedTiles = 500;
+    this._maxTasks = 25000;
+    this._maxChallenges = 5000;
 
     // Ensure methods used as callbacks always have `this` bound correctly.
     this._hashchange = this._hashchange.bind(this);
@@ -97,6 +100,7 @@ export class MapRouletteService extends AbstractSystem {
       tasks: new Map(),             // Map (taskID -> Task)
       challenges: new Map(),        // Map (challengeID -> Challenge)
       tileRequest: new Map(),       // Map (tileID -> { status, controller, url })
+      tileRequestOrder: new Set(),  // Set<tileID> ordered least-recently-used -> most-recently-used
       challengeRequest: new Map(),  // Map (challengeID -> { status, controller, url })
       inflight: new Map(),          // Map (url -> controller)
       closed: [],                   // Array ({ challengeID, taskID })
@@ -159,7 +163,11 @@ export class MapRouletteService extends AbstractSystem {
    * @return  {Task?}   the task with that id, or `undefined` if not found
    */
   getTask(taskID) {
-    return this._cache.tasks.get(taskID);
+    const task = this._cache.tasks.get(taskID);
+    if (task) {
+      utilLRUMapSet(this._cache.tasks, taskID, task);
+    }
+    return task;
   }
 
 
@@ -169,7 +177,11 @@ export class MapRouletteService extends AbstractSystem {
    * @return  {Task?}   the task with that id, or `undefined` if not found
    */
   getChallenge(challengeID) {
-    return this._cache.challenges.get(challengeID);
+    const challenge = this._cache.challenges.get(challengeID);
+    if (challenge) {
+      utilLRUMapSet(this._cache.challenges, challengeID, challenge);
+    }
+    return challenge;
   }
 
 
@@ -187,12 +199,15 @@ export class MapRouletteService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
     this._abortUnwantedRequests(tiles);
 
     // Issue new requests..
     for (const tile of tiles) {
       this.loadTile(tile);
     }
+
+    this._trimCache(wantedTileIDs);
   }
 
 
@@ -203,7 +218,11 @@ export class MapRouletteService extends AbstractSystem {
    */
   loadTile(tile) {
     const cache = this._cache;
-    if (cache.tileRequest.has(tile.id)) return;
+    const request = cache.tileRequest.get(tile.id);
+    if (request) {
+      utilLRUSetAdd(cache.tileRequestOrder, tile.id);
+      return;
+    }
 
     const extent = tile.wgs84Extent;
     const bbox = extent.rectangle().join('/');  // minX/minY/maxX/maxY
@@ -217,11 +236,16 @@ export class MapRouletteService extends AbstractSystem {
       .then(utilFetchResponse)
       .then(data => {
         cache.tileRequest.set(tile.id, { status: 'loaded' });
+        utilLRUSetAdd(cache.tileRequestOrder, tile.id);
 
         for (const task of (data ?? [])) {
           const taskID = task.id.toString();
           const challengeID = task.parentId.toString();
-          if (cache.tasks.has(taskID)) continue;  // seen it already
+          const existing = cache.tasks.get(taskID);
+          if (existing) {
+            utilLRUMapSet(cache.tasks, taskID, existing);
+            continue;  // seen it already
+          }
 
           // Have we seen this challenge before?
           const challenge = cache.challenges.get(challengeID);
@@ -238,10 +262,11 @@ export class MapRouletteService extends AbstractSystem {
 
           // save the task
           const d = new QAItem(this, null, taskID, task);
-          cache.tasks.set(taskID, d);
+          utilLRUMapSet(cache.tasks, taskID, d);
           cache.rbush.insert(this._encodeIssueRBush(d));
         }
 
+        this._trimCache(new Set([tile.id]));
         this.loadChallenges();   // call this sometimes
       })
       .catch(err => {
@@ -291,7 +316,9 @@ export class MapRouletteService extends AbstractSystem {
           }
 
           // save the challenge
-          cache.challenges.set(challengeID, challenge);
+          utilLRUMapSet(cache.challenges, challengeID, challenge);
+
+          this._trimCache(new Set());
 
           const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
@@ -468,7 +495,7 @@ export class MapRouletteService extends AbstractSystem {
   replaceTask(task) {
     if (!(task instanceof QAItem) || !task.id) return;
 
-    this._cache.tasks.set(task.id, task);
+    utilLRUMapSet(this._cache.tasks, task.id, task);
     this._updateRBush(this._encodeIssueRBush(task), true); // true = replace
     return task;
   }
@@ -607,6 +634,48 @@ export class MapRouletteService extends AbstractSystem {
         cache.inflight.delete(request.url);
       }
     }
+  }
+
+
+  _trimCache(wantedTileIDs) {
+    const cache = this._cache;
+    const protectedTileIDs = new Set(wantedTileIDs);
+    for (const [tileID, request] of cache.tileRequest) {
+      if (request.status === 'inflight') {
+        protectedTileIDs.add(tileID);
+      }
+    }
+
+    let attempts = cache.tileRequestOrder.size;
+    while (cache.tileRequestOrder.size > this._maxLoadedTiles && attempts-- > 0) {
+      const oldestTileID = cache.tileRequestOrder.values().next().value;
+      if (oldestTileID === undefined) break;
+
+      if (protectedTileIDs.has(oldestTileID)) {
+        utilLRUSetAdd(cache.tileRequestOrder, oldestTileID);
+        continue;
+      }
+
+      const request = cache.tileRequest.get(oldestTileID);
+      if (request?.status === 'inflight') {
+        utilLRUSetAdd(cache.tileRequestOrder, oldestTileID);
+        continue;
+      }
+
+      cache.tileRequestOrder.delete(oldestTileID);
+      cache.tileRequest.delete(oldestTileID);
+    }
+
+    utilLRUMapTrim(cache.tasks, this._maxTasks, task => {
+      cache.rbush.remove({ data: { id: task.id } }, (a, b) => a.data.id === b.data.id);
+    });
+
+    utilLRUMapTrim(cache.challenges, this._maxChallenges, (_challenge, challengeID) => {
+      const challengeRequest = cache.challengeRequest.get(challengeID);
+      if (challengeRequest?.status !== 'inflight') {
+        cache.challengeRequest.delete(challengeID);
+      }
+    });
   }
 
 

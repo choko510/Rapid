@@ -1,8 +1,7 @@
-import { marked } from 'marked';
-
 import { icon } from './intro/helper.js';
 import { uiIntro } from './intro/intro.js';
 import { uiModal } from './modal.js';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 
 /**
@@ -59,14 +58,16 @@ export function uiSplash(context) {
     markdown += l10n.t('splash.privacy');
 
 
-    content
+    const $splashText = content
       .append('div')
-      .attr('class', 'modal-section')
-      .html(marked.parse(markdown));
+      .attr('class', 'modal-section');
 
-    // outbound links should open in new tab
-    content.selectAll('a')
-      .attr('target', '_blank');
+    parseMarkdownAsync(markdown).then(html => {
+      $splashText
+        .html(html)
+        .selectAll('a')
+        .attr('target', '_blank');
+    });
 
 
     const buttonWrap = content

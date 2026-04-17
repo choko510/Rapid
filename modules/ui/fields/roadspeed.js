@@ -1,8 +1,8 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
-import { roadSpeedUnit } from '@rapideditor/country-coder';
 
 import { uiCombobox } from '../combobox.js';
+import { roadSpeedUnitAsync } from '../../util/country_coder.js';
 import { utilGetSetValue, utilNoAuto, utilRebind } from '../../util/index.js';
 
 
@@ -13,7 +13,8 @@ export function uiFieldRoadspeed(context, uifield) {
     var unitInput = d3_select(null);
     var input = d3_select(null);
     var _tags;
-    var _isImperial;
+    var _isImperial = false;
+    var _unitRequestID = 0;
 
     var speedCombo = uiCombobox(context, 'roadspeed');
     var unitCombo = uiCombobox(context, 'roadspeed-unit')
@@ -49,9 +50,6 @@ export function uiFieldRoadspeed(context, uifield) {
             .on('change', change)
             .on('blur', change);
 
-        var loc = uifield.entityExtent.center();
-        _isImperial = roadSpeedUnit(loc) === 'mph';
-
         unitInput = wrap.selectAll('input.roadspeed-unit')
             .data([0]);
 
@@ -65,6 +63,21 @@ export function uiFieldRoadspeed(context, uifield) {
         unitInput
             .on('blur', changeUnits)
             .on('change', changeUnits);
+
+        setUnitSuggestions();
+
+        var loc = uifield.entityExtent.center();
+        var requestID = ++_unitRequestID;
+        roadSpeedUnitAsync(loc)
+            .then(unit => {
+                if (requestID !== _unitRequestID) return;
+                var value = _tags && _tags[uifield.key];
+                if (typeof value === 'string' && value.trim()) return;
+
+                _isImperial = unit === 'mph';
+                setUnitSuggestions();
+            })
+            .catch(e => console.error(e));  // eslint-disable-line
 
 
         function changeUnits() {

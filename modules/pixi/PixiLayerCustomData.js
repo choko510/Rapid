@@ -124,27 +124,35 @@ export class PixiLayerCustomData extends AbstractLayer {
     const rapid = context.systems.rapid;
 
     const numSplits = imagery.numGridSplits;
-    let gridLines = [];
+    const gridLines = [];
 
     // 'isTaskRectangular' implies one and only one rectangular linestring.
     if (rapid.isTaskRectangular && numSplits > 0) {
       const box = lines[0];
+      const coords = box?.geometry?.coordinates;
+      if (!coords?.length) return gridLines;
 
-      const lats = box.geometry.coordinates.map((f) => f[0]);
-      const lons = box.geometry.coordinates.map((f) => f[1]);
+      let minLat = Infinity;
+      let minLon = Infinity;
+      let maxLat = -Infinity;
+      let maxLon = -Infinity;
 
-      const minLat = Math.min(...lats);
-      const minLon = Math.min(...lons);
-      const maxLat = Math.max(...lats);
-      const maxLon = Math.max(...lons);
+      for (const coord of coords) {
+        const lat = coord[0];
+        const lon = coord[1];
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+        if (lon < minLon) minLon = lon;
+        if (lon > maxLon) maxLon = lon;
+      }
 
-      let latIncrement = (maxLat - minLat) / numSplits;
-      let lonIncrement = (maxLon - minLon) / numSplits;
+      const latIncrement = (maxLat - minLat) / numSplits;
+      const lonIncrement = (maxLon - minLon) / numSplits;
 
       // num splits is a grid specificer, so 2 => 2x2 grid, 3 => 3x3 grid, all the way up to 6 => 6x6 grid.
       for (let i = 1; i < numSplits; i++) {
-        let thisLat = minLat + latIncrement * i;
-        let thisLon = minLon + lonIncrement * i;
+        const thisLat = minLat + latIncrement * i;
+        const thisLon = minLon + lonIncrement * i;
 
         gridLines.push({
           type: 'Feature',

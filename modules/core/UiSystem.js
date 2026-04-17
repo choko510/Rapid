@@ -1,14 +1,25 @@
 import { select } from 'd3-selection';
-import { vecAdd } from '@rapid-sdk/math';
 
 import { AbstractSystem } from './AbstractSystem.js';
 import { utilDetect } from '../util/detect.js';
 
-import {
-  UiApiStatus, UiCommandPalette, UiDefs, uiEditMenu, uiFlash, UiFullscreen, uiIntro,
-  uiLoading, UiMapFooter, UiMapToolbar, uiMapRouletteMenu, UiOvermap,
-  uiSplash, uiRestore, UiShortcuts, UiSidebar, uiWhatsNew
-} from '../ui/index.js';
+import { UiApiStatus } from '../ui/UiApiStatus.js';
+import { UiCommandPalette } from '../ui/UiCommandPalette.js';
+import { UiDefs } from '../ui/UiDefs.js';
+import { UiFullscreen } from '../ui/UiFullscreen.js';
+import { UiMapFooter } from '../ui/UiMapFooter.js';
+import { UiMapToolbar } from '../ui/UiMapToolbar.js';
+import { UiOvermap } from '../ui/UiOvermap.js';
+import { UiShortcuts } from '../ui/UiShortcuts.js';
+import { UiSidebar } from '../ui/UiSidebar.js';
+import { uiEditMenu } from '../ui/edit_menu.js';
+import { uiFlash } from '../ui/flash.js';
+import { uiIntro } from '../ui/intro/intro.js';
+import { uiLoading } from '../ui/loading.js';
+import { uiMapRouletteMenu } from '../ui/maproulette_menu.js';
+import { uiRestore } from '../ui/restore.js';
+import { uiSplash } from '../ui/splash.js';
+import { uiWhatsNew } from '../ui/whats_new.js';
 
 
 /**

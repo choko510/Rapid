@@ -1,7 +1,7 @@
 import { dispatch as d3_dispatch } from 'd3-dispatch';
 import { select as d3_select } from 'd3-selection';
-import { iso1A2Code } from '@rapideditor/country-coder';
 
+import { iso1A2CodeAsync } from '../../util/country_coder.js';
 import { utilGetSetValue, utilNoAuto, utilRebind } from '../../util/index.js';
 import { uiIcon } from '../icon.js';
 
@@ -29,6 +29,7 @@ export function uiFieldText(context, uifield) {
   let _entityIDs = [];
   let _tags;
   let _phoneFormats = {};
+  let _phonePlaceholderRequestID = 0;
 
   if (uifield.type === 'tel') {
     assets.loadAssetAsync('phone_formats')
@@ -197,18 +198,31 @@ export function uiFieldText(context, uifield) {
     if (input.empty() || !Object.keys(_phoneFormats).length) return;
 
     const extent = uifield.entityExtent;
-    const countryCode = extent && iso1A2Code(extent.center(), { level: 'territory' });
-    if (!countryCode) return;
+    const center = extent && extent.center();
+    if (!center) return;
 
-    let format = _phoneFormats[countryCode.toLowerCase()];
-    if (!format) {
-      const sovereignCountryCode = iso1A2Code(extent.center());
-      if (sovereignCountryCode && sovereignCountryCode !== countryCode) {
-        format = _phoneFormats[sovereignCountryCode.toLowerCase()];
-      }
-    }
+    const requestID = ++_phonePlaceholderRequestID;
+    iso1A2CodeAsync(center, { level: 'territory' })
+      .then(countryCode => {
+        if (requestID !== _phonePlaceholderRequestID || !countryCode) return;
 
-    if (format) input.attr('placeholder', format);
+        let format = _phoneFormats[countryCode.toLowerCase()];
+        if (format) {
+          input.attr('placeholder', format);
+          return;
+        }
+
+        return iso1A2CodeAsync(center)
+          .then(sovereignCountryCode => {
+            if (requestID !== _phonePlaceholderRequestID) return;
+            if (!sovereignCountryCode || sovereignCountryCode === countryCode) return;
+            format = _phoneFormats[sovereignCountryCode.toLowerCase()];
+            if (format) {
+              input.attr('placeholder', format);
+            }
+          });
+      })
+      .catch(e => console.error(e));  // eslint-disable-line
   }
 
 

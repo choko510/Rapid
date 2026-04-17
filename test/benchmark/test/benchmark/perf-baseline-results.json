@@ -1,0 +1,239 @@
+{
+  "chromium": {
+    "capturedAt": "2026-04-16T19:06:52.349Z",
+    "startup": {
+      "scenario": "context-init-and-first-render",
+      "contextInitMs": 1176.1,
+      "firstRenderMs": 1186.1,
+      "interactiveReadyMs": 1196.7
+    },
+    "cpuProxy": {
+      "rendererBenchmarks": [
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "19",
+          "opsPerSec": 3800,
+          "minOpsPerSec": 3000,
+          "passedBudget": true
+        },
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "17",
+          "opsPerSec": 28.96,
+          "minOpsPerSec": 12,
+          "passedBudget": true
+        },
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "15",
+          "opsPerSec": 2.41,
+          "minOpsPerSec": 1.8,
+          "passedBudget": true
+        }
+      ],
+      "longTasks": {
+        "supported": true,
+        "entryType": "longtask",
+        "count": 116,
+        "totalDurationMs": 23876,
+        "maxDurationMs": 1683,
+        "unsupportedReason": null
+      }
+    },
+    "memoryProxy": {
+      "supported": true,
+      "unsupportedReason": null,
+      "snapshots": [
+        {
+          "label": "bootstrap_start",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "before_context_init",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "interactive_ready",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "suite_complete",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        }
+      ]
+    },
+    "environment": {
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+      "benchmarkCount": 3
+    }
+  },
+  "firefox": {
+    "capturedAt": "2026-04-16T19:07:26.293Z",
+    "startup": {
+      "scenario": "context-init-and-first-render",
+      "contextInitMs": 819,
+      "firstRenderMs": 839.6,
+      "interactiveReadyMs": 928.1
+    },
+    "cpuProxy": {
+      "rendererBenchmarks": [
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "19",
+          "opsPerSec": 3670,
+          "minOpsPerSec": 3000,
+          "passedBudget": true
+        },
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "17",
+          "opsPerSec": 28.15,
+          "minOpsPerSec": 12,
+          "passedBudget": true
+        },
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "15",
+          "opsPerSec": 2.45,
+          "minOpsPerSec": 1.8,
+          "passedBudget": true
+        }
+      ],
+      "longTasks": {
+        "supported": true,
+        "entryType": "longtask",
+        "count": 108,
+        "totalDurationMs": 23553,
+        "maxDurationMs": 1664,
+        "unsupportedReason": null
+      }
+    },
+    "memoryProxy": {
+      "supported": true,
+      "unsupportedReason": null,
+      "snapshots": [
+        {
+          "label": "bootstrap_start",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "before_context_init",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "interactive_ready",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "suite_complete",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        }
+      ]
+    },
+    "environment": {
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+      "benchmarkCount": 3
+    }
+  },
+  "webkit": {
+    "capturedAt": "2026-04-16T19:07:59.418Z",
+    "startup": {
+      "scenario": "context-init-and-first-render",
+      "contextInitMs": 794,
+      "firstRenderMs": 794.6,
+      "interactiveReadyMs": 817.6
+    },
+    "cpuProxy": {
+      "rendererBenchmarks": [
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 19 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "19",
+          "opsPerSec": 3873,
+          "minOpsPerSec": 3000,
+          "passedBudget": true
+        },
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 17 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "17",
+          "opsPerSec": 28.02,
+          "minOpsPerSec": 12,
+          "passedBudget": true
+        },
+        {
+          "name": "PixiLayerOsm Renderer Benchmark with zoom 15 Tokyo data",
+          "placename": "tokyo",
+          "zoom": "15",
+          "opsPerSec": 2.39,
+          "minOpsPerSec": 1.8,
+          "passedBudget": true
+        }
+      ],
+      "longTasks": {
+        "supported": true,
+        "entryType": "longtask",
+        "count": 110,
+        "totalDurationMs": 22899,
+        "maxDurationMs": 1618,
+        "unsupportedReason": null
+      }
+    },
+    "memoryProxy": {
+      "supported": true,
+      "unsupportedReason": null,
+      "snapshots": [
+        {
+          "label": "bootstrap_start",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "before_context_init",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "interactive_ready",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        },
+        {
+          "label": "suite_complete",
+          "usedJSHeapSize": 553000000,
+          "totalJSHeapSize": 588000000,
+          "jsHeapSizeLimit": 3760000000
+        }
+      ]
+    },
+    "environment": {
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/147.0.7727.15 Safari/537.36",
+      "benchmarkCount": 3
+    }
+  }
+}

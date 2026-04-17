@@ -1,5 +1,5 @@
 import { Extent } from '@rapid-sdk/math';
-import { utilArrayChunk, utilArrayGroupBy } from '@rapid-sdk/util';
+import { utilArrayGroupBy } from '@rapid-sdk/util';
 import RBush from 'rbush';
 
 import { AbstractSystem } from './AbstractSystem.js';
@@ -7,6 +7,8 @@ import { Difference } from './lib/Difference.js';
 import * as Validations from '../validations/index.js';
 
 const RETRY = 5000;    // wait 5 sec before revalidating provisional entities
+const VALIDATION_SLICE_BUDGET_MS = 8;
+const VALIDATION_MAX_JOBS_PER_SLICE = 120;
 
 
 /**
@@ -759,10 +761,8 @@ export class ValidationSystem extends AbstractSystem {
 
     }).filter(Boolean);
 
-    // Perform the work in chunks.
-    // Because this will happen during idle callbacks, we want to choose a chunk size
-    // that won't make the browser stutter too badly.
-    cache.queue = cache.queue.concat(utilArrayChunk(jobs, 50));
+    // Add work to the queue.  We process this queue with a time budget per idle slice.
+    cache.queue.push(...jobs);
 
     // Enqueue the work
     if (!cache.queuePromise) {
@@ -807,25 +807,59 @@ export class ValidationSystem extends AbstractSystem {
     // console.log(`${cache.which} queue length ${cache.queue.length}`);
 
     if (!cache.queue.length) return Promise.resolve();  // we're done
-    const chunk = cache.queue.pop();
-
-    return new Promise((resolve, reject) => {
-        const handle = window.requestIdleCallback(() => {
-          this._deferredRIC.delete(handle);
-          // const t0 = performance.now();
-          chunk.forEach(job => job());
-          // const t1 = performance.now();
-          // console.log('chunk processed in ' + (t1 - t0) + ' ms');
-          resolve();
-        });
-        this._deferredRIC.set(handle, reject);
-      })
+    return this._runValidationSliceAsync(cache)
       .then(() => { // dispatch an event sometimes to redraw various UI things
         if (cache.queue.length % 100 === 0) {
           this.emit('validated');
         }
       })
       .then(() => this._processQueue(cache));
+  }
+
+
+  _runValidationSliceAsync(cache) {
+    return new Promise((resolve, reject) => {
+      const runSlice = (deadline) => {
+        this._deferredRIC.delete(handle);
+        resolve(this._runValidationSlice(cache, deadline));
+      };
+
+      let handle;
+      if (typeof window.requestIdleCallback === 'function') {
+        handle = window.requestIdleCallback(runSlice, { timeout: VALIDATION_SLICE_BUDGET_MS * 5 });
+        this._deferredRIC.set(handle, reject);
+      } else {
+        const timeoutHandle = window.setTimeout(() => {
+          this._deferredST.delete(timeoutHandle);
+          runSlice();
+        }, 0);
+        this._deferredST.add(timeoutHandle);
+      }
+    });
+  }
+
+
+  _runValidationSlice(cache, deadline) {
+    const started = performance.now();
+    let processed = 0;
+
+    while (cache.queue.length) {
+      const elapsed = performance.now() - started;
+      const timeRemaining = (typeof deadline?.timeRemaining === 'function') ? deadline.timeRemaining() : Infinity;
+      const reachedBudget = processed > 0 && (
+        elapsed >= VALIDATION_SLICE_BUDGET_MS ||
+        timeRemaining <= 0 ||
+        processed >= VALIDATION_MAX_JOBS_PER_SLICE
+      );
+      if (reachedBudget) break;
+
+      const job = cache.queue.pop();
+      if (!job) break;
+      job();
+      processed++;
+    }
+
+    return processed;
   }
 }
 

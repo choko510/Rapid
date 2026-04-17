@@ -38,6 +38,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       saturation: 1,
       sharpness: 1,
     };
+    this._filterCacheKey = null;
+    this._filterCache = null;
 
     this._tileMaps = new Map();    // Map (sourceID -> Map(tileID -> tile))
     this._failed = new Set();      // Set of failed tileURLs
@@ -63,6 +65,10 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this._failed.clear();
     this._needTiles.clear();
     this._sourceIDsToDestroy.length = 0;
+    this._filterCacheKey = null;
+    this._filterCache = null;
+    this.convolutionFilter = null;
+    this.blurFilter = null;
   }
 
 
@@ -450,37 +456,51 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
    * @param  sourceContainer   PIXI.Container that contains the tiles
    */
   applyFilters(sourceContainer) {
-    const adjustmentFilter = new AdjustmentFilter({
-      brightness: this.filters.brightness,
-      contrast: this.filters.contrast,
-      saturation: this.filters.saturation,
-    });
-
-    sourceContainer.filters = [adjustmentFilter];
-
-    if (this.filters.sharpness > 1) {
-      // The convolution filter consists of adjacent pixels with a negative factor and the central pixel being at least one.
-      // The central pixel (at index 4 of our 3x3 array) starts at 1 and increases
-      const convolutionArray = sharpenMatrix.map((n, i) => {
-        if (i === 4) {
-          const interp = interpolateNumber(1, 2)(this.filters.sharpness);
-          const result = n * interp;
-          return result;
-        } else {
-          return n;
-        }
+    const f = this.filters;
+    const key = `${f.brightness}|${f.contrast}|${f.saturation}|${f.sharpness}`;
+    if (this._filterCacheKey !== key || !this._filterCache) {
+      const adjustmentFilter = new AdjustmentFilter({
+        brightness: f.brightness,
+        contrast: f.contrast,
+        saturation: f.saturation,
       });
 
-      this.convolutionFilter = new ConvolutionFilter(convolutionArray);
-      sourceContainer.filters= [...sourceContainer.filters, this.convolutionFilter];
+      const filters = [adjustmentFilter];
 
-    } else if (this.filters.sharpness < 1) {
-      const blurFactor = interpolateNumber(1, 8)(1 - this.filters.sharpness);
-      this.blurFilter = new PIXI.BlurFilter({
-        strength: blurFactor,
-        quality: 4
-      });
-      sourceContainer.filters = [...sourceContainer.filters, this.blurFilter];
+      this.convolutionFilter = null;
+      this.blurFilter = null;
+
+      if (f.sharpness > 1) {
+        // The convolution filter consists of adjacent pixels with a negative factor and the central pixel being at least one.
+        // The central pixel (at index 4 of our 3x3 array) starts at 1 and increases
+        const convolutionArray = sharpenMatrix.map((n, i) => {
+          if (i === 4) {
+            const interp = interpolateNumber(1, 2)(f.sharpness);
+            const result = n * interp;
+            return result;
+          } else {
+            return n;
+          }
+        });
+
+        this.convolutionFilter = new ConvolutionFilter(convolutionArray);
+        filters.push(this.convolutionFilter);
+
+      } else if (f.sharpness < 1) {
+        const blurFactor = interpolateNumber(1, 8)(1 - f.sharpness);
+        this.blurFilter = new PIXI.BlurFilter({
+          strength: blurFactor,
+          quality: 4
+        });
+        filters.push(this.blurFilter);
+      }
+
+      this._filterCacheKey = key;
+      this._filterCache = filters;
+    }
+
+    if (sourceContainer.filters !== this._filterCache) {
+      sourceContainer.filters = this._filterCache;
     }
   }
 

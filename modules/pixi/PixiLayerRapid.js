@@ -452,6 +452,8 @@ export class PixiLayerRapid extends AbstractLayer {
    * renderPoints
    */
   renderPoints(parentContainer, dataset, graph, frame, viewport, zoom, data) {
+    if (zoom < 16) return;
+
     const color = this._getDatasetColor(dataset);
     const l10n = this.context.systems.l10n;
 

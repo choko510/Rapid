@@ -1,7 +1,6 @@
-import { marked } from 'marked';
-
 import { icon } from './intro/helper.js';
 import { uiModal } from './modal.js';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 
 /**
@@ -48,10 +47,15 @@ export function uiWhatsNew(context) {
       .append('div')
       .attr('class', 'modal-section');
 
-    $mainSection
+    const $whatsNewText = $mainSection
       .append('div')
-      .attr('class', 'whatsnew-text')
-      .html(marked.parse(markdown));
+      .attr('class', 'whatsnew-text');
+
+    parseMarkdownAsync(markdown).then(html => {
+      $whatsNewText.html(html);
+      // outbound links should open in new tab
+      $content.selectAll('a').attr('target', '_blank');
+    });
 
     $mainSection
       .append('div')
@@ -99,12 +103,6 @@ export function uiWhatsNew(context) {
     $checkbox
       .append('div')
       .attr('class', 'rapid-checkbox-custom');
-
-
-    // outbound links should open in new tab
-    $content.selectAll('a')
-      .attr('target', '_blank');
-
 
     const $buttonWrap = $content
       .append('div')

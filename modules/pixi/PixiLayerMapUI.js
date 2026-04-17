@@ -4,6 +4,8 @@ import { geoMetersToLon, vecEqual } from '@rapid-sdk/math';
 import { AbstractLayer } from './AbstractLayer.js';
 import { DashLine } from './lib/DashLine.js';
 
+const GEOLOCATION_BLUE = 0x0e60ff;
+
 
 /**
  * PixiLayerMapUI
@@ -33,9 +35,13 @@ export class PixiLayerMapUI extends AbstractLayer {
 
     this._geolocationData = null;
     this._geolocationDirty = false;
+    this._geolocationAura = null;
+    this._geolocationHeading = null;
+    this._geolocationPosition = null;
 
     this._lassoData = null;
     this._lassoDirty = false;
+    this._lassoFlatCoords = [];
 
     this.geolocation = null;
     this.tileDebug = null;
@@ -102,6 +108,10 @@ export class PixiLayerMapUI extends AbstractLayer {
     this._lassoLine = new PIXI.Graphics();
     this._lassoFill = new PIXI.Graphics();
     this._lassoData = null;
+    this._lassoFlatCoords.length = 0;
+    this._geolocationAura = null;
+    this._geolocationHeading = null;
+    this._geolocationPosition = null;
 
     const lasso = new PIXI.Container();
     lasso.label = 'lasso';
@@ -205,7 +215,12 @@ export class PixiLayerMapUI extends AbstractLayer {
         coords.push(start);
       }
 
-      const flatCoords = coords.map(coord => viewport.project(coord)).flat();
+      const flatCoords = this._lassoFlatCoords;
+      flatCoords.length = 0;
+      for (const coord of coords) {
+        const [x, y] = viewport.project(coord);
+        flatCoords.push(x, y);
+      }
 
       // line
       const lineStyle = { alpha: 0.7, dash: [6, 3], width: 1, color: 0xffffff };
@@ -238,10 +253,9 @@ export class PixiLayerMapUI extends AbstractLayer {
 
     const container = this.geolocation;
 
-    container.removeChildren();
-
     if (this.geolocationData && this.geolocationData.coords) {
       container.visible = true;
+      this._ensureGeolocationObjects();
 
       const d = this.geolocationData.coords;
       const coord = [d.longitude, d.latitude];
@@ -252,31 +266,25 @@ export class PixiLayerMapUI extends AbstractLayer {
       const edge = [d.longitude + dLon, d.latitude];
       const x2 = viewport.project(edge)[0];
       const r = Math.max(Math.abs(x2 - x), 15);
-      const BLUE = 0xe60ff;
 
-      const aura = new PIXI.Graphics()
+      this._geolocationAura.clear()
         .circle(x, y, r)
-        .fill({ color: BLUE, alpha: 0.4 });
-      aura.label = 'aura';
-      container.addChild(aura);
+        .fill({ color: GEOLOCATION_BLUE, alpha: 0.4 });
 
       // Show a viewfield for the heading if we have it
-      if (d.heading !== null && !isNaN(d.heading)) {
-        const textures = this.gfx.textures;
-        const heading = new PIXI.Sprite(textures.get('viewfieldDark'));
-        heading.anchor.set(0.5, 1);  // middle, top
+      const heading = this._geolocationHeading;
+      if (d.heading !== null && Number.isFinite(d.heading)) {
+        heading.visible = true;
         heading.angle = d.heading;
-        heading.label = 'heading';
         heading.position.set(x, y);
-        container.addChild(heading);
+      } else {
+        heading.visible = false;
       }
 
-      const position = new PIXI.Graphics()
+      this._geolocationPosition.clear()
         .circle(x, y, 6.5)
-        .stroke(1.5, 0xffffff, 1.0)
-        .fill({ color: BLUE, alpha: 1.0 });
-      position.label = 'position';
-      container.addChild(position);
+        .stroke({ width: 1.5, color: 0xffffff, alpha: 1.0 })
+        .fill({ color: GEOLOCATION_BLUE, alpha: 1.0 });
 
     } else {
       container.visible = false;
@@ -284,6 +292,28 @@ export class PixiLayerMapUI extends AbstractLayer {
 
     this._geolocationDirty = false;
 
+  }
+
+
+  _ensureGeolocationObjects() {
+    if (this._geolocationAura && this._geolocationHeading && this._geolocationPosition) return;
+
+    const textures = this.gfx.textures;
+    const aura = new PIXI.Graphics();
+    aura.label = 'aura';
+
+    const heading = new PIXI.Sprite(textures.get('viewfieldDark'));
+    heading.anchor.set(0.5, 1);  // middle, top
+    heading.label = 'heading';
+
+    const position = new PIXI.Graphics();
+    position.label = 'position';
+
+    this.geolocation.addChild(aura, heading, position);
+
+    this._geolocationAura = aura;
+    this._geolocationHeading = heading;
+    this._geolocationPosition = position;
   }
 
 }

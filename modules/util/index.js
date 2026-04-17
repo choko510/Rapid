@@ -1,4 +1,5 @@
 export { utilCmd } from './cmd.js';
+export { utilLRUMapSet, utilLRUMapTrim, utilLRUSetAdd, utilLRUSetTrim } from './cache_policy.js';
 export { utilDetect } from './detect.js';
 export { uploadFile } from './dom.js';
 export { utilFetchResponse, FetchError } from './fetch_response.js';

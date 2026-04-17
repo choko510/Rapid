@@ -1,8 +1,8 @@
 import { selection } from 'd3-selection';
-import { marked } from 'marked';
 
 import { uiIcon } from './icon.js';
 import { uiTooltip } from './tooltip.js';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 
 
@@ -31,6 +31,7 @@ export class UiOvertureInspector {
 
     this.datum = null;
     this._keys = null;
+    this._noticeRenderID = 0;
 
     // D3 selections
     this.$parent = null;
@@ -511,11 +512,20 @@ export class UiOvertureInspector {
       // update
       $notice = $notice.merge($$notice);
 
-      $notice
-        .html(marked.parse(l10n.t('rapid_inspector.notice.open_data', { url: dataset.licenseUrl })));
+      const noticeMarkdown = l10n.t('rapid_inspector.notice.open_data', { url: dataset.licenseUrl });
+      const expectedDatasetID = datasetID;
+      const renderID = ++this._noticeRenderID;
 
-      $notice.selectAll('a')   // links in markdown should open in new page
-        .attr('target', '_blank');
+      $notice.text('');
+      parseMarkdownAsync(noticeMarkdown).then(html => {
+        if (renderID !== this._noticeRenderID) return;
+        if (this.datum?.__datasetid__?.replace('-conflated', '') !== expectedDatasetID) return;
+
+        $notice
+          .html(html)
+          .selectAll('a')
+          .attr('target', '_blank');   // links in markdown should open in new page
+      });
     }
 
   }
