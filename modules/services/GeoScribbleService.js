@@ -3,7 +3,7 @@ import { utilQsString } from '@rapid-sdk/util';
 import RBush from 'rbush';
 import { geojsonExtent } from '../util/util.js';
 import { AbstractSystem } from '../core/AbstractSystem.js';
-import { utilFetchResponse } from '../util/index.js';
+import { utilFetchResponse, utilLRUSetAdd } from '../util/index.js';
 
 
 const TILEZOOM = 16.5;
@@ -35,6 +35,8 @@ export class GeoScribbleService extends AbstractSystem {
 
     this._cache = {};
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
+    this._maxLoadedTiles = 300;
+    this._maxShapes = 25000;
   }
 
 
@@ -65,15 +67,17 @@ export class GeoScribbleService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed resetting
    */
   resetAsync() {
-    if (this._cache.inflight) {
-      for (const inflight of this._cache.inflight.values()) {
-        inflight.controller.abort();
-      }
+    if (this._cache.inflightTile) {
+      Object.values(this._cache.inflightTile).forEach(controller => this._abortRequest(controller));
     }
     this._nextID = 0;
     this._cache = {
       shapes: {},
       loadedTile: {},
+      loadedTileOrder: new Set(),   // Set<tileID> ordered least-recently-used -> most-recently-used
+      shapeOrder: new Set(),        // Set<shapeID> ordered least-recently-used -> most-recently-used
+      tileShapeIDs: {},             // Object<tileID -> Set<shapeID>>
+      shapeTileIDs: {},             // Object<shapeID -> tileID>
       inflightTile: {},
       rbush: new RBush()
     };
@@ -113,12 +117,16 @@ export class GeoScribbleService extends AbstractSystem {
     // determine the needed tiles to cover the view
     const viewport = this.context.viewport;
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed
     this._abortUnwantedRequests(cache, tiles);
 
     // Issue new requests..
     for (const tile of tiles) {
+      if (cache.loadedTile[tile.id]) {
+        utilLRUSetAdd(cache.loadedTileOrder, tile.id);
+      }
       if (cache.loadedTile[tile.id] || cache.inflightTile[tile.id]) continue;
 
       const rect = tile.wgs84Extent.rectangle().join(',');
@@ -131,7 +139,8 @@ export class GeoScribbleService extends AbstractSystem {
         .then(utilFetchResponse)
         .then(data => {
           cache.loadedTile[tile.id] = true;
-          cache.shapes = data;
+          utilLRUSetAdd(cache.loadedTileOrder, tile.id);
+          const tileShapeIDs = new Set();
 
           for (const shape of data.features) {
             const featureID = this.getNextID();   // Generate a unique id for this feature
@@ -145,7 +154,15 @@ export class GeoScribbleService extends AbstractSystem {
             const box = geojsonExtent(shape).bbox();
             box.data = shape;
             cache.rbush.insert(box);
+
+            cache.shapes[featureID] = shape;
+            utilLRUSetAdd(cache.shapeOrder, featureID);
+            tileShapeIDs.add(featureID);
+            cache.shapeTileIDs[featureID] = tile.id;
           }
+          cache.tileShapeIDs[tile.id] = tileShapeIDs;
+
+          this._trimCache(wantedTileIDs);
 
           const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
@@ -154,6 +171,8 @@ export class GeoScribbleService extends AbstractSystem {
         .catch(err => {
           if (err.name === 'AbortError') return;    // ok
           cache.loadedTile[tile.id] = true;         // don't retry
+          utilLRUSetAdd(cache.loadedTileOrder, tile.id);
+          this._trimCache(wantedTileIDs);
         })
         .finally(() => {
           delete cache.inflightTile[tile.id];
@@ -162,8 +181,8 @@ export class GeoScribbleService extends AbstractSystem {
   }
 
 
-  _abortRequest(requests) {
-    for (const controller of Object.values(requests)) {
+  _abortRequest(controller) {
+    if (controller) {
       controller.abort();
     }
   }
@@ -177,6 +196,74 @@ export class GeoScribbleService extends AbstractSystem {
         delete cache.inflightTile[k];
       }
     });
+  }
+
+
+  _trimCache(wantedTileIDs) {
+    const cache = this._cache;
+    const protectedTileIDs = new Set(wantedTileIDs);
+    for (const tileID of Object.keys(cache.inflightTile)) {
+      protectedTileIDs.add(tileID);
+    }
+
+    let attempts = cache.loadedTileOrder.size;
+    while (cache.loadedTileOrder.size > this._maxLoadedTiles && attempts-- > 0) {
+      const oldestTileID = cache.loadedTileOrder.values().next().value;
+      if (oldestTileID === undefined) break;
+
+      if (protectedTileIDs.has(oldestTileID)) {
+        utilLRUSetAdd(cache.loadedTileOrder, oldestTileID);
+        continue;
+      }
+
+      this._evictTile(cache, oldestTileID);
+    }
+
+    while (cache.shapeOrder.size > this._maxShapes) {
+      const oldestShapeID = cache.shapeOrder.values().next().value;
+      if (oldestShapeID === undefined) break;
+
+      this._evictShape(cache, oldestShapeID, true);
+    }
+  }
+
+
+  _evictTile(cache, tileID) {
+    const shapeIDs = cache.tileShapeIDs[tileID];
+    if (shapeIDs) {
+      for (const shapeID of shapeIDs) {
+        this._evictShape(cache, shapeID, false);
+      }
+      delete cache.tileShapeIDs[tileID];
+    }
+
+    cache.loadedTileOrder.delete(tileID);
+    delete cache.loadedTile[tileID];
+  }
+
+
+  _evictShape(cache, shapeID, invalidateSourceTile = false) {
+    const shape = cache.shapes[shapeID];
+    if (!shape) return;
+
+    const tileID = cache.shapeTileIDs[shapeID];
+    if (invalidateSourceTile && tileID && cache.loadedTile[tileID]) {
+      this._evictTile(cache, tileID);
+      return;
+    }
+
+    cache.shapeOrder.delete(shapeID);
+    delete cache.shapes[shapeID];
+
+    if (tileID && cache.tileShapeIDs[tileID]) {
+      cache.tileShapeIDs[tileID].delete(shapeID);
+      if (cache.tileShapeIDs[tileID].size === 0) {
+        delete cache.tileShapeIDs[tileID];
+      }
+    }
+    delete cache.shapeTileIDs[shapeID];
+
+    cache.rbush.remove({ data: { id: shapeID } }, (a, b) => a.data.id === b.data.id);
   }
 
 }

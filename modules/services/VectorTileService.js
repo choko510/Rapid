@@ -9,7 +9,11 @@ import Protobuf from 'pbf';
 import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
-import { utilFetchResponse } from '../util/index.js';
+import { utilFetchResponse, utilLRUMapSet, utilLRUSetAdd } from '../util/index.js';
+
+const LINE_INTERSECTION_EPSILON = 1e-10;
+const LINE_INTERSECTION_VERTEX_SNAP = 1e-8;
+const LINE_INTERSECTION_SEGMENT_MIN_LENGTH_SQ = 1e-12;
 
 
 /**
@@ -41,6 +45,8 @@ export class VectorTileService extends AbstractSystem {
     this._sources = new Map();   // Map(template -> source)
     this._tiler = new Tiler().tileSize(512).margin(1);
     this._nextID = 0;
+    this._maxSourceLoadedTiles = 240;
+    this._maxSourceZoomCaches = 4;
   }
 
 
@@ -88,6 +94,7 @@ export class VectorTileService extends AbstractSystem {
         cache.rbush.clear();
       }
       source.zoomCache.clear();
+      source.zoomAccess?.clear();
       source.lastv = null;
     }
     this._sources.clear();
@@ -123,7 +130,7 @@ export class VectorTileService extends AbstractSystem {
     // Note that because vector tiles are 512px, they are offset by -1 zoom level
     // from the main map zoom, which follows 256px and OSM convention.
     const scale = viewport.transform.scale;
-     const zoom = Math.round(geoScaleToZoom(scale, 512));
+    const zoom = Math.round(geoScaleToZoom(scale, 512));
 
     // Because vector tiled data can be different at different zooms,
     // the caches and indexes need to be setup "per-zoom".
@@ -132,10 +139,12 @@ export class VectorTileService extends AbstractSystem {
     for (let diff = 0; diff < 12; diff++) {
       cache = source.zoomCache.get(zoom + diff);
       if (cache) {
+        utilLRUSetAdd(source.zoomAccess, zoom + diff);
         return cache.rbush.search(bbox).map(d => d.data);
       }
       cache = source.zoomCache.get(zoom - diff);
       if (cache) {
+        utilLRUSetAdd(source.zoomAccess, zoom - diff);
         return cache.rbush.search(bbox).map(d => d.data);
       }
     }
@@ -174,10 +183,17 @@ export class VectorTileService extends AbstractSystem {
           }
         }
 
+        for (const tile of tiles) {
+          if (source.loaded.has(tile.id)) {
+            utilLRUMapSet(source.loaded, tile.id, source.loaded.get(tile.id));
+          }
+        }
+
         // Issue new requests..
         const fetches = tiles.map(tile => this._loadTileAsync(source, tile));
         return Promise.all(fetches)
-          .then(() => this._processMergeQueue(source));
+          .then(() => this._processMergeQueue(source))
+          .then(() => this._evictSourceCache(source, neededTileIDs, tiles));
       });
   }
 
@@ -205,6 +221,7 @@ export class VectorTileService extends AbstractSystem {
         inflight:     new Map(),   // Map(tileID -> AbortController)
         loaded:       new Map(),   // Map(tileID -> Tile)
         zoomCache:    new Map(),   // Map(zoom -> Object zoomCache)
+        zoomAccess:   new Set(),   // Set(zoom) ordered least-recently-used -> most-recently-used
         lastv:        null         // viewport version last time we fetched data
       };
 
@@ -252,6 +269,7 @@ export class VectorTileService extends AbstractSystem {
       source.zoomCache.set(zoom, cache);
     }
 
+    utilLRUSetAdd(source.zoomAccess, zoom);
     return cache;
   }
 
@@ -294,7 +312,7 @@ export class VectorTileService extends AbstractSystem {
 
     return _fetch
       .then(buffer => {
-        source.loaded.set(tileID, tile);
+        utilLRUMapSet(source.loaded, tileID, tile);
         this._parseTileBuffer(source, tile, buffer);
       })
       .catch(err => {
@@ -304,6 +322,62 @@ export class VectorTileService extends AbstractSystem {
       .finally(() => {
         source.inflight.delete(tileID);
       });
+  }
+
+
+  _evictSourceCache(source, neededTileIDs, visibleTiles) {
+    const protectedTileIDs = new Set([
+      ...neededTileIDs,
+      ...source.inflight.keys()
+    ]);
+
+    const protectedZooms = new Set(visibleTiles.map(tile => tile.xyz[2]));
+    for (const zoom of protectedZooms) {
+      utilLRUSetAdd(source.zoomAccess, zoom);
+    }
+
+    let overZooms = source.zoomCache.size - this._maxSourceZoomCaches;
+    if (overZooms > 0) {
+      for (const zoom of source.zoomAccess) {
+        if (overZooms <= 0) break;
+        if (protectedZooms.has(zoom)) continue;
+
+        const cache = source.zoomCache.get(zoom);
+        if (cache) {
+          cache.features.clear();
+          cache.boxes.clear();
+          cache.toMerge.clear();
+          cache.didMerge.clear();
+          cache.rbush.clear();
+          source.zoomCache.delete(zoom);
+          overZooms--;
+        }
+
+        source.zoomAccess.delete(zoom);
+
+        for (const [tileID, tile] of source.loaded) {
+          if (tile.xyz[2] === zoom && !protectedTileIDs.has(tileID)) {
+            source.loaded.delete(tileID);
+          }
+        }
+      }
+    }
+
+    // Keep loaded-tile markers for zooms whose feature caches still exist.
+    // Dropping only the marker causes duplicate feature accumulation when revisiting tiles.
+    let overTiles = source.loaded.size - this._maxSourceLoadedTiles;
+    if (overTiles > 0) {
+      for (const [tileID, tile] of source.loaded) {
+        if (overTiles <= 0) break;
+        if (protectedTileIDs.has(tileID)) continue;
+
+        const zoom = tile?.xyz?.[2];
+        if (source.zoomCache.has(zoom)) continue;
+
+        source.loaded.delete(tileID);
+        overTiles--;
+      }
+    }
   }
 
 
@@ -477,9 +551,11 @@ export class VectorTileService extends AbstractSystem {
         // All the features that share this prophash along this edge can be merged
         for (const [prophash, featureIDs] of mergemap) {
           // Determine geometry type from the first available feature
-          const firstFeature = Array.from(featureIDs)
-            .map(id => cache.features.get(id))
-            .find(Boolean);
+          let firstFeature;
+          for (const featureID of featureIDs) {
+            firstFeature = cache.features.get(featureID);
+            if (firstFeature) break;
+          }
 
           if (firstFeature?.geojson?.geometry?.type === 'LineString') {
             this._mergeLineStrings(cache, prophash, featureIDs, lowTile, highTile);
@@ -725,9 +801,7 @@ export class VectorTileService extends AbstractSystem {
     const lowRightEdge   = `${lowTileID}-${lx+1},${ly},${lz}`;
     const lowTopEdge     = `${lx},${ly-1},${lz}-${lowTileID}`;
     const lowBottomEdge  = `${lowTileID}-${lx},${ly+1},${lz}`;
-    const highLeftEdge   = `${hx-1},${hy},${hz}-${highTileID}`;
     const highRightEdge  = `${highTileID}-${hx+1},${hy},${hz}`;
-    const highTopEdge    = `${hx},${hy-1},${hz}-${highTileID}`;
     const highBottomEdge = `${highTileID}-${hx},${hy+1},${hz}`;
 
     const source = features[0];
@@ -910,6 +984,8 @@ export class VectorTileService extends AbstractSystem {
     const lineFeatures = newFeatures.filter(f => f.geojson?.geometry?.type === 'LineString');
     if (!lineFeatures.length) return;
 
+    const seenPairs = new Set();
+
     // For each new LineString, query the RBush for overlapping features
     for (const newFeat of lineFeatures) {
       const bbox = newFeat.extent.bbox();
@@ -918,6 +994,10 @@ export class VectorTileService extends AbstractSystem {
         .filter(f => f.id !== newFeat.id && f.geojson?.geometry?.type === 'LineString');
 
       for (const existing of candidates) {
+        const pairID = (newFeat.id < existing.id) ? `${newFeat.id}-${existing.id}` : `${existing.id}-${newFeat.id}`;
+        if (seenPairs.has(pairID)) continue;
+        seenPairs.add(pairID);
+
         this._findAndInsertCrossings(newFeat, existing);
       }
     }
@@ -934,7 +1014,6 @@ export class VectorTileService extends AbstractSystem {
    * @param  {Object}  featB - second feature
    */
   _findAndInsertCrossings(featA, featB) {
-    const EPSILON = 1e-10;
     const coordsA = featA.geojson.geometry.coordinates;
     const coordsB = featB.geojson.geometry.coordinates;
 
@@ -943,21 +1022,27 @@ export class VectorTileService extends AbstractSystem {
     for (let i = coordsA.length - 2; i >= 0; i--) {
       const a1 = coordsA[i];
       const a2 = coordsA[i + 1];
+      const adx = a2[0] - a1[0];
+      const ady = a2[1] - a1[1];
+      if ((adx * adx + ady * ady) < LINE_INTERSECTION_SEGMENT_MIN_LENGTH_SQ) continue;
 
       for (let j = coordsB.length - 2; j >= 0; j--) {
         const b1 = coordsB[j];
         const b2 = coordsB[j + 1];
+        const bdx = b2[0] - b1[0];
+        const bdy = b2[1] - b1[1];
+        if ((bdx * bdx + bdy * bdy) < LINE_INTERSECTION_SEGMENT_MIN_LENGTH_SQ) continue;
+        if (!this._segmentsMayIntersect(a1, a2, b1, b2)) continue;
 
-        const cross = this._segmentIntersection(a1, a2, b1, b2, EPSILON);
+        const cross = this._segmentIntersection(a1, a2, b1, b2, LINE_INTERSECTION_EPSILON);
         if (!cross) continue;
 
         // Insert the crossing point into both coordinate arrays
         // (only if it's not already there — i.e. not coincident with an existing vertex)
-        const SNAP = 1e-8;
-        if (!this._pointsClose(cross, a1, SNAP) && !this._pointsClose(cross, a2, SNAP)) {
+        if (!this._pointsClose(cross, a1, LINE_INTERSECTION_VERTEX_SNAP) && !this._pointsClose(cross, a2, LINE_INTERSECTION_VERTEX_SNAP)) {
           coordsA.splice(i + 1, 0, cross);
         }
-        if (!this._pointsClose(cross, b1, SNAP) && !this._pointsClose(cross, b2, SNAP)) {
+        if (!this._pointsClose(cross, b1, LINE_INTERSECTION_VERTEX_SNAP) && !this._pointsClose(cross, b2, LINE_INTERSECTION_VERTEX_SNAP)) {
           coordsB.splice(j + 1, 0, cross);
         }
       }
@@ -1002,6 +1087,22 @@ export class VectorTileService extends AbstractSystem {
       a1[0] + t * dax,
       a1[1] + t * day
     ];
+  }
+
+
+  _segmentsMayIntersect(a1, a2, b1, b2) {
+    const aMinX = Math.min(a1[0], a2[0]);
+    const aMaxX = Math.max(a1[0], a2[0]);
+    const aMinY = Math.min(a1[1], a2[1]);
+    const aMaxY = Math.max(a1[1], a2[1]);
+    const bMinX = Math.min(b1[0], b2[0]);
+    const bMaxX = Math.max(b1[0], b2[0]);
+    const bMinY = Math.min(b1[1], b2[1]);
+    const bMaxY = Math.max(b1[1], b2[1]);
+
+    if (aMaxX < bMinX || bMaxX < aMinX) return false;
+    if (aMaxY < bMinY || bMaxY < aMinY) return false;
+    return true;
   }
 
 

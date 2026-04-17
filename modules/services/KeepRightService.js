@@ -4,7 +4,7 @@ import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { QAItem } from '../osm/qa_item.js';
-import { utilFetchResponse, utilSanitizeHTML } from '../util/index.js';
+import { utilFetchResponse, utilLRUSetAdd, utilSanitizeHTML } from '../util/index.js';
 
 
 const KEEPRIGHT_API = 'https://www.keepright.at';
@@ -67,6 +67,8 @@ export class KeepRightService extends AbstractSystem {
     this._cache = null;   // cache gets replaced on init/reset
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
     this._lastv = null;
+    this._maxLoadedTiles = 300;
+    this._maxIssues = 25000;
   }
 
 
@@ -108,6 +110,10 @@ export class KeepRightService extends AbstractSystem {
     this._cache = {
       data: {},
       loadedTile: {},
+      loadedTileOrder: new Set(),   // Set<tileID> ordered least-recently-used -> most-recently-used
+      issueOrder: new Set(),        // Set<issueID> ordered least-recently-used -> most-recently-used
+      tileIssueIDs: {},             // Object<tileID -> Set<issueID>>
+      issueTileIDs: {},             // Object<issueID -> Set<tileID>>
       inflightTile: {},
       inflightPost: {},
       closed: {},
@@ -148,12 +154,16 @@ export class KeepRightService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     this._abortUnwantedRequests(this._cache, tiles);
 
     // Issue new requests..
     for (const tile of tiles) {
+      if (this._cache.loadedTile[tile.id]) {
+        utilLRUSetAdd(this._cache.loadedTileOrder, tile.id);
+      }
       if (this._cache.loadedTile[tile.id] || this._cache.inflightTile[tile.id]) continue;
 
       const [ left, top, right, bottom ] = tile.wgs84Extent.rectangle();
@@ -168,6 +178,7 @@ export class KeepRightService extends AbstractSystem {
         .then(data => {
           delete this._cache.inflightTile[tile.id];
           this._cache.loadedTile[tile.id] = true;
+          utilLRUSetAdd(this._cache.loadedTileOrder, tile.id);
           if (!data || !data.features || !data.features.length) {
             throw new Error('No Data');
           }
@@ -188,6 +199,13 @@ export class KeepRightService extends AbstractSystem {
               geometry: { coordinates: loc },
               properties: { description = '' }
             } = feature;
+
+            const existing = this._cache.data[id];
+            if (existing) {
+              this._linkIssueToTile(this._cache, existing.id, tile.id);
+              utilLRUSetAdd(this._cache.issueOrder, existing.id);
+              continue;
+            }
 
             // if there is a parent, save its error type e.g.:
             //  Error 191 = "highway-highway"
@@ -244,8 +262,12 @@ export class KeepRightService extends AbstractSystem {
             d.replacements = this._tokenReplacements(d);
 
             this._cache.data[id] = d;
+            this._linkIssueToTile(this._cache, d.id, tile.id);
+            utilLRUSetAdd(this._cache.issueOrder, d.id);
             this._cache.rbush.insert(this._encodeIssueRBush(d));
           }
+
+          this._trimCache(wantedTileIDs);
 
           const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
@@ -254,6 +276,8 @@ export class KeepRightService extends AbstractSystem {
         .catch(() => {
           delete this._cache.inflightTile[tile.id];
           this._cache.loadedTile[tile.id] = true;
+          utilLRUSetAdd(this._cache.loadedTileOrder, tile.id);
+          this._trimCache(wantedTileIDs);
         });
 
     }
@@ -343,6 +367,7 @@ export class KeepRightService extends AbstractSystem {
     if (!(item instanceof QAItem) || !item.id) return null;
 
     this._cache.data[item.id] = item;
+    utilLRUSetAdd(this._cache.issueOrder, item.id);
     this._updateRBush(this._encodeIssueRBush(item), true); // true = replace
     return item;
   }
@@ -356,7 +381,9 @@ export class KeepRightService extends AbstractSystem {
   removeItem(item) {
     if (!(item instanceof QAItem) || !item.id) return;
 
+    this._unlinkIssue(this._cache, item.id, false);
     delete this._cache.data[item.id];
+    this._cache.issueOrder.delete(item.id);
     this._updateRBush(this._encodeIssueRBush(item), false); // false = remove
   }
 
@@ -387,6 +414,103 @@ export class KeepRightService extends AbstractSystem {
     if (controller) {
       controller.abort();
     }
+  }
+
+
+  _trimCache(wantedTileIDs) {
+    const cache = this._cache;
+    const protectedTileIDs = new Set(wantedTileIDs);
+    for (const tileID of Object.keys(cache.inflightTile)) {
+      protectedTileIDs.add(tileID);
+    }
+
+    let attempts = cache.loadedTileOrder.size;
+    while (cache.loadedTileOrder.size > this._maxLoadedTiles && attempts-- > 0) {
+      const oldestTileID = cache.loadedTileOrder.values().next().value;
+      if (oldestTileID === undefined) break;
+
+      if (protectedTileIDs.has(oldestTileID)) {
+        utilLRUSetAdd(cache.loadedTileOrder, oldestTileID);
+        continue;
+      }
+
+      this._unlinkTile(cache, oldestTileID);
+      cache.loadedTileOrder.delete(oldestTileID);
+      delete cache.loadedTile[oldestTileID];
+    }
+
+    while (cache.issueOrder.size > this._maxIssues) {
+      const oldestIssueID = cache.issueOrder.values().next().value;
+      if (oldestIssueID === undefined) break;
+
+      cache.issueOrder.delete(oldestIssueID);
+      const issue = cache.data[oldestIssueID];
+      this._unlinkIssue(cache, oldestIssueID, true);
+      if (!issue) continue;
+
+      delete cache.data[oldestIssueID];
+      cache.rbush.remove({ data: { id: oldestIssueID } }, (a, b) => a.data.id === b.data.id);
+    }
+  }
+
+
+  _linkIssueToTile(cache, issueID, tileID) {
+    if (!issueID || !tileID) return;
+
+    let tileIssues = cache.tileIssueIDs[tileID];
+    if (!tileIssues) {
+      tileIssues = new Set();
+      cache.tileIssueIDs[tileID] = tileIssues;
+    }
+    tileIssues.add(issueID);
+
+    let issueTiles = cache.issueTileIDs[issueID];
+    if (!issueTiles) {
+      issueTiles = new Set();
+      cache.issueTileIDs[issueID] = issueTiles;
+    }
+    issueTiles.add(tileID);
+  }
+
+
+  _unlinkTile(cache, tileID) {
+    const tileIssues = cache.tileIssueIDs[tileID];
+    if (!tileIssues) return;
+
+    for (const issueID of tileIssues) {
+      const issueTiles = cache.issueTileIDs[issueID];
+      if (!issueTiles) continue;
+
+      issueTiles.delete(tileID);
+      if (issueTiles.size === 0) {
+        delete cache.issueTileIDs[issueID];
+      }
+    }
+
+    delete cache.tileIssueIDs[tileID];
+  }
+
+
+  _unlinkIssue(cache, issueID, invalidateTiles = false) {
+    const issueTiles = cache.issueTileIDs[issueID];
+    if (!issueTiles) return;
+
+    for (const tileID of issueTiles) {
+      const tileIssues = cache.tileIssueIDs[tileID];
+      if (tileIssues) {
+        tileIssues.delete(issueID);
+        if (tileIssues.size === 0) {
+          delete cache.tileIssueIDs[tileID];
+        }
+      }
+
+      if (invalidateTiles) {
+        delete cache.loadedTile[tileID];
+        cache.loadedTileOrder.delete(tileID);
+      }
+    }
+
+    delete cache.issueTileIDs[issueID];
   }
 
   _abortUnwantedRequests(cache, tiles) {

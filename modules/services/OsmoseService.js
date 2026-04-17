@@ -1,12 +1,12 @@
 import * as PIXI from 'pixi.js';
 import { Tiler, vecSubtract } from '@rapid-sdk/math';
 import { utilQsString } from '@rapid-sdk/util';
-import { marked } from 'marked';
 import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { QAItem } from '../osm/qa_item.js';
-import { utilFetchResponse, utilSanitizeHTML } from '../util/index.js';
+import { utilFetchResponse, utilLRUMapSet, utilLRUMapTrim, utilLRUSetAdd, utilSanitizeHTML } from '../util/index.js';
+import { parseMarkdownAsync } from '../util/markdown.js';
 
 
 const TILEZOOM = 14;
@@ -41,6 +41,8 @@ export class OsmoseService extends AbstractSystem {
     this._cache = null;   // cache gets replaced on init/reset
     this._tiler = new Tiler().zoomRange(TILEZOOM).skipNullIsland(true);
     this._lastv = null;
+    this._maxLoadedTiles = 300;
+    this._maxIssues = 25000;
   }
 
 
@@ -92,6 +94,9 @@ export class OsmoseService extends AbstractSystem {
     this._cache = {
       issues: new Map(),    // Map (itemID -> QAItem)
       loadedTile: {},
+      loadedTileOrder: new Set(),   // Set<tileID> ordered least-recently-used -> most-recently-used
+      tileIssueIDs: {},             // Object<tileID -> Set<issueID>>
+      issueTileIDs: {},             // Object<issueID -> Set<tileID>>
       inflightTile: {},
       inflightPost: {},
       closed: {},
@@ -126,12 +131,16 @@ export class OsmoseService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.getTiles(viewport).tiles;
+    const wantedTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     this._abortUnwantedRequests(this._cache, tiles);
 
     // Issue new requests..
     for (const tile of tiles) {
+      if (this._cache.loadedTile[tile.id]) {
+        utilLRUSetAdd(this._cache.loadedTileOrder, tile.id);
+      }
       if (this._cache.loadedTile[tile.id] || this._cache.inflightTile[tile.id]) continue;
 
       const [x, y, z] = tile.xyz;
@@ -145,12 +154,19 @@ export class OsmoseService extends AbstractSystem {
         .then(utilFetchResponse)
         .then(data => {
           this._cache.loadedTile[tile.id] = true;
+          utilLRUSetAdd(this._cache.loadedTileOrder, tile.id);
 
           for (const issue of (data.features ?? [])) {
             // Osmose issues are uniquely identified by a unique
             // `item` and `class` combination (both integer values)
             const { item, class: cl, uuid: id } = issue.properties;
             const itemType = `${item}-${cl}`;
+            const existing = this._cache.issues.get(id);
+            if (existing) {
+              this._linkIssueToTile(this._cache, existing.id, tile.id);
+              utilLRUMapSet(this._cache.issues, existing.id, existing);
+              continue;
+            }
 
             // Filter out unsupported issue types (some are too specific or advanced)
             if (itemType in this._osmoseData.icons) {
@@ -162,10 +178,13 @@ export class OsmoseService extends AbstractSystem {
                 d.elems = [];
               }
 
-              this._cache.issues.set(d.id, d);
+              utilLRUMapSet(this._cache.issues, d.id, d);
+              this._linkIssueToTile(this._cache, d.id, tile.id);
               this._cache.rbush.insert(this._encodeIssueRBush(d));
             }
           }
+
+          this._trimCache(wantedTileIDs);
 
           const gfx = this.context.systems.gfx;
           gfx.deferredRedraw();
@@ -174,6 +193,8 @@ export class OsmoseService extends AbstractSystem {
         .catch(err => {
           if (err.name === 'AbortError') return;    // ok
           this._cache.loadedTile[tile.id] = true;   // don't retry
+          utilLRUSetAdd(this._cache.loadedTileOrder, tile.id);
+          this._trimCache(wantedTileIDs);
         })
         .finally(() => {
           delete this._cache.inflightTile[tile.id];
@@ -193,12 +214,12 @@ export class OsmoseService extends AbstractSystem {
 
     const localeCode = this.context.systems.l10n.localeCode();
     const url = `${OSMOSE_API}/issue/${issue.id}?langs=${localeCode}`;
-    const handleResponse = (data) => {
+    const handleResponse = async (data) => {
       // Associated elements used for highlighting
       // Assign directly for immediate use in the callback
       issue.elems = data.elems.map(e => e.type.substring(0,1) + e.id);
       // Some issues have instance specific detail in a subtitle
-      issue.detail = data.subtitle ? utilSanitizeHTML(marked.parse(data.subtitle.auto)) : '';
+      issue.detail = data.subtitle ? utilSanitizeHTML(await parseMarkdownAsync(data.subtitle.auto)) : '';
       this.replaceItem(issue);
     };
 
@@ -303,7 +324,7 @@ export class OsmoseService extends AbstractSystem {
   replaceItem(item) {
     if (!(item instanceof QAItem) || !item.id) return;
 
-    this._cache.issues.set(item.id, item);
+    utilLRUMapSet(this._cache.issues, item.id, item);
     this._updateRBush(this._encodeIssueRBush(item), true); // true = replace
     return item;
   }
@@ -317,7 +338,8 @@ export class OsmoseService extends AbstractSystem {
   removeItem(item) {
     if (!(item instanceof QAItem) || !item.id) return;
 
-    this._cache.isseus.delete(item.id);
+    this._cache.issues.delete(item.id);
+    this._unlinkIssue(this._cache, item.id, false);
     this._updateRBush(this._encodeIssueRBush(item), false); // false = remove
   }
 
@@ -357,6 +379,94 @@ export class OsmoseService extends AbstractSystem {
         delete cache.inflightTile[k];
       }
     });
+  }
+
+  _trimCache(wantedTileIDs) {
+    const cache = this._cache;
+    const protectedTileIDs = new Set(wantedTileIDs);
+    for (const tileID of Object.keys(cache.inflightTile)) {
+      protectedTileIDs.add(tileID);
+    }
+
+    let attempts = cache.loadedTileOrder.size;
+    while (cache.loadedTileOrder.size > this._maxLoadedTiles && attempts-- > 0) {
+      const oldestTileID = cache.loadedTileOrder.values().next().value;
+      if (oldestTileID === undefined) break;
+
+      if (protectedTileIDs.has(oldestTileID)) {
+        utilLRUSetAdd(cache.loadedTileOrder, oldestTileID);
+        continue;
+      }
+
+      this._unlinkTile(cache, oldestTileID);
+      cache.loadedTileOrder.delete(oldestTileID);
+      delete cache.loadedTile[oldestTileID];
+    }
+
+    utilLRUMapTrim(cache.issues, this._maxIssues, issue => {
+      this._unlinkIssue(cache, issue.id, true);
+      cache.rbush.remove({ data: { id: issue.id } }, (a, b) => a.data.id === b.data.id);
+    });
+  }
+
+
+  _linkIssueToTile(cache, issueID, tileID) {
+    if (!issueID || !tileID) return;
+
+    let tileIssues = cache.tileIssueIDs[tileID];
+    if (!tileIssues) {
+      tileIssues = new Set();
+      cache.tileIssueIDs[tileID] = tileIssues;
+    }
+    tileIssues.add(issueID);
+
+    let issueTiles = cache.issueTileIDs[issueID];
+    if (!issueTiles) {
+      issueTiles = new Set();
+      cache.issueTileIDs[issueID] = issueTiles;
+    }
+    issueTiles.add(tileID);
+  }
+
+
+  _unlinkTile(cache, tileID) {
+    const tileIssues = cache.tileIssueIDs[tileID];
+    if (!tileIssues) return;
+
+    for (const issueID of tileIssues) {
+      const issueTiles = cache.issueTileIDs[issueID];
+      if (!issueTiles) continue;
+
+      issueTiles.delete(tileID);
+      if (issueTiles.size === 0) {
+        delete cache.issueTileIDs[issueID];
+      }
+    }
+
+    delete cache.tileIssueIDs[tileID];
+  }
+
+
+  _unlinkIssue(cache, issueID, invalidateTiles = false) {
+    const issueTiles = cache.issueTileIDs[issueID];
+    if (!issueTiles) return;
+
+    for (const tileID of issueTiles) {
+      const tileIssues = cache.tileIssueIDs[tileID];
+      if (tileIssues) {
+        tileIssues.delete(issueID);
+        if (tileIssues.size === 0) {
+          delete cache.tileIssueIDs[tileID];
+        }
+      }
+
+      if (invalidateTiles) {
+        delete cache.loadedTile[tileID];
+        cache.loadedTileOrder.delete(tileID);
+      }
+    }
+
+    delete cache.issueTileIDs[issueID];
   }
 
   _encodeIssueRBush(d) {
@@ -408,7 +518,7 @@ export class OsmoseService extends AbstractSystem {
     // Using multiple individual item + class requests to reduce fetched data size
     const allRequests = itemTypes.map(itemType => {
 
-      const handleResponse = (data) => {
+      const handleResponse = async (data) => {
         // Bunch of nested single value arrays of objects
         const [ cat = { items:[] } ] = data.categories;
         const [ item = { class:[] } ] = cat.items;
@@ -433,9 +543,14 @@ export class OsmoseService extends AbstractSystem {
         let issueStrings = {};
         // Force title to begin with an uppercase letter
         if (title)  issueStrings.title = title.auto.charAt(0).toUpperCase() + title.auto.slice(1);
-        if (detail) issueStrings.detail = utilSanitizeHTML(marked.parse(detail.auto));
-        if (trap)   issueStrings.trap = utilSanitizeHTML(marked.parse(trap.auto));
-        if (fix)    issueStrings.fix = utilSanitizeHTML(marked.parse(fix.auto));
+        const [ detailHTML, trapHTML, fixHTML ] = await Promise.all([
+          detail ? parseMarkdownAsync(detail.auto).then(utilSanitizeHTML) : Promise.resolve(null),
+          trap ? parseMarkdownAsync(trap.auto).then(utilSanitizeHTML) : Promise.resolve(null),
+          fix ? parseMarkdownAsync(fix.auto).then(utilSanitizeHTML) : Promise.resolve(null)
+        ]);
+        if (detailHTML !== null) issueStrings.detail = detailHTML;
+        if (trapHTML !== null) issueStrings.trap = trapHTML;
+        if (fixHTML !== null) issueStrings.fix = fixHTML;
 
         stringData[itemType] = issueStrings;
       };
