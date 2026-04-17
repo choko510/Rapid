@@ -179,6 +179,10 @@ describe('PluginSystem', () => {
       kinds: ['ui'],
       tags: ['qa'],
       capabilities: ['ui.commandPalette'],
+      docsURL: 'https://plugins.example.org/docs/plain-text-registry-plugin',
+      usage: [
+        'Open the command palette and run the plugin command.'
+      ],
       entrypoint: `https://registry.test/plugins/${pluginID}/index.mjs`
     };
 
@@ -205,7 +209,10 @@ describe('PluginSystem', () => {
     const state = plugins.getRegistryState();
     expect(state.error).to.eql(null);
     const catalog = plugins.getRegistryCatalog();
-    expect(catalog.some(d => d.id === pluginID)).to.be.true;
+    const plugin = catalog.find(d => d.id === pluginID);
+    expect(plugin).to.not.eql(undefined);
+    expect(plugin.docsURL).to.eql('https://plugins.example.org/docs/plain-text-registry-plugin');
+    expect(plugin.usage).to.eql(['Open the command palette and run the plugin command.']);
   });
 
 
@@ -361,7 +368,7 @@ describe('PluginSystem', () => {
     const plugins = new Rapid.PluginSystem(new MockContext());
     await plugins.initAsync();
     await plugins.startAsync();
-    sinon.stub(plugins, '_loadPluginModule').callsFake(async record => {
+    sinon.stub(plugins, '_loadPluginModule').callsFake(record => {
       const current = plugins._plugins.get(record.id);
       if (!current) return;
       current.module = {};
@@ -419,7 +426,7 @@ describe('PluginSystem', () => {
     await plugins.initAsync();
     await plugins.startAsync();
     await plugins.installFromRegistry(pluginID);
-    sinon.stub(plugins, '_loadPluginModule').callsFake(async record => {
+    sinon.stub(plugins, '_loadPluginModule').callsFake(record => {
       const current = plugins._plugins.get(record.id);
       if (!current) return;
       current.module = {};
@@ -443,4 +450,3 @@ describe('PluginSystem', () => {
     expect(enabled.enabled).to.be.true;
   });
 });
-

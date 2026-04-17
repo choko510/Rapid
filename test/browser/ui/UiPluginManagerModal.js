@@ -8,12 +8,18 @@ describe('UiPluginManagerModal', () => {
     constructor() {
       this._registries = [DEFAULT_REGISTRY, EXTRA_REGISTRY];
       this._active = DEFAULT_REGISTRY;
+      this._staleCatalog = false;
       this._catalog = [
         {
           id: 'rapid-layer-tools',
           source: 'registry',
           name: 'Rapid Layer Tools',
           description: 'Toggle Rapid AI layers',
+          usage: [
+            'Enable the plugin and use the AI button in the top toolbar.',
+            'You can also run the command from the command palette.'
+          ],
+          docsURL: 'https://example.com/docs/rapid-layer-tools',
           pluginVersion: '1.0.0',
           kinds: ['ui', 'operation'],
           tags: ['rapid', 'layers'],
@@ -53,10 +59,10 @@ describe('UiPluginManagerModal', () => {
     getBundledPlugins() { return []; }
     getRegistryPlugins() { return this._catalog.filter(d => d.installed); }
     getRegistryCatalog() { return this._catalog; }
-    async setRegistryPluginEnabled(pluginID, enabled) {
+    setRegistryPluginEnabled(pluginID, enabled) {
       toggleCalls.push([pluginID, enabled]);
       const item = this._catalog.find(d => d.id === pluginID);
-      if (item) {
+      if (item && !this._staleCatalog) {
         if (enabled) item.installed = true;
         item.enabled = enabled;
       }
@@ -92,7 +98,7 @@ describe('UiPluginManagerModal', () => {
             if (key === 'plugin_manager.registry_status') {
               return `Registry: ${options.url}\nLast updated: ${options.updated}`;
             }
-            return key;
+            return options.default || key;
           }
         },
         plugins: new MockPluginsSystem()
@@ -162,6 +168,24 @@ describe('UiPluginManagerModal', () => {
   });
 
 
+  it('keeps toggle UI state even if catalog payload is stale', done => {
+    modal.context.systems.plugins._staleCatalog = true;
+
+    container.selectAll('.plugin-list-registry .plugin-switch-input')
+      .filter(d => d.id === 'issues-pane-tools')
+      .property('checked', true)
+      .dispatch('change');
+
+    window.setTimeout(() => {
+      expect(toggleCalls).to.eql([['issues-pane-tools', true]]);
+      expect(container.selectAll('.plugin-list-registry .plugin-switch-input')
+        .filter(d => d.id === 'issues-pane-tools')
+        .property('checked')).to.eql(true);
+      done();
+    }, 25);
+  });
+
+
   it('keeps advanced registry actions gated until confirmed', done => {
     happen.click(container.select('.plugin-advanced-controls-open').node());
     expect(container.selectAll('.plugin-advanced-wrap .plugin-advanced-warning').size()).to.eql(1);
@@ -190,6 +214,18 @@ describe('UiPluginManagerModal', () => {
       .dispatch('change');
 
     expect(container.selectAll('.plugin-list-registry .plugin-row').size()).to.eql(0);
+  });
+
+
+  it('opens plugin details modal with usage and capability info', () => {
+    happen.click(container.selectAll('.plugin-list-registry .plugin-detail-button')
+      .filter(d => d.id === 'rapid-layer-tools')
+      .node());
+
+    expect(container.selectAll('.plugin-detail-wrap .plugin-detail-content').size()).to.eql(1);
+    expect(container.selectAll('.plugin-detail-wrap .plugin-detail-usage-list .plugin-detail-item').size()).to.be.greaterThan(0);
+    expect(container.selectAll('.plugin-detail-wrap .plugin-detail-capability-list .plugin-detail-capability').size()).to.eql(2);
+    expect(container.selectAll('.plugin-detail-wrap .plugin-detail-doc-link').size()).to.eql(1);
   });
 
 
@@ -229,4 +265,3 @@ describe('UiPluginManagerModal', () => {
     expect(container.selectAll('.plugin-advanced-wrap .plugin-advanced-content.plugin-manager-content').size()).to.eql(1);
   });
 });
-

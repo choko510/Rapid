@@ -210,6 +210,10 @@ export class PluginSystem extends AbstractSystem {
       const tags = installed?.tags?.length
         ? installed.tags
         : ((catalog.tags?.length ? catalog.tags : kinds) ?? []);
+      const usage = installed?.usage?.length
+        ? installed.usage
+        : this._localizedPluginUsage(catalog.usage, catalog.jaUsage);
+      const docsURL = installed?.docsURL || catalog.docsURL || '';
       const revokedMessage = this._revokedPlugins.get(id) || installed?.revocationMessage || null;
 
       rows.push({
@@ -221,6 +225,8 @@ export class PluginSystem extends AbstractSystem {
         kinds: [...kinds],
         tags: [...tags],
         capabilities: installed?.capabilities?.length ? installed.capabilities : (catalog.capabilities ?? []),
+        usage: [...usage],
+        docsURL: docsURL,
         registryURL: installed?.registryURL || catalog.registryURL || this._activeRegistryURL,
         installed: Boolean(installed),
         enabled: Boolean(installed?.enabled),
@@ -604,6 +610,9 @@ export class PluginSystem extends AbstractSystem {
           kinds: stored?.kinds,
           tags: stored?.tags,
           capabilities: stored?.capabilities,
+          docsURL: stored?.docsURL,
+          usage: stored?.usage,
+          'ja-usage': stored?.jaUsage,
           entrypoint: stored?.entrypoint
         }, 'registry');
 
@@ -711,6 +720,9 @@ export class PluginSystem extends AbstractSystem {
           kinds: [...record.manifest.kinds],
           tags: [...record.manifest.tags],
           capabilities: [...record.manifest.capabilities],
+          docsURL: record.manifest.docsURL,
+          usage: [...record.manifest.usage],
+          jaUsage: [...record.manifest.jaUsage],
           entrypoint: record.manifest.entrypoint,
           registryURL: record.registryURL,
           manifestURL: record.manifestURL,
@@ -920,7 +932,7 @@ export class PluginSystem extends AbstractSystem {
       }
     } catch (fallbackErr) {
       if (importErr) {
-        throw new Error(`${importErr.message} (fallback failed: ${fallbackErr.message})`);
+        throw new Error(`${importErr.message} (fallback failed: ${fallbackErr.message})`, { cause: fallbackErr });
       }
       throw fallbackErr;
     }
@@ -1086,7 +1098,10 @@ export class PluginSystem extends AbstractSystem {
     for (const cap of missing) {
       granted.add(cap);
     }
-    record.grantedCapabilities = granted;
+    const currentRecord = this._plugins.get(record.id);
+    if (currentRecord) {
+      currentRecord.grantedCapabilities = granted;
+    }
     this._grantedFromStorage.set(record.id, granted);
     return true;
   }
@@ -1149,7 +1164,10 @@ export class PluginSystem extends AbstractSystem {
         pluginVersion: this._cleanString(entry?.pluginVersion || entry?.versionName || '1.0.0'),
         kinds: this._cleanStringArray(entry?.kinds).filter(kind => ALLOWED_PLUGIN_KINDS.has(kind)),
         tags: this._cleanStringArray(entry?.tags),
-        capabilities: this._cleanStringArray(entry?.capabilities)
+        capabilities: this._cleanStringArray(entry?.capabilities),
+        docsURL: this._normalizeOptionalURL(entry?.docsURL || entry?.['docs-url'], false),
+        usage: this._cleanStringArray(entry?.usage),
+        jaUsage: this._cleanStringArray(entry?.['ja-usage'])
       });
     }
     return next;
@@ -1169,7 +1187,7 @@ export class PluginSystem extends AbstractSystem {
         }
         return parsed;
       } catch (err) {
-        throw new Error(`Registry payload is not valid JSON: ${err.message}`);
+        throw new Error(`Registry payload is not valid JSON: ${err.message}`, { cause: err });
       }
     }
 
@@ -1192,6 +1210,9 @@ export class PluginSystem extends AbstractSystem {
         kinds: [...(entry.kinds ?? [])],
         tags: [...(entry.tags ?? [])],
         capabilities: [...(entry.capabilities ?? [])],
+        docsURL: entry.docsURL || '',
+        usage: [...(entry.usage ?? [])],
+        jaUsage: [...(entry.jaUsage ?? [])],
         trusted: Boolean(entry.manifestHash && entry.signature && entry.keyID)
       };
 
@@ -1209,6 +1230,9 @@ export class PluginSystem extends AbstractSystem {
           catalog.kinds = [...manifest.kinds];
           catalog.tags = [...manifest.tags];
           catalog.capabilities = [...manifest.capabilities];
+          catalog.docsURL = manifest.docsURL;
+          catalog.usage = [...manifest.usage];
+          catalog.jaUsage = [...manifest.jaUsage];
         }
       } catch {
         // Keep fallback metadata from registry entry
@@ -1254,6 +1278,9 @@ export class PluginSystem extends AbstractSystem {
     const kinds = new Set((Array.isArray(raw.kinds) ? raw.kinds : ['ui']).map(kind => this._cleanString(kind)).filter(Boolean));
     const tags = new Set((Array.isArray(raw.tags) ? raw.tags : [...kinds]).map(tag => this._cleanString(tag)).filter(Boolean));
     const capabilities = new Set((Array.isArray(raw.capabilities) ? raw.capabilities : []).map(cap => this._cleanString(cap)).filter(Boolean));
+    const docsURL = this._normalizeOptionalURL(raw.docsURL || raw['docs-url']);
+    const usage = this._cleanStringArray(raw.usage);
+    const jaUsage = this._cleanStringArray(raw['ja-usage']);
 
     if (!id) throw new Error('Plugin manifest is missing "id"');
     if (!name) throw new Error(`Plugin "${id}" is missing "name"`);
@@ -1285,6 +1312,9 @@ export class PluginSystem extends AbstractSystem {
       kinds: kinds,
       tags: tags,
       capabilities: capabilities,
+      docsURL: docsURL,
+      usage: usage,
+      jaUsage: jaUsage,
       entrypoint: entrypoint
     };
   }
@@ -1308,6 +1338,8 @@ export class PluginSystem extends AbstractSystem {
       kinds: [...record.manifest.kinds],
       tags: [...record.manifest.tags],
       capabilities: [...record.manifest.capabilities],
+      usage: this._localizedPluginUsage(record.manifest.usage, record.manifest.jaUsage),
+      docsURL: record.manifest.docsURL || '',
       grantedCapabilities: [...record.grantedCapabilities]
     };
   }
@@ -1337,6 +1369,31 @@ export class PluginSystem extends AbstractSystem {
       return jaText || defaultText || '';
     }
     return defaultText || '';
+  }
+
+
+  _localizedPluginUsage(defaultUsage = [], jaUsage = []) {
+    const l10n = this.context.systems.l10n;
+    const locale = this._cleanString(l10n?.localeCode?.() || l10n?.languageCode?.()).toLowerCase();
+    const fallback = this._cleanStringArray(defaultUsage);
+    const localized = this._cleanStringArray(jaUsage);
+    if (locale.startsWith('ja') && localized.length) {
+      return localized;
+    }
+    return fallback;
+  }
+
+
+  _normalizeOptionalURL(value, strict = true) {
+    const text = this._cleanString(value);
+    if (!text) return '';
+    if (!this._isValidURL(text)) {
+      if (strict) {
+        throw new Error(`URL must be a valid absolute URL: ${text}`);
+      }
+      return '';
+    }
+    return text;
   }
 
 

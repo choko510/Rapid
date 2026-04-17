@@ -17,16 +17,20 @@ export class UiPluginManagerModal {
 
     this.$modal = null;
     this.$advancedWrap = null;
+    this.$detailWrap = null;
     this.$permissionWrap = null;
     this._permissionResolver = null;
 
     this._registryToAdd = '';
     this._searchText = '';
     this._tagFilter = '*';
+    this._detailPluginID = null;
     this._advancedConfirmed = false;
     this._statusText = '';
     this._statusKind = 'info';
     this._pendingPluginStates = new Map();
+    this._uiPluginStates = new Map();
+    this._dirtyPluginStates = new Set();
     this._processingCount = 0;
 
     this.show = this.show.bind(this);
@@ -39,6 +43,8 @@ export class UiPluginManagerModal {
     this._removeActiveRegistry = this._removeActiveRegistry.bind(this);
     this._changeActiveRegistry = this._changeActiveRegistry.bind(this);
     this._togglePlugin = this._togglePlugin.bind(this);
+    this._openDetailModal = this._openDetailModal.bind(this);
+    this._closeDetailModal = this._closeDetailModal.bind(this);
     this._toggleAdvancedConfirm = this._toggleAdvancedConfirm.bind(this);
     this._openAdvancedModal = this._openAdvancedModal.bind(this);
     this._closeAdvancedModal = this._closeAdvancedModal.bind(this);
@@ -75,6 +81,7 @@ export class UiPluginManagerModal {
     const originalClose = this.$modal.close;
     this.$modal.close = () => {
       this._closePermissionModal(false);
+      this._closeDetailModal();
       this._closeAdvancedModal();
       this.$modal = null;
       originalClose();
@@ -96,6 +103,7 @@ export class UiPluginManagerModal {
     const registryState = plugins?.getRegistryState() ?? {};
     const bundled = plugins?.getBundledPlugins() ?? [];
     const catalog = plugins?.getRegistryCatalog() ?? [];
+    this._syncUIPluginStates([...bundled, ...catalog]);
     const $content = this.$modal.select('.content');
 
     let { allTags, filteredCatalog } = this._filterCatalog(catalog);
@@ -293,6 +301,7 @@ export class UiPluginManagerModal {
       .attr('disabled', this._isProcessing() ? true : null);
 
     this._renderAdvancedModal(registryStatus);
+    this._renderDetailModal();
   }
 
 
@@ -327,6 +336,11 @@ export class UiPluginManagerModal {
     const $$inputs = $$rows
       .append('div')
       .attr('class', 'plugin-card-actions');
+
+    $$inputs
+      .append('button')
+      .attr('class', 'plugin-btn plugin-btn-secondary plugin-detail-button')
+      .on('click', (e, d) => this._openDetailModal(d?.id));
 
     const $$switch = $$inputs
       .append('label')
@@ -373,9 +387,357 @@ export class UiPluginManagerModal {
         return [source, installState, `v${version}`, tags].filter(Boolean).join(' • ') + revoked;
       });
 
+    $rows.selectAll('.plugin-detail-button')
+      .text(l10n.t('plugin_manager.details_button', { default: 'Details' }))
+      .attr('disabled', d => this._pendingPluginStates.has(d.id) ? true : null);
+
     $rows.selectAll('.plugin-switch-input')
-      .property('checked', d => this._pendingPluginStates.has(d.id) ? this._pendingPluginStates.get(d.id) : d.enabled)
+      .property('checked', d => this._pendingPluginStates.has(d.id)
+        ? this._pendingPluginStates.get(d.id)
+        : (this._uiPluginStates.has(d.id) ? this._uiPluginStates.get(d.id) : Boolean(d.enabled)))
       .attr('disabled', d => (d.revoked || this._pendingPluginStates.has(d.id)) ? true : null);
+  }
+
+
+  _resolvePlugin(pluginID) {
+    const id = String(pluginID || '').trim();
+    if (!id) return null;
+
+    const plugins = this.context.systems.plugins;
+    const catalog = plugins?.getRegistryCatalog?.() ?? [];
+    const bundled = plugins?.getBundledPlugins?.() ?? [];
+    const all = plugins?.getPlugins?.() ?? [];
+
+    return (
+      catalog.find(plugin => plugin.id === id) ||
+      bundled.find(plugin => plugin.id === id) ||
+      all.find(plugin => plugin.id === id) ||
+      null
+    );
+  }
+
+
+  _openDetailModal(pluginID) {
+    const id = String(pluginID || '').trim();
+    if (!id || !this.$modal) return;
+
+    this._detailPluginID = id;
+
+    if (this.$detailWrap) {
+      this._renderDetailModal();
+      return;
+    }
+
+    const $shaded = this.context.container().selectAll('.shaded');
+    if ($shaded.empty()) return;
+
+    let $wrap = $shaded.selectAll('.plugin-detail-wrap')
+      .data([0]);
+
+    const $$wrap = $wrap.enter()
+      .append('div')
+      .attr('class', 'plugin-detail-wrap');
+
+    $$wrap
+      .append('div')
+      .attr('class', 'plugin-detail-backdrop')
+      .on('click', this._closeDetailModal);
+
+    const $$modal = $$wrap
+      .append('div')
+      .attr('class', 'modal modal-plugin-manager plugin-detail-modal');
+
+    $$modal
+      .append('button')
+      .attr('class', 'close')
+      .on('click', this._closeDetailModal)
+      .call(uiIcon('#rapid-icon-close'));
+
+    $$modal
+      .append('div')
+      .attr('class', 'content plugin-manager-content plugin-detail-content');
+
+    this.$detailWrap = $wrap.merge($$wrap);
+    this._renderDetailModal();
+  }
+
+
+  _closeDetailModal() {
+    if (this.$detailWrap) {
+      this.$detailWrap.remove();
+      this.$detailWrap = null;
+    }
+    this._detailPluginID = null;
+  }
+
+
+  _renderDetailModal() {
+    if (!this.$detailWrap) return;
+
+    const l10n = this.context.systems.l10n;
+    const plugin = this._resolvePlugin(this._detailPluginID);
+    if (!plugin) {
+      this._closeDetailModal();
+      return;
+    }
+
+    const $content = this.$detailWrap.selectAll('.plugin-detail-content');
+    const tags = (plugin.tags?.length ? plugin.tags : plugin.kinds)
+      .map(tag => this._localizeTag(tag))
+      .filter(Boolean);
+
+    const usageItems = this._buildUsageHints(plugin);
+    const capabilities = Array.isArray(plugin.capabilities)
+      ? plugin.capabilities.filter(Boolean)
+      : [];
+    const capabilityDetails = capabilities.map(capability => this._describeCapability(capability));
+    const docsURL = this._normalizeURL(plugin.docsURL);
+
+    let installState = '';
+    if (plugin.source === 'registry') {
+      installState = plugin.installed
+        ? l10n.t('plugin_manager.details_status_installed', { default: 'Installed' })
+        : l10n.t('plugin_manager.details_status_not_installed', { default: 'Not installed' });
+    }
+
+    const enabledState = plugin.enabled
+      ? l10n.t('plugin_manager.details_status_enabled', { default: 'Enabled' })
+      : l10n.t('plugin_manager.details_status_disabled', { default: 'Disabled' });
+
+    const trustState = plugin.trusted
+      ? l10n.t('plugin_manager.details_status_trusted', { default: 'Signature verified' })
+      : l10n.t('plugin_manager.details_status_untrusted', { default: 'Unsigned / unverified' });
+
+    const metaRows = [
+      l10n.t('plugin_manager.details_meta_source', {
+        source: plugin.source === 'bundled'
+          ? l10n.t('plugin_manager.meta_source_bundled')
+          : l10n.t('plugin_manager.meta_source_registry'),
+        default: `Source: ${plugin.source === 'bundled' ? 'Bundled' : 'Registry'}`
+      }),
+      l10n.t('plugin_manager.details_meta_version', {
+        version: plugin.pluginVersion || '1.0.0',
+        default: `Version: ${plugin.pluginVersion || '1.0.0'}`
+      }),
+      l10n.t('plugin_manager.details_meta_status', {
+        status: [installState, enabledState, trustState].filter(Boolean).join(' / '),
+        default: `Status: ${[installState, enabledState, trustState].filter(Boolean).join(' / ')}`
+      })
+    ];
+
+    if (tags.length) {
+      metaRows.push(l10n.t('plugin_manager.details_meta_tags', {
+        tags: tags.join(', '),
+        default: `Tags: ${tags.join(', ')}`
+      }));
+    }
+
+    if (plugin.revoked) {
+      metaRows.push(l10n.t('plugin_manager.details_meta_revoked', {
+        message: plugin.revocationMessage || l10n.t('plugin_manager.meta_revoked'),
+        default: `Revoked: ${plugin.revocationMessage || 'This plugin is revoked'}`
+      }));
+    }
+
+    let $heading = $content.selectAll('.plugin-detail-heading')
+      .data([plugin]);
+
+    const $$heading = $heading.enter()
+      .append('div')
+      .attr('class', 'modal-section plugin-manager-section plugin-detail-heading');
+
+    $$heading
+      .append('h4');
+
+    $$heading
+      .append('p')
+      .attr('class', 'plugin-detail-description');
+
+    $heading = $heading.merge($$heading);
+    $heading.selectAll('h4')
+      .text(l10n.t('plugin_manager.details_heading', {
+        name: plugin.name,
+        default: `${plugin.name} details`
+      }));
+    $heading.selectAll('.plugin-detail-description')
+      .text(plugin.description || l10n.t('plugin_manager.details_description_empty', {
+        default: 'No description is available for this plugin.'
+      }));
+
+    let $meta = $content.selectAll('.plugin-detail-meta')
+      .data([0]);
+
+    const $$meta = $meta.enter()
+      .append('div')
+      .attr('class', 'modal-section plugin-manager-section plugin-detail-meta');
+
+    $meta = $meta.merge($$meta);
+
+    const $metaRows = $meta.selectAll('.plugin-detail-meta-row')
+      .data(metaRows);
+
+    $metaRows.exit()
+      .remove();
+
+    $metaRows.enter()
+      .append('div')
+      .attr('class', 'plugin-detail-meta-row')
+      .merge($metaRows)
+      .text(text => text);
+
+    let $usage = $content.selectAll('.plugin-detail-usage')
+      .data([0]);
+
+    const $$usage = $usage.enter()
+      .append('div')
+      .attr('class', 'modal-section plugin-manager-section plugin-detail-usage');
+
+    $$usage
+      .append('h5')
+      .attr('class', 'plugin-section-heading');
+
+    $$usage
+      .append('p')
+      .attr('class', 'plugin-detail-usage-description');
+
+    $$usage
+      .append('div')
+      .attr('class', 'plugin-detail-empty');
+
+    $$usage
+      .append('div')
+      .attr('class', 'plugin-detail-list plugin-detail-usage-list');
+
+    $usage = $usage.merge($$usage);
+    $usage.selectAll('.plugin-section-heading')
+      .text(l10n.t('plugin_manager.details_usage_heading', { default: 'How to use' }));
+    $usage.selectAll('.plugin-detail-usage-description')
+      .text(l10n.t('plugin_manager.details_usage_description', {
+        default: 'Use these actions after enabling the plugin.'
+      }));
+    $usage.selectAll('.plugin-detail-empty')
+      .classed('hide', usageItems.length > 0)
+      .text(l10n.t('plugin_manager.details_usage_empty', {
+        default: 'No operation notes are provided for this plugin yet.'
+      }));
+
+    const $usageItems = $usage.selectAll('.plugin-detail-usage-list')
+      .selectAll('.plugin-detail-item')
+      .data(usageItems);
+
+    $usageItems.exit()
+      .remove();
+
+    $usageItems.enter()
+      .append('div')
+      .attr('class', 'plugin-detail-item')
+      .merge($usageItems)
+      .text(text => text);
+
+    let $capabilities = $content.selectAll('.plugin-detail-capabilities')
+      .data([0]);
+
+    const $$capabilities = $capabilities.enter()
+      .append('div')
+      .attr('class', 'modal-section plugin-manager-section plugin-detail-capabilities');
+
+    $$capabilities
+      .append('h5')
+      .attr('class', 'plugin-section-heading');
+
+    $$capabilities
+      .append('div')
+      .attr('class', 'plugin-detail-empty');
+
+    $$capabilities
+      .append('div')
+      .attr('class', 'plugin-detail-list plugin-detail-capability-list');
+
+    $capabilities = $capabilities.merge($$capabilities);
+    $capabilities.selectAll('.plugin-section-heading')
+      .text(l10n.t('plugin_manager.details_capabilities_heading', { default: 'Requested permissions' }));
+    $capabilities.selectAll('.plugin-detail-empty')
+      .classed('hide', capabilityDetails.length > 0)
+      .text(l10n.t('plugin_manager.details_capabilities_empty', {
+        default: 'No special permissions are requested.'
+      }));
+
+    const $caps = $capabilities.selectAll('.plugin-detail-capability-list')
+      .selectAll('.plugin-detail-capability')
+      .data(capabilityDetails, d => d.id);
+
+    $caps.exit()
+      .remove();
+
+    const $$caps = $caps.enter()
+      .append('div')
+      .attr('class', 'plugin-detail-capability');
+
+    $$caps
+      .append('div')
+      .attr('class', 'plugin-detail-capability-label');
+
+    $$caps
+      .append('div')
+      .attr('class', 'plugin-detail-capability-description');
+
+    const $mergedCaps = $$caps.merge($caps);
+    $mergedCaps.selectAll('.plugin-detail-capability-label')
+      .text(d => d.label);
+    $mergedCaps.selectAll('.plugin-detail-capability-description')
+      .text(d => d.description);
+
+    let $docs = $content.selectAll('.plugin-detail-docs')
+      .data([0]);
+
+    const $$docs = $docs.enter()
+      .append('div')
+      .attr('class', 'modal-section plugin-manager-section plugin-detail-docs');
+
+    $$docs
+      .append('h5')
+      .attr('class', 'plugin-section-heading');
+
+    $$docs
+      .append('div')
+      .attr('class', 'plugin-detail-empty');
+
+    $$docs
+      .append('a')
+      .attr('class', 'plugin-detail-doc-link')
+      .attr('target', '_blank')
+      .attr('rel', 'noopener noreferrer');
+
+    $docs = $docs.merge($$docs);
+
+    $docs.selectAll('.plugin-section-heading')
+      .text(l10n.t('plugin_manager.details_docs_heading', { default: 'Documentation' }));
+    $docs.selectAll('.plugin-detail-empty')
+      .classed('hide', !!docsURL)
+      .text(l10n.t('plugin_manager.details_docs_empty', {
+        default: 'No documentation URL is provided for this plugin.'
+      }));
+    $docs.selectAll('.plugin-detail-doc-link')
+      .classed('hide', !docsURL)
+      .attr('href', docsURL || null)
+      .text(l10n.t('plugin_manager.details_docs_link', { default: 'Open plugin documentation' }));
+
+    let $buttons = $content.selectAll('.plugin-detail-buttons')
+      .data([0]);
+
+    const $$buttons = $buttons.enter()
+      .append('div')
+      .attr('class', 'modal-section plugin-manager-section plugin-detail-buttons');
+
+    $$buttons
+      .append('button')
+      .attr('class', 'plugin-btn plugin-btn-primary plugin-detail-close')
+      .on('click', this._closeDetailModal);
+
+    $buttons = $buttons.merge($$buttons);
+    $buttons.selectAll('.plugin-detail-close')
+      .text(l10n.t('confirm.okay'))
+      .attr('disabled', this._isProcessing() ? true : null);
   }
 
 
@@ -412,7 +774,7 @@ export class UiPluginManagerModal {
       .append('div')
       .attr('class', 'content plugin-manager-content plugin-advanced-content');
 
-    this.$advancedWrap = $wrap = $wrap.merge($$wrap);
+    this.$advancedWrap = $wrap.merge($$wrap);
     this._renderAdvancedModal('');
   }
 
@@ -603,7 +965,7 @@ export class UiPluginManagerModal {
   }
 
 
-  async _showPermissionPrompt(request = {}) {
+  _showPermissionPrompt(request = {}) {
     const l10n = this.context.systems.l10n;
     const pluginName = String(request.pluginName || '');
     const capabilities = Array.isArray(request.capabilities) ? request.capabilities : [];
@@ -906,7 +1268,7 @@ export class UiPluginManagerModal {
       if (checkbox) {
         checkbox.checked = this._pendingPluginStates.has(plugin.id)
           ? this._pendingPluginStates.get(plugin.id)
-          : Boolean(plugin.enabled);
+          : (this._uiPluginStates.has(plugin.id) ? this._uiPluginStates.get(plugin.id) : Boolean(plugin.enabled));
       }
       return;
     }
@@ -914,6 +1276,8 @@ export class UiPluginManagerModal {
     const desired = Boolean(checkbox?.checked);
     const registryURL = plugins.getRegistryState()?.activeURL || plugins.getRegistryState()?.url || '';
 
+    this._dirtyPluginStates.add(plugin.id);
+    this._uiPluginStates.set(plugin.id, desired);
     this._pendingPluginStates.set(plugin.id, desired);
     await this._runWithProcessing(async () => {
       try {
@@ -932,6 +1296,9 @@ export class UiPluginManagerModal {
           'info'
         );
       } catch (err) {
+        const resolved = this._resolvePlugin(plugin.id);
+        this._uiPluginStates.set(plugin.id, Boolean(resolved?.enabled));
+        this._dirtyPluginStates.delete(plugin.id);
         this._setStatus(err.message, 'error');
       } finally {
         this._pendingPluginStates.delete(plugin.id);
@@ -942,6 +1309,41 @@ export class UiPluginManagerModal {
 
   _isProcessing() {
     return this._processingCount > 0;
+  }
+
+
+  _syncUIPluginStates(plugins = []) {
+    const nextIDs = new Set();
+    for (const plugin of plugins) {
+      const pluginID = String(plugin?.id || '').trim();
+      if (!pluginID) continue;
+      nextIDs.add(pluginID);
+      if (this._pendingPluginStates.has(pluginID)) {
+        continue;
+      }
+
+      const enabled = Boolean(plugin?.enabled);
+      if (!this._uiPluginStates.has(pluginID)) {
+        this._uiPluginStates.set(pluginID, enabled);
+        this._dirtyPluginStates.delete(pluginID);
+        continue;
+      }
+
+      if (this._dirtyPluginStates.has(pluginID)) {
+        if (this._uiPluginStates.get(pluginID) === enabled) {
+          this._dirtyPluginStates.delete(pluginID);
+        }
+      } else {
+        this._uiPluginStates.set(pluginID, enabled);
+      }
+    }
+
+    for (const pluginID of this._uiPluginStates.keys()) {
+      if (!nextIDs.has(pluginID)) {
+        this._uiPluginStates.delete(pluginID);
+        this._dirtyPluginStates.delete(pluginID);
+      }
+    }
   }
 
 
@@ -1000,6 +1402,87 @@ export class UiPluginManagerModal {
   }
 
 
+  _describeCapability(capability) {
+    const l10n = this.context.systems.l10n;
+    const id = String(capability || '').trim();
+    if (!id) return { id: '', label: '', description: '' };
+
+    const token = id.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const labelKey = `plugin_manager.permissions.capabilities.${token}.label`;
+    const descriptionKey = `plugin_manager.permissions.capabilities.${token}.description`;
+    const defaultLabelKey = 'plugin_manager.permissions.capabilities.default_label';
+    const defaultDescriptionKey = 'plugin_manager.permissions.capabilities.default_description';
+
+    let label = l10n.t(labelKey);
+    if (label === labelKey) {
+      label = l10n.t(defaultLabelKey, { capability: id, default: id });
+      if (label === defaultLabelKey) {
+        label = id;
+      }
+    }
+
+    let description = l10n.t(descriptionKey);
+    if (description === descriptionKey) {
+      description = l10n.t(defaultDescriptionKey, { capability: id, default: id });
+      if (description === defaultDescriptionKey) {
+        description = id;
+      }
+    }
+
+    return { id, label, description };
+  }
+
+
+  _buildUsageHints(plugin) {
+    const l10n = this.context.systems.l10n;
+    const usage = Array.isArray(plugin?.usage)
+      ? plugin.usage.map(item => String(item || '').trim()).filter(Boolean)
+      : [];
+
+    const capabilityHints = [];
+    const capabilities = Array.isArray(plugin?.capabilities) ? plugin.capabilities : [];
+
+    for (const capability of capabilities) {
+      const key = String(capability || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      const hint = l10n.t(`plugin_manager.details_usage_hints.${key}`, {
+        capability: capability,
+        default: l10n.t('plugin_manager.details_usage_hints.default', {
+          capability: capability,
+          default: `Use features that require "${capability}".`
+        })
+      });
+      if (hint && hint !== `plugin_manager.details_usage_hints.${key}`) {
+        capabilityHints.push(hint);
+      }
+    }
+
+    const hints = [...usage, ...capabilityHints];
+    const deduped = [];
+    const seen = new Set();
+    for (const hint of hints) {
+      const token = hint.toLowerCase();
+      if (seen.has(token)) continue;
+      seen.add(token);
+      deduped.push(hint);
+    }
+    return deduped;
+  }
+
+
+  _normalizeURL(value) {
+    const url = String(value || '').trim();
+    if (!url) return '';
+    try {
+      const parsed = new URL(url);
+      if (!parsed) return '';
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+      return parsed.toString();
+    } catch {
+      return '';
+    }
+  }
+
+
   _localizeTag(tag) {
     const l10n = this.context.systems.l10n;
     const raw = String(tag || '').trim();
@@ -1010,4 +1493,3 @@ export class UiPluginManagerModal {
   }
 
 }
-
