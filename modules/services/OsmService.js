@@ -61,6 +61,7 @@ export class OsmService extends AbstractSystem {
     this._connectionID = 0;
     this._tileZoom = 16;
     this._noteZoom = 12;
+    this._maxTileInflight = 8;
     this._maxTileCacheEntries = 240;
     this._maxSeenEntityIDs = 300000;
     this._jsonParseRequests = new Map();   // Map(requestID -> {resolve, reject})
@@ -1051,8 +1052,18 @@ export class OsmService extends AbstractSystem {
     if (cache.lastv === viewport.v) return;  // exit early if the view is unchanged
     cache.lastv = viewport.v;
 
-    // Determine the tiles needed to cover the view..
-    const tiles = this._tiler.zoomRange(this._tileZoom).getTiles(viewport).tiles;
+    // Determine the tiles needed to cover the view.
+    const rawTiles = this._tiler.zoomRange(this._tileZoom).getTiles(viewport).tiles;
+    const tiles = this._sortTilesByViewportCenter(rawTiles, viewport);
+    const visibleTileIDs = new Set(tiles.map(tile => tile.id));
+    const tileByID = new Map(tiles.map(tile => [tile.id, tile]));
+
+    // Drop queued tiles that are no longer visible.
+    for (const tileID of cache.toLoad) {
+      if (!visibleTileIDs.has(tileID)) {
+        cache.toLoad.delete(tileID);
+      }
+    }
 
     // Abort inflight requests that are no longer needed..
     const hadRequests = this._hasInflightRequests(cache);
@@ -1061,12 +1072,74 @@ export class OsmService extends AbstractSystem {
       this.emit('loaded');    // stop the spinner
     }
 
-    // Issue new requests..
+    // Queue requests for visible tiles.
     for (const tile of tiles) {
-      this.loadTile(tile, callback);
+      if (cache.loaded.has(tile.id)) {
+        utilLRUSetAdd(cache.loaded, tile.id);
+        cache.toLoad.delete(tile.id);
+      } else if (!cache.inflight[tile.id]) {
+        cache.toLoad.add(tile.id);
+      }
     }
 
+    // Issue requests up to the inflight cap.
+    this._pumpTileRequests(cache, tileByID, callback);
     this._trimTileCache(tiles);
+  }
+
+
+  _sortTilesByViewportCenter(tiles, viewport) {
+    const center = viewport.centerLoc();
+    return tiles.slice().sort((a, b) => {
+      const ac = a.wgs84Extent.center();
+      const bc = b.wgs84Extent.center();
+      const da = Math.pow(ac[0] - center[0], 2) + Math.pow(ac[1] - center[1], 2);
+      const db = Math.pow(bc[0] - center[0], 2) + Math.pow(bc[1] - center[1], 2);
+      return da - db;
+    });
+  }
+
+
+  _pumpTileRequests(cache, tileByID, callback) {
+    let inflightCount = this._hasInflightRequests(cache);
+    if (inflightCount >= this._maxTileInflight) return;
+
+    for (const tileID of cache.toLoad) {
+      if (inflightCount >= this._maxTileInflight) break;
+      if (cache.loaded.has(tileID) || cache.inflight[tileID]) {
+        cache.toLoad.delete(tileID);
+        continue;
+      }
+
+      const tile = tileByID.get(tileID);
+      if (!tile) {
+        cache.toLoad.delete(tileID);
+        continue;
+      }
+
+      this.loadTile(tile, callback);
+      inflightCount = this._hasInflightRequests(cache);
+    }
+  }
+
+
+  _queueNextVisibleTiles(callback) {
+    if (this._paused || this.getRateLimit()) return;
+    if (!this._tileCache.toLoad.size) return;
+
+    const viewport = this.context.viewport;
+    const rawTiles = this._tiler.zoomRange(this._tileZoom).getTiles(viewport).tiles;
+    const tiles = this._sortTilesByViewportCenter(rawTiles, viewport);
+    const visibleTileIDs = new Set(tiles.map(tile => tile.id));
+    const tileByID = new Map(tiles.map(tile => [tile.id, tile]));
+
+    for (const tileID of this._tileCache.toLoad) {
+      if (!visibleTileIDs.has(tileID) || this._tileCache.loaded.has(tileID)) {
+        this._tileCache.toLoad.delete(tileID);
+      }
+    }
+
+    this._pumpTileRequests(this._tileCache, tileByID, callback);
   }
 
 
@@ -1168,6 +1241,11 @@ export class OsmService extends AbstractSystem {
       if (callback) {
         callback(err, Object.assign({}, results, { tile: tile }));
       }
+
+      if (cache.toLoad.size) {
+        this._queueNextVisibleTiles(callback);
+      }
+
       if (!this._hasInflightRequests(cache)) {
         this.emit('loaded');     // stop the spinner
       }

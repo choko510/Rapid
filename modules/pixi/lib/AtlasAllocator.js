@@ -187,6 +187,41 @@ export class AtlasSource extends PIXI.TextureSource {
 
 
 // WebGL Uploader
+function copyImageDataWithPadding(imageData, paddedWidth, paddedHeight) {
+  const { data: src, width: srcW, height: srcH } = imageData;
+  const rowBytes = paddedWidth * 4;
+  const srcRowBytes = srcW * 4;
+  const rightPixelOffset = (paddedWidth - 1) * 4;
+  const padded = new Uint8Array(rowBytes * paddedHeight);
+
+  for (let dstY = 0; dstY < paddedHeight; dstY++) {
+    const srcY = numClamp(dstY - 1, 0, srcH - 1);
+    const srcStart = srcY * srcRowBytes;
+    const srcEnd = srcStart + srcRowBytes;
+    const srcLast = srcEnd - 4;
+    const dstStart = dstY * rowBytes;
+    const dstEnd = dstStart + rightPixelOffset;
+
+    // Left 1px duplicated edge
+    padded[dstStart] = src[srcStart];
+    padded[dstStart + 1] = src[srcStart + 1];
+    padded[dstStart + 2] = src[srcStart + 2];
+    padded[dstStart + 3] = src[srcStart + 3];
+
+    // Main row copy
+    padded.set(src.subarray(srcStart, srcEnd), dstStart + 4);
+
+    // Right 1px duplicated edge
+    padded[dstEnd] = src[srcLast];
+    padded[dstEnd + 1] = src[srcLast + 1];
+    padded[dstEnd + 2] = src[srcLast + 2];
+    padded[dstEnd + 3] = src[srcLast + 3];
+  }
+
+  return padded;
+}
+
+
 const glUploadAtlasResource = {
   id: 'atlas',
   upload(slab, glTexture, gl, webGLVersion) {
@@ -220,24 +255,7 @@ const glUploadAtlasResource = {
       if (item.uploaded) continue;
 
       const { x, y, width: w, height: h } = item.texture.__bin;
-      const { data: src, width: srcW, height: srcH } = item.imageData;
-
-      // Copy image data to a new Uint8Array that duplicates the 1px edge
-      const pixels = new Uint8Array(w * h * 4);
-
-      for (let dstY = 0; dstY < h; dstY++) {
-        const srcY = numClamp(dstY-1, 0, srcH-1);
-
-        for (let dstX = 0; dstX < w; dstX++) {
-          const srcX = numClamp(dstX-1, 0, srcW-1);
-          const s = ((srcY * srcW) + srcX) * 4;
-          const d = ((dstY * w) + dstX) * 4;
-          pixels[d] = src[s];
-          pixels[d+1] = src[s+1];
-          pixels[d+2] = src[s+2];
-          pixels[d+3] = src[s+3];
-        }
-      }
+      const pixels = copyImageDataWithPadding(item.imageData, w, h);
 
       gl.texSubImage2D(target, 0, x, y, w, h, format, type, pixels);
 
@@ -257,27 +275,10 @@ const gpuUploadAtlasResource = {
       if (item.uploaded) continue;
 
       const { x, y, width: w, height: h } = item.texture.__bin;
-      const { data: src, width: srcW, height: srcH } = item.imageData;
-
-      // Copy image data to a new Uint8Array that duplicates the 1px edge
-      const pixels = new Uint8Array(w * h * 4);
-
-      for (let dstY = 0; dstY < h; dstY++) {
-        const srcY = numClamp(dstY-1, 0, srcH-1);
-
-        for (let dstX = 0; dstX < w; dstX++) {
-          const srcX = numClamp(dstX-1, 0, srcW-1);
-          const s = ((srcY * srcW) + srcX) * 4;
-          const d = ((dstY * w) + dstX) * 4;
-          pixels[d] = src[s];
-          pixels[d+1] = src[s+1];
-          pixels[d+2] = src[s+2];
-          pixels[d+3] = src[s+3];
-        }
-      }
+      const pixels = copyImageDataWithPadding(item.imageData, w, h);
 
       const destination = { origin: { x: x, y: y }, texture: gpuTexture };
-      const layout = { bytesPerRow: pixels.byteLength / h };
+      const layout = { bytesPerRow: w * 4 };
       const size = { width: w, height: h };
 
       gpu.device.queue.writeTexture(destination, pixels, layout, size);
