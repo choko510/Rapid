@@ -60,7 +60,7 @@ export class UiSaveTool {
     const context = this.context;
     const editor = context.systems.editor;
     const l10n = context.systems.l10n;
-    const numChanges = editor.difference().summary().size;
+    const numChanges = editor.difference().summarySize();
 
     this.Tooltip
       .placement('bottom')

@@ -839,21 +839,23 @@ describe('EditSystem', () => {
       const syncBackup = '{"version":3,"source":"local"}';
 
       context.systems.storage.setItem(backupKey, syncBackup);
-
-      const lockStub = sinon.stub(_editor._mutex, 'locked').returns(true);
-      const resetStub = sinon.stub(context, 'resetAsync').resolves();
-      const fromJSONStub = sinon.stub(_editor, 'fromJSONAsync').resolves();
-
-      return _editor.restoreBackup()
+      return context.systems.storage.removeItemAsync(backupKey)
         .then(() => {
-          expect(resetStub.calledOnce).to.be.true;
-          expect(fromJSONStub.calledOnceWithExactly(syncBackup)).to.be.true;
+          const lockStub = sinon.stub(_editor._mutex, 'locked').returns(true);
+          const resetStub = sinon.stub(context, 'resetAsync').resolves();
+          const fromJSONStub = sinon.stub(_editor, 'fromJSONAsync').resolves();
+
+          return _editor.restoreBackup()
+            .then(() => {
+              expect(resetStub.calledOnce).to.be.true;
+              expect(fromJSONStub.calledOnceWithExactly(syncBackup)).to.be.true;
+            })
+            .finally(() => {
+              lockStub.restore();
+              resetStub.restore();
+              fromJSONStub.restore();
+            });
         })
-        .finally(() => {
-          lockStub.restore();
-          resetStub.restore();
-          fromJSONStub.restore();
-        });
     });
   });
 

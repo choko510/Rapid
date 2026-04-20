@@ -204,7 +204,33 @@ export class Difference {
    * @return  Map(entityID -> change detail)
    */
   summary() {
-    if (this._summary) return new Map(this._summary);
+    return new Map(this._getSummaryMap());
+  }
+
+
+  /**
+   * summaryMap
+   * Returns the cached summary map without cloning it.
+   * Callers must treat the returned Map as read-only.
+   * @return  Map(entityID -> change detail)
+   */
+  summaryMap() {
+    return this._getSummaryMap();
+  }
+
+
+  /**
+   * summarySize
+   * Returns the number of summarized changes without cloning the summary map.
+   * @return  {number}
+   */
+  summarySize() {
+    return this._getSummaryMap().size;
+  }
+
+
+  _getSummaryMap() {
+    if (this._summary) return this._summary;
 
     const base = this._base;
     const head = this._head;
@@ -242,7 +268,7 @@ export class Difference {
     }
 
     this._summary = result;
-    return new Map(this._summary);
+    return this._summary;
 
 
     function _addEntity(entity, graph, changeType) {

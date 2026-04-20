@@ -410,6 +410,23 @@ describe('Difference', () => {
       assert.notEqual(summary1, summary2);
       assert.deepEqual([...summary1.entries()], [...summary2.entries()]);
     });
+
+    it('returns the cached map for summaryMap()', () => {
+      const way = Rapid.osmWay({ id: '+' });
+      const head = base.replace(way);
+      const diff = new Rapid.Difference(base, head);
+      const summary1 = diff.summaryMap();
+      const summary2 = diff.summaryMap();
+      assert.equal(summary1, summary2);
+      assert.deepEqual([...summary1.entries()], [...summary2.entries()]);
+    });
+
+    it('returns the same count from summarySize()', () => {
+      const way = Rapid.osmWay({ id: '+' });
+      const head = base.replace(way);
+      const diff = new Rapid.Difference(base, head);
+      assert.equal(diff.summarySize(), diff.summary().size);
+    });
   });
 
   describe('#complete', () => {

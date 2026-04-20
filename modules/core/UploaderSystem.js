@@ -173,7 +173,7 @@ export class UploaderSystem extends AbstractSystem {
     const context = this.context;
     const osm = context.services.osm;
     const editor = context.systems.editor;
-    const summary = editor.difference().summary();
+    const summary = editor.difference().summaryMap();
     const graph = editor.staging.graph;
 
     this._localGraph = graph;

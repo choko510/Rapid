@@ -21,15 +21,17 @@ export function uiSectionChanges(context) {
 
   let section = uiSection(context, 'changes-list')
     .label(() => {
-      const summary = editor.difference().summary();
-      return l10n.t('inspector.title_count', { title: l10n.t('commit.changes'), count: summary.size });
+      return l10n.t('inspector.title_count', {
+        title: l10n.t('commit.changes'),
+        count: editor.difference().summarySize()
+      });
     })
     .disclosureContent(renderDisclosureContent);
 
 
   function renderDisclosureContent(selection) {
     const difference = editor.difference();
-    const summary = [...difference.summary().values()];
+    const summary = [...difference.summaryMap().values()];
 
     let container = selection.selectAll('.commit-section')
       .data([0]);

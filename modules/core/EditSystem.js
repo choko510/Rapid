@@ -906,11 +906,11 @@ export class EditSystem extends AbstractSystem {
 
 
   /**
-   * toJSON
-   * Save the edit history to JSON.
-   * @return  {string?}  A String containing the JSON, or `undefined` if nothing to save
+   * _toBackupPayload
+   * Build the backup payload for saved history.
+   * @return  {Object?}  Plain object payload, or `undefined` if nothing to save
    */
-  toJSON() {
+  _toBackupPayload() {
     if (!this.hasChanges()) return;
 
     const OSM_PRECISION = 7;
@@ -977,7 +977,7 @@ export class EditSystem extends AbstractSystem {
       historyData.push(item);
     }
 
-    return JSON.stringify({
+    return {
       version: 3,
       entities: [...modifiedEntities.values()],
       baseEntities: [...baseEntities.values()],
@@ -985,7 +985,7 @@ export class EditSystem extends AbstractSystem {
       nextIDs: osmEntity.id.next,
       index: this._index,
       timestamp: (new Date()).getTime()
-    });
+    };
 
 
     // Return a simplified copy of the Entity to save space.
@@ -1010,21 +1010,32 @@ export class EditSystem extends AbstractSystem {
 
 
   /**
+   * toJSON
+   * Save the edit history to JSON.
+   * @return  {string?}  A String containing the JSON, or `undefined` if nothing to save
+   */
+  toJSON() {
+    const payload = this._toBackupPayload();
+    return payload ? JSON.stringify(payload) : undefined;
+  }
+
+
+  /**
    * fromJSONAsync
-   * Restore the edit history from a JSON string.
+   * Restore the edit history from a JSON string or plain backup object.
    * Because the restore process can involve fetching additional information from the OSM API,
    *  this function needs to be async, and should be chained after a `context.resetAsync()` to ensure
    *  that we are starting with a clean slate in regards to validation and rendering.
    *
-   * @param  {string}   json - Stringified JSON to parse
+   * @param  {string|Object}   backupData - Stringified JSON or plain backup object
    * @return {Promise}  Promise resolved when the restore process is complete
    */
-  fromJSONAsync(json) {
+  fromJSONAsync(backupData) {
     const context = this.context;
     const gfx = context.systems.gfx;
     const osm = context.services.osm;
 
-    const backup = JSON.parse(json);
+    const backup = (typeof backupData === 'string') ? JSON.parse(backupData) : backupData;
 
     if (backup.version !== 3) {
       throw new Error(`Backup version ${backup.version} not supported.`);
@@ -1189,9 +1200,16 @@ export class EditSystem extends AbstractSystem {
 
     const storage = this.context.systems.storage;
     const backupKey = this._backupKey();
-    const json = this.toJSON();
-    if (!json) return;
-    const changeCount = this._fullDifference?.summary()?.size ?? 0;
+    const payload = this._toBackupPayload();
+    if (!payload) return;
+    const changeCount = this._fullDifference?.summarySize() ?? 0;
+    let serializedPayload;
+    const stringifyPayload = () => {
+      if (serializedPayload === undefined) {
+        serializedPayload = JSON.stringify(payload);
+      }
+      return serializedPayload;
+    };
     let snapshotPromise = Promise.resolve(false);
     if (this._shouldSaveBackupSnapshot(changeCount)) {
       const prevSnapshotAt = this._lastSnapshotAt;
@@ -1199,7 +1217,7 @@ export class EditSystem extends AbstractSystem {
       this._lastSnapshotAt = Date.now();
       this._lastSnapshotChangeCount = changeCount;
 
-      snapshotPromise = this._saveBackupSnapshotAsync(json, changeCount)
+      snapshotPromise = this._saveBackupSnapshotAsync(payload, changeCount)
         .then(status => {
           if (!status) {
             this._lastSnapshotAt = prevSnapshotAt;
@@ -1210,11 +1228,11 @@ export class EditSystem extends AbstractSystem {
     }
 
     void Promise.all([
-      storage.setItemAsync(backupKey, json, { preferIndexedDB: true }),
+      storage.setItemAsync(backupKey, payload, { preferIndexedDB: true }),
       snapshotPromise
     ]).then(([backupStatus, snapshotStatus]) => {
       // Fallback if async storage is unavailable.
-      const finalStatus = backupStatus || snapshotStatus || storage.setItem(backupKey, json);
+      const finalStatus = backupStatus || snapshotStatus || storage.setItem(backupKey, stringifyPayload());
       this._setBackupStatus(finalStatus);
     });
   }
@@ -1228,10 +1246,10 @@ export class EditSystem extends AbstractSystem {
     if (!this._canSaveBackup()) return;
 
     const storage = this.context.systems.storage;
-    const json = this.toJSON();
-    if (!json) return;
+    const payload = this._toBackupPayload();
+    if (!payload) return;
 
-    this._setBackupStatus(storage.setItem(this._backupKey(), json));
+    this._setBackupStatus(storage.setItem(this._backupKey(), JSON.stringify(payload)));
   }
 
 
@@ -1416,11 +1434,11 @@ export class EditSystem extends AbstractSystem {
   }
 
 
-  async _saveBackupSnapshotAsync(json, changeCount = this._fullDifference?.summary()?.size ?? 0) {
+  async _saveBackupSnapshotAsync(payload, changeCount = this._fullDifference?.summarySize() ?? 0) {
     const storage = this.context.systems.storage;
     const timestamp = Date.now();
     const key = this._snapshotKey(timestamp);
-    const status = await storage.setItemAsync(key, json, { preferIndexedDB: true });
+    const status = await storage.setItemAsync(key, payload, { preferIndexedDB: true });
     if (!status) return false;
 
     let snapshots = this._loadSnapshotIndex()

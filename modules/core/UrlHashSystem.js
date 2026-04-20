@@ -254,7 +254,7 @@ export class UrlHashSystem extends AbstractSystem {
     const editor = context.systems.editor;
     const graph = editor.staging.graph;
     const l10n = context.systems.l10n;
-    const changeCount = editor.difference().summary().size;
+    const changeCount = editor.difference().summarySize();
 
     // Currently only support OSM ids
     let selected;
