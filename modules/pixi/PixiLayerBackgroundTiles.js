@@ -45,10 +45,6 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this._failed = new Set();      // Set of failed tileURLs
     this._tiler = new Tiler();
     this._needTiles = new Map();   // Reused Map(tileID -> tile)
-    this._tileLoadQueue = [];      // Reused Array<{tile, textureManager}>
-    this._tileLoadQueueHead = 0;   // Queue head index (avoid costly Array.shift)
-    this._inflightLoads = 0;
-    this._maxInflightLoads = (isMinimap ? 4 : 12);
     this._sourceIDsToDestroy = []; // Reused Array<string>
   }
 
@@ -68,9 +64,6 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this._tileMaps.clear();
     this._failed.clear();
     this._needTiles.clear();
-    this._tileLoadQueue.length = 0;
-    this._tileLoadQueueHead = 0;
-    this._inflightLoads = 0;
     this._sourceIDsToDestroy.length = 0;
     this._filterCacheKey = null;
     this._filterCache = null;
@@ -222,24 +215,9 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     }
 
 
-    // Create sprites for new tiles, center-first so users see focused imagery sooner.
-    const center = (this.isMinimap ? viewport : context.viewport).centerLoc();
-    const newTiles = [];
+    // Create a Sprite for each tile
     for (const [tileID, tile] of needTiles) {
-      if (!tileMap.has(tileID)) {
-        newTiles.push({ tileID, tile });
-      }
-    }
-
-    newTiles.sort((a, b) => {
-      const ac = a.tile.wgs84Extent.center();
-      const bc = b.tile.wgs84Extent.center();
-      const da = Math.pow(ac[0] - center[0], 2) + Math.pow(ac[1] - center[1], 2);
-      const db = Math.pow(bc[0] - center[0], 2) + Math.pow(bc[1] - center[1], 2);
-      return da - db;
-    });
-
-    for (const { tileID, tile } of newTiles) {
+      if (tileMap.has(tileID)) continue;   // we made it already
 
       const tileName = `${sourceID}-${tileID}`;
       const sprite = new PIXI.Sprite();
@@ -341,47 +319,14 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
 
   loadTile(tile, textureManager) {
-    if (!tile?.url || !tile?.sprite) return;
-    this._tileLoadQueue.push({ tile, textureManager });
-    this._pumpTileLoads();
-  }
-
-
-  _pumpTileLoads() {
-    const queue = this._tileLoadQueue;
-    while (this._inflightLoads < this._maxInflightLoads && this._tileLoadQueueHead < queue.length) {
-      const { tile, textureManager } = queue[this._tileLoadQueueHead++];
-      if (!tile?.sprite || tile.loaded || !tile.url) continue;
-      this._loadTileNow(tile, textureManager);
-    }
-    this._compactTileLoadQueue();
-  }
-
-
-  _finishTileLoad() {
-    this._inflightLoads = Math.max(0, this._inflightLoads - 1);
-    this._pumpTileLoads();
-  }
-
-
-  _loadTileNow(tile, textureManager, reuseSlot = false) {
-    if (!reuseSlot) {
-      this._inflightLoads++;
-    }
-
-    const requestURL = tile.url;
     const image = new Image();
     image.crossOrigin = 'anonymous';
     tile.image = image;
 
     // After the image loads, allocate space for it in the texture atlas
     image.onload = () => {
-      this._failed.delete(requestURL);
-      if (!tile.sprite || !tile.image) {  // tile may have been pruned while loading
-        tile.image = null;
-        this._finishTileLoad();
-        return;
-      }
+      this._failed.delete(tile.url);
+      if (!tile.sprite || !tile.image) return;  // it's possible that the tile isn't needed anymore and got pruned
 
       const w = tile.image.naturalWidth;
       const h = tile.image.naturalHeight;
@@ -390,45 +335,25 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       tile.loaded = true;
       tile.image = null;  // reference to `image` is held by the atlas, we can null it
       this.gfx.deferredRedraw();
-      this._finishTileLoad();
     };
 
     image.onerror = () => {
-      const failedURL = requestURL;
+      const failedURL = tile.url;
       this._failed.add(failedURL);
 
       const fallbackURL = this._nextFallbackURL(tile, failedURL);
-      if (fallbackURL && tile.sprite) {
+      if (fallbackURL) {
         tile.image = null;
         tile.url = fallbackURL;
-        this._loadTileNow(tile, textureManager, true);   // retry in same inflight slot
+        this.loadTile(tile, textureManager);
         return;
       }
 
       tile.image = null;
       this.gfx.deferredRedraw();
-      this._finishTileLoad();
     };
 
-    image.src = requestURL;
-  }
-
-
-  _compactTileLoadQueue() {
-    const queue = this._tileLoadQueue;
-    const head = this._tileLoadQueueHead;
-    if (head === 0) return;
-
-    if (head >= queue.length) {
-      queue.length = 0;
-      this._tileLoadQueueHead = 0;
-      return;
-    }
-
-    if (head > 64 && head >= Math.floor(queue.length / 2)) {
-      this._tileLoadQueue = queue.slice(head);
-      this._tileLoadQueueHead = 0;
-    }
+    image.src = tile.url;
   }
 
 
@@ -533,26 +458,19 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
   applyFilters(sourceContainer) {
     const f = this.filters;
     const key = `${f.brightness}|${f.contrast}|${f.saturation}|${f.sharpness}`;
+    if (this._filterCacheKey !== key || !this._filterCache) {
+      const adjustmentFilter = new AdjustmentFilter({
+        brightness: f.brightness,
+        contrast: f.contrast,
+        saturation: f.saturation,
+      });
 
-    if (this._filterCacheKey !== key) {
-      const isNeutralAdjustment = (f.brightness === 1 && f.contrast === 1 && f.saturation === 1);
-      const hasSharpen = f.sharpness > 1;
-      const hasBlur = f.sharpness < 1;
-      const filters = [];
-
-      if (!isNeutralAdjustment) {
-        const adjustmentFilter = new AdjustmentFilter({
-          brightness: f.brightness,
-          contrast: f.contrast,
-          saturation: f.saturation,
-        });
-        filters.push(adjustmentFilter);
-      }
+      const filters = [adjustmentFilter];
 
       this.convolutionFilter = null;
       this.blurFilter = null;
 
-      if (hasSharpen) {
+      if (f.sharpness > 1) {
         // The convolution filter consists of adjacent pixels with a negative factor and the central pixel being at least one.
         // The central pixel (at index 4 of our 3x3 array) starts at 1 and increases
         const convolutionArray = sharpenMatrix.map((n, i) => {
@@ -568,7 +486,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
         this.convolutionFilter = new ConvolutionFilter(convolutionArray);
         filters.push(this.convolutionFilter);
 
-      } else if (hasBlur) {
+      } else if (f.sharpness < 1) {
         const blurFactor = interpolateNumber(1, 8)(1 - f.sharpness);
         this.blurFilter = new PIXI.BlurFilter({
           strength: blurFactor,
@@ -578,13 +496,12 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       }
 
       this._filterCacheKey = key;
-      this._filterCache = filters.length ? filters : null;
+      this._filterCache = filters;
     }
 
     if (sourceContainer.filters !== this._filterCache) {
       sourceContainer.filters = this._filterCache;
     }
-    sourceContainer.filterArea = this._filterCache ? this.gfx.pixi.screen : null;
   }
 
 

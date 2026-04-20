@@ -3743,16 +3743,6 @@
       "label": "Label",
       "description": "Description"
     },
-    "plugin_manager": {
-      "permissions": {
-        "capabilities": {
-          "map_edit": {
-            "label": "Map Editing",
-            "description": "Allows this plugin to create and modify map features in the editor."
-          }
-        }
-      }
-    },
     "languageNames": {
       "aa": "Afar",
       "ab": "Abkhazian",

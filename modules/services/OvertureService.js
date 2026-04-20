@@ -1,8 +1,8 @@
-import RBush from 'rbush';
+import * as Polyclip from 'polyclip-ts';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
 import { Graph, Tree, RapidDataset } from '../core/lib/index.js';
-import { utilFetchResponse, WasmGeometryEngine } from '../util/index.js';
+import { utilFetchResponse } from '../util/index.js';
 
 // STAC catalog root — used to discover the latest Overture release and per-theme PMTiles URLs.
 // See: https://stac.overturemaps.org/catalog.json
@@ -95,19 +95,6 @@ export class OvertureService extends AbstractSystem {
     this._tomtomRoadsGraph = null;
     this._tomtomRoadsTree = null;
     this._tomtomRoadsCache = { seen: new Set() };
-
-    // Shared cache for visible OSM buildings, reused across building datasets in the same view.
-    this._visibleOSMBuildings = {
-      viewportVersion: null,
-      graphRef: null,
-      data: [],
-      index: new RBush()
-    };
-
-    this._geometry = new WasmGeometryEngine({
-      hashParam: 'wasm_geometry',
-      benchmarkIterations: 20
-    });
   }
 
 
@@ -188,10 +175,7 @@ export class OvertureService extends AbstractSystem {
     if (this._initPromise) return this._initPromise;
 
     const pmtilesService = this.context.services.pmtiles;
-    return this._initPromise = Promise.all([
-      pmtilesService.initAsync(),
-      this._geometry.initAsync({ intersection: true })
-    ])
+    return this._initPromise = pmtilesService.initAsync()
       .then(() => this._loadStacCatalogAsync());
   }
 
@@ -241,11 +225,6 @@ export class OvertureService extends AbstractSystem {
     }
     this._tomtomRoadsGraph = null;
     this._tomtomRoadsTree = null;
-
-    this._visibleOSMBuildings.viewportVersion = null;
-    this._visibleOSMBuildings.graphRef = null;
-    this._visibleOSMBuildings.data = [];
-    this._visibleOSMBuildings.index.clear();
   }
 
 
@@ -267,11 +246,6 @@ export class OvertureService extends AbstractSystem {
     this._tomtomRoadsGraph = null;
     this._tomtomRoadsTree = null;
     this._tomtomRoadsCache = { seen: new Set() };
-
-    this._visibleOSMBuildings.viewportVersion = null;
-    this._visibleOSMBuildings.graphRef = null;
-    this._visibleOSMBuildings.data = [];
-    this._visibleOSMBuildings.index.clear();
 
     return Promise.resolve();
   }
@@ -451,61 +425,6 @@ export class OvertureService extends AbstractSystem {
   }
 
 
-  _getVisibleOSMBuildings(viewportVersion, editor, osmGraph, extent) {
-    const cache = this._visibleOSMBuildings;
-    if (cache.viewportVersion === viewportVersion && cache.graphRef === osmGraph) {
-      return cache;
-    }
-
-    const osmEntities = editor.intersects(extent);
-    const osmBuildings = osmEntities.filter(entity =>
-      entity.type === 'way' &&
-      entity.tags.building &&
-      entity.tags.building !== 'no'
-    );
-
-    const data = [];
-    const boxes = [];
-    const useWasm = this._geometry.canUseWasm('intersection');
-
-    for (const way of osmBuildings) {
-      try {
-        if (!way.isClosed()) continue;
-        const coords = way.nodes.map(nodeID => osmGraph.entity(nodeID).loc);
-        if (coords.length < 4) continue;
-
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const coord of coords) {
-          if (coord[0] < minX) minX = coord[0];
-          if (coord[0] > maxX) maxX = coord[0];
-          if (coord[1] < minY) minY = coord[1];
-          if (coord[1] > maxY) maxY = coord[1];
-        }
-
-        const item = {
-          coords: [coords],    // polygon rings
-          bbox: { minX, minY, maxX, maxY },
-          clipperPaths: (useWasm ? this._geometry.toClipperPaths([coords]) : null)
-        };
-        data.push(item);
-        boxes.push({ minX, minY, maxX, maxY, data: item });
-      } catch (e) {
-        continue;
-      }
-    }
-
-    cache.viewportVersion = viewportVersion;
-    cache.graphRef = osmGraph;
-    cache.data = data;
-    cache.index.clear();
-    if (boxes.length) {
-      cache.index.load(boxes);
-    }
-
-    return cache;
-  }
-
-
   /**
    * _conflateBuildings
    * Filter out Overture buildings that overlap with existing OSM buildings,
@@ -546,7 +465,45 @@ export class OvertureService extends AbstractSystem {
     const osmGraph = editor.staging.graph;
     const viewport = context.viewport;
     const extent = viewport.visibleExtent();
-    const buildingIndex = this._getVisibleOSMBuildings(viewport.v, editor, osmGraph, extent);
+
+    // Get all OSM buildings in the visible extent
+    const osmEntities = editor.intersects(extent);
+    const osmBuildings = osmEntities.filter(entity =>
+      entity.type === 'way' &&
+      entity.tags.building &&
+      entity.tags.building !== 'no'
+    );
+
+    // Convert OSM buildings to bounding boxes + polygon coords for fast filtering
+    // Only compute full polygon coords if we'll need them for intersection
+    const osmBuildingData = [];
+    for (const way of osmBuildings) {
+      try {
+        if (!way.isClosed()) continue;  // Skip non-closed ways
+        const coords = way.nodes.map(nodeID => {
+          const node = osmGraph.entity(nodeID);
+          return node.loc;
+        });
+        if (coords.length >= 4) {  // Valid polygon needs at least 4 points (3 + closing)
+          // Compute bounding box for fast pre-filtering
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const coord of coords) {
+            if (coord[0] < minX) minX = coord[0];
+            if (coord[0] > maxX) maxX = coord[0];
+            if (coord[1] < minY) minY = coord[1];
+            if (coord[1] > maxY) maxY = coord[1];
+          }
+          osmBuildingData.push({
+            entity: way,
+            coords: [coords],  // Polyclip expects [[ring]]
+            bbox: { minX, minY, maxX, maxY }
+          });
+        }
+      } catch (e) {
+        // Skip if we can't resolve the nodes
+        continue;
+      }
+    }
 
     const newEntities = [];
 
@@ -589,18 +546,28 @@ export class OvertureService extends AbstractSystem {
         if (coord[1] < oMinY) oMinY = coord[1];
         if (coord[1] > oMaxY) oMaxY = coord[1];
       }
-      const overtureBBox = { minX: oMinX, minY: oMinY, maxX: oMaxX, maxY: oMaxY };
-      const overtureClipperPaths = this._geometry.canUseWasm('intersection')
-        ? this._geometry.toClipperPaths(overtureCoords)
-        : null;
 
-      const candidates = buildingIndex.index.search(overtureBBox);
-      const hasOverlap = this._geometry.intersectsAny(
-        overtureCoords,
-        candidates.map(candidate => candidate.data.coords),
-        overtureClipperPaths,
-        candidates.map(candidate => candidate.data.clipperPaths)
-      );
+      // Check if this Overture building overlaps with ANY OSM building
+      let hasOverlap = false;
+      for (const osmBuilding of osmBuildingData) {
+        // Fast bounding box check first
+        const ob = osmBuilding.bbox;
+        if (oMaxX < ob.minX || oMinX > ob.maxX || oMaxY < ob.minY || oMinY > ob.maxY) {
+          continue;  // Bounding boxes don't overlap, skip expensive intersection
+        }
+
+        // Bounding boxes overlap, do full polygon intersection test
+        try {
+          const intersection = Polyclip.intersection(overtureCoords, osmBuilding.coords);
+          if (intersection && intersection.length > 0) {
+            hasOverlap = true;
+            break;  // Aggressive filtering: any overlap = reject
+          }
+        } catch (e) {
+          // Polyclip can throw on invalid geometries, skip this comparison
+          continue;
+        }
+      }
 
       if (hasOverlap) continue;  // Filter out overlapping building
 

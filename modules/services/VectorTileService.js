@@ -4,11 +4,12 @@ import { VectorTile } from '@mapbox/vector-tile';
 import geojsonRewind from '@mapbox/geojson-rewind';
 import { PMTiles } from 'pmtiles';
 import stringify from 'fast-json-stable-stringify';
+import * as Polyclip from 'polyclip-ts';
 import Protobuf from 'pbf';
 import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';
-import { utilFetchResponse, utilLRUMapSet, utilLRUSetAdd, WasmGeometryEngine } from '../util/index.js';
+import { utilFetchResponse, utilLRUMapSet, utilLRUSetAdd } from '../util/index.js';
 
 const LINE_INTERSECTION_EPSILON = 1e-10;
 const LINE_INTERSECTION_VERTEX_SNAP = 1e-8;
@@ -44,13 +45,8 @@ export class VectorTileService extends AbstractSystem {
     this._sources = new Map();   // Map(template -> source)
     this._tiler = new Tiler().tileSize(512).margin(1);
     this._nextID = 0;
-    this._maxSourceInflight = 8;
     this._maxSourceLoadedTiles = 240;
     this._maxSourceZoomCaches = 4;
-    this._geometry = new WasmGeometryEngine({
-      hashParam: 'wasm_geometry',
-      benchmarkIterations: 20
-    });
   }
 
 
@@ -60,7 +56,7 @@ export class VectorTileService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed initialization
    */
   initAsync() {
-    return this._geometry.initAsync({ union: true });
+    return Promise.resolve();
   }
 
 
@@ -88,10 +84,8 @@ export class VectorTileService extends AbstractSystem {
 
       // free memory
       source.inflight.clear();
-      source.toLoad?.clear();
       source.loaded.clear();
       source.readyPromise = null;
-      source.pumpPending = false;
       for (const cache of source.zoomCache.values()) {
         cache.features.clear();
         cache.boxes.clear();
@@ -178,10 +172,9 @@ export class VectorTileService extends AbstractSystem {
         if (source.lastv === viewport.v) return;  // exit early if the view is unchanged
         source.lastv = viewport.v;
 
-        // Determine the tiles needed to cover the view, center-first for better perceived responsiveness.
-        const tiles = this._sortTilesByViewportCenter(this._tiler.getTiles(viewport).tiles, viewport);
+        // Determine the tiles needed to cover the view..
+        const tiles = this._tiler.getTiles(viewport).tiles;
         const neededTileIDs = new Set(tiles.map(tile => tile.id));
-        const tileByID = new Map(tiles.map(tile => [tile.id, tile]));
 
         // Abort inflight requests that are no longer needed..
         for (const [tileID, controller] of source.inflight) {
@@ -189,104 +182,19 @@ export class VectorTileService extends AbstractSystem {
             controller.abort();
           }
         }
-        for (const tileID of source.toLoad) {
-          if (!neededTileIDs.has(tileID)) {
-            source.toLoad.delete(tileID);
-          }
-        }
 
         for (const tile of tiles) {
           if (source.loaded.has(tile.id)) {
             utilLRUMapSet(source.loaded, tile.id, source.loaded.get(tile.id));
-          } else if (!source.inflight.has(tile.id)) {
-            source.toLoad.add(tile.id);
           }
         }
 
-        // Issue new requests up to the inflight cap.
-        const fetches = this._pumpSourceRequests(source, tileByID);
+        // Issue new requests..
+        const fetches = tiles.map(tile => this._loadTileAsync(source, tile));
         return Promise.all(fetches)
           .then(() => this._processMergeQueue(source))
           .then(() => this._evictSourceCache(source, neededTileIDs, tiles));
       });
-  }
-
-
-  _sortTilesByViewportCenter(tiles, viewport) {
-    const center = viewport.centerLoc();
-    return tiles.slice().sort((a, b) => {
-      const ac = a.wgs84Extent.center();
-      const bc = b.wgs84Extent.center();
-      const da = Math.pow(ac[0] - center[0], 2) + Math.pow(ac[1] - center[1], 2);
-      const db = Math.pow(bc[0] - center[0], 2) + Math.pow(bc[1] - center[1], 2);
-      return da - db;
-    });
-  }
-
-
-  _pumpSourceRequests(source, tileByID) {
-    const fetches = [];
-    let available = this._maxSourceInflight - source.inflight.size;
-    if (available <= 0) return fetches;
-
-    for (const tileID of source.toLoad) {
-      if (available <= 0) break;
-      if (source.loaded.has(tileID) || source.inflight.has(tileID)) {
-        source.toLoad.delete(tileID);
-        continue;
-      }
-
-      const tile = tileByID.get(tileID);
-      if (!tile) {
-        source.toLoad.delete(tileID);
-        continue;
-      }
-
-      const request = this._loadTileAsync(source, tile);
-      if (request) {
-        fetches.push(request);
-        available--;
-      }
-    }
-    return fetches;
-  }
-
-
-  _queueSourcePump(source) {
-    if (source.pumpPending) return;
-    source.pumpPending = true;
-    Promise.resolve().then(() => {
-      source.pumpPending = false;
-      this._pumpQueuedTiles(source);
-    });
-  }
-
-
-  _pumpQueuedTiles(source) {
-    if (!source?.toLoad?.size) return;
-
-    const header = source.header;
-    if (header) {  // pmtiles - set up allowable zoom range
-      this._tiler.zoomRange(header.minZoom, header.maxZoom);
-    }
-
-    const viewport = this.context.viewport;
-    const tiles = this._sortTilesByViewportCenter(this._tiler.getTiles(viewport).tiles, viewport);
-    const neededTileIDs = new Set(tiles.map(tile => tile.id));
-    const tileByID = new Map(tiles.map(tile => [tile.id, tile]));
-
-    for (const tileID of source.toLoad) {
-      if (!neededTileIDs.has(tileID) || source.loaded.has(tileID)) {
-        source.toLoad.delete(tileID);
-      }
-    }
-
-    const fetches = this._pumpSourceRequests(source, tileByID);
-    if (!fetches.length) return;
-
-    Promise.all(fetches)
-      .then(() => this._processMergeQueue(source))
-      .then(() => this._evictSourceCache(source, neededTileIDs, tiles));
   }
 
 
@@ -311,12 +219,10 @@ export class VectorTileService extends AbstractSystem {
         displayName:  hostname,
         template:     template,
         inflight:     new Map(),   // Map(tileID -> AbortController)
-        toLoad:       new Set(),   // Set(tileID)
         loaded:       new Map(),   // Map(tileID -> Tile)
         zoomCache:    new Map(),   // Map(zoom -> Object zoomCache)
         zoomAccess:   new Set(),   // Set(zoom) ordered least-recently-used -> most-recently-used
-        lastv:        null,        // viewport version last time we fetched data
-        pumpPending:  false
+        lastv:        null         // viewport version last time we fetched data
       };
 
       this._sources.set(template, source);
@@ -377,7 +283,6 @@ export class VectorTileService extends AbstractSystem {
   _loadTileAsync(source, tile) {
     const tileID = tile.id;
     if (source.loaded.has(tileID) || source.inflight.has(tileID)) return;
-    source.toLoad.delete(tileID);
 
     const controller = new AbortController();
     source.inflight.set(tileID, controller);
@@ -416,9 +321,6 @@ export class VectorTileService extends AbstractSystem {
       })
       .finally(() => {
         source.inflight.delete(tileID);
-        if (source.toLoad.size) {
-          this._queueSourcePump(source);
-        }
       });
   }
 
@@ -754,12 +656,12 @@ export class VectorTileService extends AbstractSystem {
 
     // Union the coordinates together
     const sourceCoords = features.map(feature => feature.geojson.geometry.coordinates);
-    const mergedCoords = this._geometry.unionPolygons(sourceCoords);
+    const mergedCoords = Polyclip.union(...sourceCoords);
     if (!mergedCoords || !mergedCoords.length) {
       throw new Error(`Failed to merge`);  // shouldn't happen
     }
 
-    // Both geometry backends return MultiPolygon coordinates here.
+    // `Polyclip.union` always returns a MultiPolygon
     const merged = {
       type: 'Feature',
       geometry: {

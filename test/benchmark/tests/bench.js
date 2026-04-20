@@ -22,15 +22,6 @@ const startupMetrics = {
   interactiveReadyMs: null
 };
 
-const panMetrics = {
-  scenario: 'map-pan-smoothness',
-  frameCount: 0,
-  avgFrameMs: null,
-  maxFrameMs: null,
-  over16msFrames: 0,
-  over33msFrames: 0
-};
-
 const longTaskMetrics = {
   supported: false,
   entryType: 'longtask',
@@ -59,30 +50,6 @@ function waitForAnimationFrame() {
     return Promise.resolve();
   }
   return new Promise(resolve => requestAnimationFrame(() => resolve()));
-}
-
-async function runPanStressAsync() {
-  if (!context?.systems?.map || typeof context.systems.map.pan !== 'function') return;
-
-  const map = context.systems.map;
-  const frameTimes = [];
-  let prev = performance.now();
-  const panSteps = 80;
-
-  for (let i = 0; i < panSteps; i++) {
-    map.pan([6, 0], 0);
-    await waitForAnimationFrame();
-    const now = performance.now();
-    frameTimes.push(now - prev);
-    prev = now;
-  }
-
-  if (!frameTimes.length) return;
-  panMetrics.frameCount = frameTimes.length;
-  panMetrics.maxFrameMs = roundMetric(Math.max(...frameTimes));
-  panMetrics.avgFrameMs = roundMetric(frameTimes.reduce((sum, ms) => sum + ms, 0) / frameTimes.length);
-  panMetrics.over16msFrames = frameTimes.filter(ms => ms > 16.7).length;
-  panMetrics.over33msFrames = frameTimes.filter(ms => ms > 33.3).length;
 }
 
 let longTaskObserver = null;
@@ -316,9 +283,6 @@ suite.on('complete', () => {
 
   const perfBaseline = {
     startup: startupMetrics,
-    interaction: {
-      pan: panMetrics
-    },
     cpuProxy: {
       rendererBenchmarks: benchmarkResults,
       longTasks: {
@@ -352,7 +316,6 @@ suite.on('complete', () => {
 });
 
 initContextAsync()
-  .then(() => runPanStressAsync())
   .then(() => suite.run({ async: true }))
   .catch(error => {
     const message = error?.message || String(error);

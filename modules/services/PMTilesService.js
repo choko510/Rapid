@@ -15,6 +15,11 @@ const NON_MOTORIZED_HIGHWAYS = new Set([
   'footway', 'cycleway', 'path', 'pedestrian', 'bridleway', 'steps', 'corridor'
 ]);
 
+// Overture class values that map to non-motorized highways
+const NON_MOTORIZED_CLASSES = new Set([
+  'footway', 'cycleway', 'path', 'pedestrian', 'bridleway', 'steps', 'corridor'
+]);
+
 // Maximum features to process per render frame (prevents main thread blocking)
 const MAX_FEATURES_PER_FRAME = 500;
 
@@ -52,12 +57,6 @@ export class PMTilesService extends AbstractSystem {
     this.id = 'pmtiles';
     this.autoStart = false;
     this._initPromise = null;
-    this._osmHighwayCache = {
-      viewportVersion: null,
-      graphSize: null,
-      graphRef: null,
-      result: null
-    };
   }
 
 
@@ -93,10 +92,6 @@ export class PMTilesService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed resetting
    */
   resetAsync() {
-    this._osmHighwayCache.viewportVersion = null;
-    this._osmHighwayCache.graphSize = null;
-    this._osmHighwayCache.graphRef = null;
-    this._osmHighwayCache.result = null;
     return Promise.resolve();
   }
 
@@ -135,17 +130,6 @@ export class PMTilesService extends AbstractSystem {
   getOSMHighwaysByMode(extent) {
     const editor = this.context.systems.editor;
     const osmGraph = editor.staging.graph;
-    const viewportVersion = this.context.viewport.v;
-    const graphSize = this._getGraphSize(osmGraph);
-    const cache = this._osmHighwayCache;
-    const sameGraphState = (graphSize !== null)
-      ? cache.graphSize === graphSize
-      : cache.graphRef === osmGraph;
-
-    if (cache.viewportVersion === viewportVersion && sameGraphState && cache.result) {
-      return cache.result;
-    }
-
     const osmEntities = editor.intersects(extent);
     const motorized = [];
     const nonMotorized = [];
@@ -185,22 +169,7 @@ export class PMTilesService extends AbstractSystem {
       }
     }
 
-    const result = { motorized, nonMotorized };
-    cache.viewportVersion = viewportVersion;
-    cache.graphSize = graphSize;
-    cache.graphRef = osmGraph;
-    cache.result = result;
-    return result;
-  }
-
-
-  _getGraphSize(graph) {
-    const baseSize = graph?.base?.entities?.size;
-    const localSize = graph?.local?.entities?.size;
-    if (Number.isFinite(baseSize) && Number.isFinite(localSize)) {
-      return baseSize + localSize;
-    }
-    return null;
+    return { motorized, nonMotorized };
   }
 
 

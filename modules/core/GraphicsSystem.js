@@ -719,7 +719,7 @@ export class GraphicsSystem extends AbstractSystem {
       powerPreference: 'high-performance',
       preference: renderPreference,
       preferWebGLVersion: renderGLVersion,
-      preserveDrawingBuffer: false,
+      preserveDrawingBuffer: true,
       resolution: this.highQuality ? window.devicePixelRatio : 1,
       sharedLoader: true,
       sharedTicker: false,  // Avoid the ticker

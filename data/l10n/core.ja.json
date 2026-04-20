@@ -4845,10 +4845,6 @@
           "ui_panes_issues": {
             "label": "Issueペイン操作",
             "description": "Issueペインを開いたり、関連ワークフローを操作できます。"
-          },
-          "map_edit": {
-            "label": "地図編集",
-            "description": "このプラグインがエディタ上の地物を作成・編集できるようになります。"
           }
         }
       },
