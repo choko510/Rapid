@@ -109,6 +109,7 @@ export class PluginSystem extends AbstractSystem {
       .then(() => this.refreshRegistryAsync({ silent: true }).catch(err => {
         this._registryError = err.message;
       }))
+      .then(() => this._ensureRapidReadyForRestore())
       .then(() => this._restoreEnabledPlugins())
       .then(() => {
         this._started = true;
@@ -683,7 +684,6 @@ export class PluginSystem extends AbstractSystem {
       try {
         await this.setPluginEnabled(pluginID, true, { skipPermissionPrompt: true, quiet: true });
       } catch (err) {
-        this._enabledFromStorage.delete(pluginID);
         this._notify(`Plugin "${pluginID}" could not be enabled: ${err.message}`, 'error');
       }
     }));
@@ -691,17 +691,28 @@ export class PluginSystem extends AbstractSystem {
   }
 
 
+  async _ensureRapidReadyForRestore() {
+    const rapid = this.context.systems.rapid;
+    if (!rapid?.autoStart || typeof rapid.startAsync !== 'function') return;
+    try {
+      await rapid.startAsync();
+    } catch {
+      // If Rapid cannot start yet, plugin restore can still proceed for plugins that don't depend on it.
+    }
+  }
+
+
   _rememberPluginState() {
     const storage = this.context.systems.storage;
     if (!storage) return;
 
-    const enabledPluginIDs = [];
+    const enabledPluginIDs = new Set(this._enabledFromStorage);
     const grantedCapabilities = {};
     const registryPlugins = [];
 
     for (const record of this._plugins.values()) {
       if (record.enabled) {
-        enabledPluginIDs.push(record.id);
+        enabledPluginIDs.add(record.id);
       }
 
       if (record.grantedCapabilities?.size) {
@@ -735,7 +746,7 @@ export class PluginSystem extends AbstractSystem {
     }
 
     storage.setItem(PLUGIN_STATE_STORAGE_KEY, JSON.stringify({
-      enabledPluginIDs,
+      enabledPluginIDs: [...enabledPluginIDs],
       grantedCapabilities,
       registryPlugins,
       registryURLs: [...this._registryURLs],

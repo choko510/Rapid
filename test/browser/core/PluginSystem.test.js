@@ -1,5 +1,6 @@
 describe('PluginSystem', () => {
   const REGISTRY_URL = 'https://registry.test/registry.json';
+  const PLUGIN_STATE_STORAGE_KEY = 'rapid-plugin-state-v1';
 
   class MockStorageSystem {
     constructor(initial = {}) {
@@ -52,12 +53,26 @@ describe('PluginSystem', () => {
     }
   }
 
+  class MockRapidSystem {
+    constructor(options = {}) {
+      this.autoStart = options.autoStart ?? true;
+      this.started = options.started ?? false;
+      this.startCalls = 0;
+    }
+    startAsync() {
+      this.startCalls++;
+      this.started = true;
+      return Promise.resolve();
+    }
+  }
+
   class MockContext {
     constructor(options = {}) {
       this.systems = {
         l10n: new MockL10nSystem(),
         storage: new MockStorageSystem(options.storage || {}),
-        urlhash: new MockUrlHashSystem(options.registryURL || REGISTRY_URL)
+        urlhash: new MockUrlHashSystem(options.registryURL || REGISTRY_URL),
+        rapid: options.rapid || new MockRapidSystem()
       };
     }
   }
@@ -448,5 +463,129 @@ describe('PluginSystem', () => {
 
     const enabled = plugins.getRegistryPlugins().find(d => d.id === pluginID);
     expect(enabled.enabled).to.be.true;
+  });
+
+
+  it('waits for rapid startup before restoring enabled plugins', async () => {
+    const pluginID = 'rapid-assist-plugin';
+    const manifestURL = `https://registry.test/plugins/${pluginID}/manifest.json`;
+    const rapid = new MockRapidSystem({ started: false });
+    const storageState = {
+      enabledPluginIDs: [pluginID],
+      grantedCapabilities: { [pluginID]: [] },
+      registryPlugins: [{
+        id: pluginID,
+        version: 1,
+        name: 'Rapid Assist',
+        description: 'Depends on rapid startup',
+        pluginVersion: '1.0.0',
+        kinds: ['ui'],
+        tags: ['rapid'],
+        capabilities: [],
+        docsURL: '',
+        usage: [],
+        jaUsage: [],
+        entrypoint: `https://registry.test/plugins/${pluginID}/index.mjs`,
+        registryURL: REGISTRY_URL,
+        manifestURL: manifestURL,
+        manifestHash: '',
+        signature: '',
+        keyID: '',
+        installedAt: '2026-01-01T00:00:00.000Z'
+      }],
+      registryURLs: [REGISTRY_URL],
+      activeRegistryURL: REGISTRY_URL
+    };
+
+    fetchMock.route(REGISTRY_URL, {
+      body: { version: 1, plugins: [], revoked: [] },
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const plugins = new Rapid.PluginSystem(new MockContext({
+      rapid: rapid,
+      storage: { [PLUGIN_STATE_STORAGE_KEY]: JSON.stringify(storageState) }
+    }));
+
+    sinon.stub(plugins, '_loadPluginModule').callsFake(record => {
+      const current = plugins._plugins.get(record.id);
+      if (!current) return;
+      current.module = {};
+      current.enableFn = host => {
+        if (!host.context.systems.rapid.started) {
+          throw new Error('Rapid must be started before enabling plugin');
+        }
+      };
+      current.disableFn = () => {};
+      current.disposeFn = () => {};
+    });
+
+    await plugins.initAsync();
+    await plugins.startAsync();
+
+    const restored = plugins.getRegistryPlugins().find(d => d.id === pluginID);
+    expect(rapid.startCalls).to.be.greaterThan(0);
+    expect(restored?.enabled).to.be.true;
+  });
+
+
+  it('keeps enabled plugin preference when restore fails', async () => {
+    const pluginID = 'flaky-plugin';
+    const manifestURL = `https://registry.test/plugins/${pluginID}/manifest.json`;
+    const storageState = {
+      enabledPluginIDs: [pluginID],
+      grantedCapabilities: { [pluginID]: [] },
+      registryPlugins: [{
+        id: pluginID,
+        version: 1,
+        name: 'Flaky Plugin',
+        description: 'Fails during startup restore',
+        pluginVersion: '1.0.0',
+        kinds: ['ui'],
+        tags: ['qa'],
+        capabilities: [],
+        docsURL: '',
+        usage: [],
+        jaUsage: [],
+        entrypoint: `https://registry.test/plugins/${pluginID}/index.mjs`,
+        registryURL: REGISTRY_URL,
+        manifestURL: manifestURL,
+        manifestHash: '',
+        signature: '',
+        keyID: '',
+        installedAt: '2026-01-01T00:00:00.000Z'
+      }],
+      registryURLs: [REGISTRY_URL],
+      activeRegistryURL: REGISTRY_URL
+    };
+
+    fetchMock.route(REGISTRY_URL, {
+      body: { version: 1, plugins: [], revoked: [] },
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const context = new MockContext({
+      storage: { [PLUGIN_STATE_STORAGE_KEY]: JSON.stringify(storageState) }
+    });
+    const plugins = new Rapid.PluginSystem(context);
+
+    sinon.stub(plugins, '_loadPluginModule').callsFake(record => {
+      const current = plugins._plugins.get(record.id);
+      if (!current) return;
+      current.module = {};
+      current.enableFn = () => {
+        throw new Error('startup failure');
+      };
+      current.disableFn = () => {};
+      current.disposeFn = () => {};
+    });
+
+    await plugins.initAsync();
+    await plugins.startAsync();
+
+    const persisted = JSON.parse(context.systems.storage.getItem(PLUGIN_STATE_STORAGE_KEY));
+    expect(persisted.enabledPluginIDs).to.include(pluginID);
   });
 });
