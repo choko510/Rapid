@@ -17,24 +17,30 @@ export function validationDuplicateWaySegments(context) {
     return [];
 
 
-    function isRoutableTag(key) {
-      return key === 'highway' || key === 'railway' || key === 'waterway';
-    }
-
-
-    // Consider a way to be routable if it is a highway, railway, or wateray.
-    // if it is an area of any kind, it is not routable.
+    // Consider a way to be routable if it is a highway, railway, or waterway.
+    // If it is an area of any kind, it is not routable.
+    // Optimize performance and avoid memory allocations by querying properties directly.
     function hasRoutableTags(way) {
       if (way.isArea()) return false;
-      return Object.keys(way.tags).some(isRoutableTag);
+      const tags = way.tags;
+      return 'highway' in tags || 'railway' in tags || 'waterway' in tags;
     }
 
 
+    // Avoid resolved childNodes overhead by scanning the array of way node IDs directly.
     function adjacentNodes(node1, node2, way) {
-      const nodes = graph.childNodes(way);
-      const index1 = nodes.findIndex(node => node.id === node1.id);
-      const index2 = nodes.findIndex(node => node.id === node2.id);
-      return Math.abs(index1 - index2) === 1;
+      const nodes = way.nodes;
+      const id1 = node1.id;
+      const id2 = node2.id;
+      const len = nodes.length;
+
+      for (let i = 0; i < len; i++) {
+        if (nodes[i] === id1) {
+          if (i > 0 && nodes[i - 1] === id2) return true;
+          if (i < len - 1 && nodes[i + 1] === id2) return true;
+        }
+      }
+      return false;
     }
 
 

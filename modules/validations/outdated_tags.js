@@ -47,6 +47,67 @@ export function validationOutdatedTags(context) {
 
 
   /**
+   * _deprecatedTags
+   * Checks if the entity has deprecated tags.
+   * Moved from osmEntity.prototype (legacy TODO resolved).
+   * @param   {osmEntity} entity - entity to check
+   * @param   {Array}     dataDeprecated - deprecated tags list
+   * @return  {Array}     list of matching deprecated tag definitions
+   */
+  function _deprecatedTags(entity, dataDeprecated) {
+    const tags = entity.tags;
+
+    // if there are no tags, none can be deprecated
+    if (Object.keys(tags).length === 0) return [];
+
+    const results = [];
+    dataDeprecated.forEach(d => {
+      const oldKeys = Object.keys(d.old);
+      if (d.replace) {
+        const hasExistingValues = Object.keys(d.replace).some(replaceKey => {
+          if (!tags[replaceKey] || d.old[replaceKey]) return false;
+          const replaceValue = d.replace[replaceKey];
+          if (replaceValue === '*') return false;
+          if (replaceValue === tags[replaceKey]) return false;
+          return true;
+        });
+        // don't flag deprecated tags if the upgrade path would overwrite existing data - #7843
+        if (hasExistingValues) return;
+      }
+
+      const matchesDeprecatedTags = oldKeys.every(oldKey => {
+        if (!tags[oldKey]) return false;
+        if (d.old[oldKey] === '*') return true;
+        if (d.old[oldKey] === tags[oldKey]) return true;
+
+        const vals = tags[oldKey].split(';').filter(Boolean);
+        if (vals.length === 0) {
+          return false;
+        } else if (vals.length > 1) {
+          return vals.indexOf(d.old[oldKey]) !== -1;
+        } else {
+          if (tags[oldKey] === d.old[oldKey]) {
+            if (d.replace && d.old[oldKey] === d.replace[oldKey]) {
+              const replaceKeys = Object.keys(d.replace);
+              return !replaceKeys.every(replaceKey => tags[replaceKey] === d.replace[replaceKey]);
+            } else {
+              return true;
+            }
+          }
+        }
+        return false;
+      });
+
+      if (matchesDeprecatedTags) {
+        results.push(d);
+      }
+    });
+
+    return results;
+  }
+
+
+  /**
    * oldTagIssues
    */
   function oldTagIssues(entity, graph) {
@@ -92,7 +153,7 @@ export function validationOutdatedTags(context) {
 
     // Upgrade deprecated tags..
     if (_dataDeprecated) {
-      const deprecatedTags = entity.deprecatedTags(_dataDeprecated);
+      const deprecatedTags = _deprecatedTags(entity, _dataDeprecated);
       for (const tag of deprecatedTags) {
         graph = actionUpgradeTags(entity.id, tag.old, tag.replace)(graph);
         entity = graph.entity(entity.id);

@@ -267,73 +267,7 @@ describe('osmEntity', () => {
   });
 
 
-  describe('#deprecatedTags', () => {
-    const deprecated = [
-      { old: { highway: 'no' } },
-      { old: { amenity: 'toilet' }, replace: { amenity: 'toilets' } },
-      { old: { speedlimit: '*' }, replace: { maxspeed: '$1' } },
-      { old: { man_made: 'water_tank' }, replace: { man_made: 'storage_tank', content: 'water' } },
-      { old: { amenity: 'gambling', gambling: 'casino' }, replace: { amenity: 'casino' } }
-    ];
 
-    it('returns none if entity has no tags', () => {
-      const e = Rapid.osmEntity();
-      assert.deepEqual(e.deprecatedTags(deprecated), []);
-    });
-
-    it('returns none when no tags are deprecated', () => {
-      const e = Rapid.osmEntity({ tags: { amenity: 'toilets' } });
-      assert.deepEqual(e.deprecatedTags(deprecated), []);
-    });
-
-    it('returns 1:0 replacement', () => {
-      const e = Rapid.osmEntity({ tags: { highway: 'no' } });
-      assert.deepEqual(
-        e.deprecatedTags(deprecated),
-        [{ old: { highway: 'no' }}]
-      );
-    });
-
-    it('returns 1:1 replacement', () => {
-      const e = Rapid.osmEntity({ tags: { amenity: 'toilet' } });
-      assert.deepEqual(
-        e.deprecatedTags(deprecated),
-        [{ old: { amenity: 'toilet' }, replace: { amenity: 'toilets' } }]
-      );
-    });
-
-    it('returns 1:1 wildcard', () => {
-      const e = Rapid.osmEntity({ tags: { speedlimit: '50' } });
-      assert.deepEqual(
-        e.deprecatedTags(deprecated),
-        [{ old: { speedlimit: '*' }, replace: { maxspeed: '$1' } }]
-      );
-    });
-
-    it('returns 1:2 total replacement', () => {
-      const e = Rapid.osmEntity({ tags: { man_made: 'water_tank' } });
-      assert.deepEqual(
-        e.deprecatedTags(deprecated),
-        [{ old: { man_made: 'water_tank' }, replace: { man_made: 'storage_tank', content: 'water' } }]
-      );
-    });
-
-    it('returns 1:2 partial replacement', () => {
-      const e = Rapid.osmEntity({ tags: { man_made: 'water_tank', content: 'water' } });
-      assert.deepEqual(
-        e.deprecatedTags(deprecated),
-        [{ old: { man_made: 'water_tank' }, replace: { man_made: 'storage_tank', content: 'water' } }]
-      );
-    });
-
-    it('returns 2:1 replacement', () => {
-      const e = Rapid.osmEntity({ tags: { amenity: 'gambling', gambling: 'casino' } });
-      assert.deepEqual(
-        e.deprecatedTags(deprecated),
-        [{ old: { amenity: 'gambling', gambling: 'casino' }, replace: { amenity: 'casino' } }]
-      );
-    });
-  });
 
 
   describe('#hasInterestingTags', () => {

@@ -92,17 +92,74 @@ export function uiSectionValidationStatus(context) {
   }
 
 
-// todo: check this code, seems very inefficient
   function setNoIssuesText(selection) {
     let opts = getOptions();
 
+    const visibleExtent = context.viewport.visibleExtent();
+    const graph = context.systems.editor.staging.graph;
+    const disabledRuleIDs = validator._disabledRuleIDs;
+    const ignoredIssueIDs = validator._ignoredIssueIDs;
+
+    const editor = context.systems.editor;
+    const completeDiff = editor.difference().completeEntityIDs();
+    const completeDiffEmpty = !completeDiff.size;
+
+    function isIssueUserModified(issue) {
+      if (completeDiffEmpty) return false;
+      return (issue?.entityIds || []).some(entityID => completeDiff.has(entityID));
+    }
+
+    // Get all issues (including disabled and ignored) in one single call
+    const rawIssues = validator.getIssues({
+      what: 'all',
+      where: 'all',
+      includeDisabledRules: true,
+      includeIgnored: true
+    });
+
+    // Pre-evaluate heavy operations (like extent/visible checks) once per issue
+    const evaluatedIssues = rawIssues.map(issue => {
+      const isDisabled = disabledRuleIDs.has(issue.type);
+      const isIgnored = ignoredIssueIDs.has(issue.id);
+      const isUserModified = isIssueUserModified(issue);
+
+      let isVisible = false;
+      if (visibleExtent) {
+        const extent = issue.extent(graph);
+        isVisible = extent ? visibleExtent.intersects(extent) : false;
+      }
+
+      return {
+        issue,
+        isDisabled,
+        isIgnored,
+        isUserModified,
+        isVisible
+      };
+    });
+
     function checkForHiddenIssues(cases) {
       for (let type in cases) {
-        const hiddenOpts = cases[type];
-        const hiddenIssues = validator.getIssues(hiddenOpts);
-        if (hiddenIssues.length) {
+        const cond = cases[type];
+
+        // Fast scan over pre-evaluated issues
+        let count = 0;
+        for (const item of evaluatedIssues) {
+          if (cond.what === 'edited' && !item.isUserModified) continue;
+          if (cond.where === 'visible' && !item.isVisible) continue;
+
+          if (cond.includeDisabledRules === 'only' && !item.isDisabled) continue;
+          if (!cond.includeDisabledRules && item.isDisabled) continue;
+
+          if (cond.includeIgnored === 'only' && !item.isIgnored) continue;
+          if (!cond.includeIgnored && item.isIgnored) continue;
+
+          count++;
+        }
+
+        if (count > 0) {
           selection.select('.box .details')
-            .text(l10n.t('issues.no_issues.hidden_issues.' + type, { count: hiddenIssues.length.toString() } ));
+            .text(l10n.t('issues.no_issues.hidden_issues.' + type, { count: count.toString() } ));
           return;
         }
       }
