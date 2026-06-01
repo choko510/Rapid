@@ -5,7 +5,7 @@ import geojsonRewind from '@mapbox/geojson-rewind';
 import { PMTiles } from 'pmtiles';
 import stringify from 'fast-json-stable-stringify';
 import * as Polyclip from 'polyclip-ts';
-import Protobuf from 'pbf';
+import { PbfReader as Protobuf } from 'pbf';
 import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';

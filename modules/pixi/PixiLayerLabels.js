@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import RBush from 'rbush';
-import { HALF_PI, TAU, numWrap, vecAdd, vecAngle, vecScale, vecSubtract, geomRotatePoints } from '@rapid-sdk/math';
+import { HALF_PI, TAU, numWrap, vecAdd, vecAngle, vecScale, vecSubtract, geomRotate } from '@rapid-sdk/math';
 
 import { AbstractLayer } from './AbstractLayer.js';
 import { getLineSegments, /*getDebugBBox,*/ lineToPoly, normalizeRect } from './helpers.js';
@@ -855,9 +855,9 @@ this.placeRopeLabel(feature, labelObj, coords);
       // longer than the label needs to be, which can cause stretching of small labels.
       // Here we will scale the points down to the desired label width.
       coords = coords.map(coord => vecSubtract(coord, origin));  // to local coords
-      coords = geomRotatePoints(coords, -angle, [0,0]);          // rotate to x axis
+      coords = geomRotate(coords, -angle, [0,0]);          // rotate to x axis
       coords = coords.map(([x,y]) => [x * scaleX, y]);           // apply `scaleX`
-      coords = geomRotatePoints(coords, angle, [0,0]);           // rotate back
+      coords = geomRotate(coords, angle, [0,0]);           // rotate back
       coords = coords.map(coord => vecAdd(coord, origin));       // back to global coords
 
       const label = new Label(labelID, 'rope', {

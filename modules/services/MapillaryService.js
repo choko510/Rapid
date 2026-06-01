@@ -1,7 +1,7 @@
 import { select as d3_select } from 'd3-selection';
 import { Tiler, geoSphericalDistance, vecSubtract } from '@rapid-sdk/math';
 import { VectorTile } from '@mapbox/vector-tile';
-import Protobuf from 'pbf';
+import { PbfReader as Protobuf } from 'pbf';
 import RBush from 'rbush';
 
 import { AbstractSystem } from '../core/AbstractSystem.js';

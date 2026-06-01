@@ -1,5 +1,5 @@
 import { select as d3_select } from 'd3-selection';
-import { Extent, Tiler, geoMetersToLat, geoMetersToLon, geomRotatePoints, geomPointInPolygon, vecLength } from '@rapid-sdk/math';
+import { Extent, Tiler, geoMetersToLat, geoMetersToLon, geomRotate, geomPointInPolygon, vecLength } from '@rapid-sdk/math';
 import { utilQsString } from '@rapid-sdk/util';
 import RBush from 'rbush';
 
@@ -653,7 +653,7 @@ export class StreetsideService extends AbstractSystem {
 
     // rotate it to face forward/backward
     const angle = (stepBy === 1 ? ca : ca + 180) * (Math.PI / 180);
-    poly = geomRotatePoints(poly, -angle, origin);
+    poly = geomRotate(poly, -angle, origin);
 
     const extent = new Extent();
     for (const point of poly) {
