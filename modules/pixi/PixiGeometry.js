@@ -333,8 +333,10 @@ export class PixiGeometry {
         }
         this.ssr = ssr;
       } else if (this.hull) {    // recalculate and store as WGS84
-        this.ssr = geomGetSmallestSurroundingRectangle(this.hull);
-        if (this.ssr) {
+        const ssrResult = geomGetSmallestSurroundingRectangle(this.hull);
+        if (ssrResult) {
+          ssrResult.poly = ssrResult.polygon;  // normalize for internal use
+          this.ssr = ssrResult;
           this._projSsr = this.ssr;
           this.origSsr = { angle: this.ssr.angle, poly: new Array(this.ssr.poly.length) };
           for (let i = 0; i < this.ssr.poly.length; ++i) {

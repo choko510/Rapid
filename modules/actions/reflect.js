@@ -14,6 +14,7 @@ export function actionReflect(reflectIds, viewport) {
         var nodes = utilGetAllNodes(reflectIds, graph);
         var points = nodes.map(function(n) { return viewport.project(n.loc); });
         var ssr = geomGetSmallestSurroundingRectangle(points);
+        ssr.poly = ssr.polygon;  // normalize for internal use
 
         // Choose line pq = axis of symmetry.
         // The shape's surrounding rectangle has 2 axes of symmetry.

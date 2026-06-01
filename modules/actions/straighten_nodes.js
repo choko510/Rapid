@@ -11,6 +11,7 @@ export function actionStraightenNodes(nodeIDs, viewport) {
     // returns the endpoints of the long axis of symmetry of the `points` bounding rect
     function getEndpoints(points) {
         var ssr = geomGetSmallestSurroundingRectangle(points);
+        ssr.poly = ssr.polygon;  // normalize for internal use
 
         // Choose line pq = axis of symmetry.
         // The shape's surrounding rectangle has 2 axes of symmetry.
