@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import stringify from 'json-stringify-pretty-compact';
 import shell from 'shelljs';
 import JSON5 from 'json5';
-import YAML from 'js-yaml';
+import * as YAML from 'js-yaml';
 
 import { writeFileWithMeta } from './write_file_with_meta.js';
 import * as CLDR from './cldr.js';
