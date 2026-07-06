@@ -520,7 +520,7 @@ export class SelectBehavior extends AbstractBehavior {
     } else {                 // menu is off, toggle it on
       // Only attempt to display the context menu if we're focused on a non-Rapid OSM Entity.
       this._showsMenu = true;
-      ui.showEditMenu(eventData.coord.map);
+      ui.showEditMenu(eventData.coord.screen);
     }
   }
 
