@@ -98,7 +98,7 @@ export class AbstractLayer {
    * @param  {number}    zoom     - Effective zoom to use for rendering
    * @abstract
    */
-  render() {
+  render(frame, viewport, zoom, reasons) {
   }
 
 

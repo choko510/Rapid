@@ -47,6 +47,8 @@ export class VectorTileService extends AbstractSystem {
     this._nextID = 0;
     this._maxSourceLoadedTiles = 240;
     this._maxSourceZoomCaches = 4;
+    this._taskQueue = [];
+    this._idleCallbackId = null;
   }
 
 
@@ -77,6 +79,12 @@ export class VectorTileService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed resetting
    */
   resetAsync() {
+    if (this._idleCallbackId) {
+      window.cancelIdleCallback(this._idleCallbackId);
+      this._idleCallbackId = null;
+    }
+    this._taskQueue = [];
+
     for (const source of this._sources.values()) {
       for (const controller of source.inflight.values()) {
         controller.abort();
@@ -158,8 +166,16 @@ export class VectorTileService extends AbstractSystem {
    * @param   {string}  template - template to load tiles for
    */
   loadTiles(template) {
-    this._getSourceAsync(template)
+    const viewport = this.context.viewport;
+    const currentV = viewport.v;
+
+    return this._getSourceAsync(template)
       .then(source => {
+        if (source.lastv === currentV) {
+          return source.activeLoadPromise || Promise.resolve();
+        }
+        source.lastv = currentV;
+
         const header = source.header;
         if (header) {  // pmtiles - set up allowable zoom range
           this._tiler.zoomRange(header.minZoom, header.maxZoom);
@@ -167,10 +183,6 @@ export class VectorTileService extends AbstractSystem {
             throw new Error(`Unsupported tileType ${header.tileType}. Only Type 1 (MVT) is supported`);
           }
         }
-
-        const viewport = this.context.viewport;
-        if (source.lastv === viewport.v) return;  // exit early if the view is unchanged
-        source.lastv = viewport.v;
 
         // Determine the tiles needed to cover the view..
         const tiles = this._tiler.getTiles(viewport).tiles;
@@ -180,6 +192,7 @@ export class VectorTileService extends AbstractSystem {
         for (const [tileID, controller] of source.inflight) {
           if (!neededTileIDs.has(tileID)) {
             controller.abort();
+            this.context.systems.gfx?.recordTileAbort();
           }
         }
 
@@ -191,9 +204,19 @@ export class VectorTileService extends AbstractSystem {
 
         // Issue new requests..
         const fetches = tiles.map(tile => this._loadTileAsync(source, tile));
-        return Promise.all(fetches)
-          .then(() => this._processMergeQueue(source))
-          .then(() => this._evictSourceCache(source, neededTileIDs, tiles));
+        
+        source.activeLoadPromise = Promise.all(fetches)
+          .then(() => {
+            this._enqueueTask({ type: 'merge', source });
+          })
+          .then(() => this._evictSourceCache(source, neededTileIDs, tiles))
+          .finally(() => {
+            if (source.lastv === currentV) {
+              source.activeLoadPromise = null;
+            }
+          });
+
+        return source.activeLoadPromise;
       });
   }
 
@@ -320,8 +343,14 @@ export class VectorTileService extends AbstractSystem {
 
     return _fetch
       .then(buffer => {
-        utilLRUMapSet(source.loaded, tileID, tile);
-        this._parseTileBuffer(source, tile, buffer);
+        const currentViewport = this.context.viewport;
+        const currentTiles = this._tiler.getTiles(currentViewport).tiles;
+        const currentTileIDs = new Set(currentTiles.map(t => t.id));
+
+        if (currentTileIDs.has(tileID)) {
+          utilLRUMapSet(source.loaded, tileID, tile);
+          this._parseTileBuffer(source, tile, buffer);
+        }
       })
       .catch(err => {
         if (err.name === 'AbortError') {
@@ -513,10 +542,55 @@ export class VectorTileService extends AbstractSystem {
     }
 
     if (newFeatures.length) {
-      this._cacheFeatures(cache, newFeatures);
-      this._insertLineIntersections(cache, newFeatures);
-      const gfx = this.context.systems.gfx;
-      gfx.deferredRedraw();
+      this._enqueueTask({ type: 'cache', cache, features: newFeatures });
+      this._enqueueTask({ type: 'intersections', cache, features: newFeatures });
+    }
+  }
+
+
+  _enqueueTask(task) {
+    task.viewportV = this.context.viewport.v;
+    this._taskQueue.push(task);
+    if (!this._idleCallbackId) {
+      this._idleCallbackId = window.requestIdleCallback(deadline => this._processTasks(deadline));
+    }
+  }
+
+
+  _processTasks(deadline) {
+    const gfx = this.context.systems.gfx;
+    const currentV = this.context.viewport.v;
+    const start = performance.now();
+
+    while (this._taskQueue.length > 0 && (deadline.timeRemaining() > 1 || performance.now() - start < 10)) {
+      const task = this._taskQueue.shift();
+
+      if (task.viewportV !== currentV) {
+        continue;
+      }
+
+      if (task.type === 'cache') {
+        const t0 = performance.now();
+        this._cacheFeatures(task.cache, task.features);
+        gfx?.recordParserWait(performance.now() - t0);
+        gfx?.deferredRedraw();
+      } else if (task.type === 'intersections') {
+        const t0 = performance.now();
+        this._insertLineIntersections(task.cache, task.features);
+        gfx?.recordParserWait(performance.now() - t0);
+        gfx?.deferredRedraw();
+      } else if (task.type === 'merge') {
+        const t0 = performance.now();
+        this._processMergeQueue(task.source);
+        gfx?.recordParserWait(performance.now() - t0);
+        gfx?.deferredRedraw();
+      }
+    }
+
+    if (this._taskQueue.length > 0) {
+      this._idleCallbackId = window.requestIdleCallback(deadline => this._processTasks(deadline));
+    } else {
+      this._idleCallbackId = null;
       this.emit('loadedData');
     }
   }

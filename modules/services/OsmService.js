@@ -1053,10 +1053,11 @@ export class OsmService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.zoomRange(this._tileZoom).getTiles(viewport).tiles;
+    const visibleTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed..
     const hadRequests = this._hasInflightRequests(cache);
-    this._abortUnwantedRequests(cache, tiles);
+    this._abortUnwantedRequests(cache, visibleTileIDs);
     if (hadRequests && !this._hasInflightRequests(cache)) {
       this.emit('loaded');    // stop the spinner
     }
@@ -1164,12 +1165,17 @@ export class OsmService extends AbstractSystem {
 
     const gotTile = (err, results) => {
       delete cache.inflight[tile.id];
+      const currentTiles = this._tiler.zoomRange(this._tileZoom).getTiles(this.context.viewport).tiles;
+      const currentTileIDs = new Set(currentTiles.map(t => t.id));
+
       if (!err) {
         cache.toLoad.delete(tile.id);
-        utilLRUSetAdd(cache.loaded, tile.id);
-        const bbox = tile.wgs84Extent.bbox();
-        bbox.id = tile.id;
-        cache.rbush.insert(bbox);
+        if (currentTileIDs.has(tile.id)) {
+          utilLRUSetAdd(cache.loaded, tile.id);
+          const bbox = tile.wgs84Extent.bbox();
+          bbox.id = tile.id;
+          cache.rbush.insert(bbox);
+        }
       }
       if (callback) {
         callback(err, Object.assign({}, results, { tile: tile }));
@@ -1236,9 +1242,10 @@ export class OsmService extends AbstractSystem {
 
     // Determine the tiles needed to cover the view..
     const tiles = this._tiler.zoomRange(this._noteZoom).getTiles(viewport).tiles;
+    const visibleTileIDs = new Set(tiles.map(tile => tile.id));
 
     // Abort inflight requests that are no longer needed
-    this._abortUnwantedRequests(cache, tiles);
+    this._abortUnwantedRequests(cache, visibleTileIDs);
 
     // Issue new requests..
     for (const tile of tiles) {
@@ -1656,10 +1663,10 @@ export class OsmService extends AbstractSystem {
   }
 
 
-  _abortUnwantedRequests(cache, visibleTiles) {
+  _abortUnwantedRequests(cache, visibleTileIDs) {
     for (const k of Object.keys(cache.inflight)) {
       if (cache.toLoad.has(k)) continue;
-      if (visibleTiles.find(tile => tile.id === k)) continue;
+      if (visibleTileIDs.has(k)) continue;
 
       this.context.systems.gfx?.recordTileAbort();
       this._abortRequest(cache.inflight[k]);

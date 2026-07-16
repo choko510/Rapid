@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import geojsonRewind from '@mapbox/geojson-rewind';
-import { vecAngle } from '@rapid-sdk/math';
+import { vecAngle, Extent } from '@rapid-sdk/math';
 
 import { AbstractLayer } from './AbstractLayer.js';
 import { PixiFeatureLine } from './PixiFeatureLine.js';
@@ -45,6 +45,7 @@ export class PixiLayerOsm extends AbstractLayer {
     };
     this._scratchMidpoints = new Map();
     this._midpointStyle = { markerName: 'midpoint' };
+    this.invalidateCache();
   }
 
 
@@ -116,6 +117,7 @@ export class PixiLayerOsm extends AbstractLayer {
    */
   reset() {
     super.reset();
+    this.invalidateCache();
 
     this._resolved.clear();  // cached geojson features
     this._renderData.polygons.clear();
@@ -154,6 +156,30 @@ export class PixiLayerOsm extends AbstractLayer {
   }
 
 
+  dirtyLayer() {
+    super.dirtyLayer();
+    this.invalidateCache();
+  }
+
+
+  dirtyData(dataIDs) {
+    super.dirtyData(dataIDs);
+    this.invalidateCache();
+  }
+
+
+  invalidateCache() {
+    this._cache = {
+      viewportExtent: null,
+      zoom: null,
+      entities: [],
+      data: null,
+      filtersHash: '',
+      editorStagingHash: ''
+    };
+  }
+
+
   /**
    * render
    * Render any data we have, and schedule fetching more of it to cover the view
@@ -161,7 +187,7 @@ export class PixiLayerOsm extends AbstractLayer {
    * @param  viewport   Pixi viewport to use for rendering
    * @param  zoom       Effective zoom to use for rendering
    */
-  render(frame, viewport, zoom) {
+  render(frame, viewport, zoom, reasons = new Set(['data'])) {
     const context = this.context;
     const osm = context.services.osm;
     if (!this.enabled || !osm?.started || zoom < MINZOOM) return;
@@ -172,26 +198,65 @@ export class PixiLayerOsm extends AbstractLayer {
 
     context.loadTiles();  // Load tiles of OSM data to cover the view
 
-    let entities = editor.intersects(context.viewport.visibleExtent());   // Gather data in view
-    entities = filters.filterScene(entities, graph);   // Apply feature filters
+    const visibleExtent = context.viewport.visibleExtent();
+    const currentZoom = Math.floor(zoom);
+    const filtersHash = filters.filterSceneHash || '';
+    const stagingHash = editor.staging.version || '';
 
-    const data = this._renderData;
-    data.polygons.clear();
-    data.lines.clear();
-    data.points.clear();
-    data.vertices.clear();
+    let useCache = false;
+    if (this._cache &&
+        this._cache.viewportExtent &&
+        this._cache.viewportExtent.contains(visibleExtent) &&
+        this._cache.zoom === currentZoom &&
+        this._cache.filtersHash === filtersHash &&
+        this._cache.editorStagingHash === stagingHash &&
+        reasons.has('transform') && !reasons.has('data')) {
+      useCache = true;
+    }
 
-    for (const entity of entities) {
-      const geom = entity.geometry(graph);
-      if (geom === 'point') {
-        data.points.set(entity.id, entity);
-      } else if (geom === 'vertex') {
-        data.vertices.set(entity.id, entity);
-      } else if (geom === 'line') {
-        data.lines.set(entity.id, entity);
-      } else if (geom === 'area') {
-        data.polygons.set(entity.id, entity);
+    let data;
+    if (useCache) {
+      data = this._cache.data;
+    } else {
+      // Create padding extent (e.g. 50% larger than visible extent)
+      const w = visibleExtent.max[0] - visibleExtent.min[0];
+      const h = visibleExtent.max[1] - visibleExtent.min[1];
+      const queryExtent = new Extent(
+        [visibleExtent.min[0] - w * 0.5, visibleExtent.min[1] - h * 0.5],
+        [visibleExtent.max[0] + w * 0.5, visibleExtent.max[1] + h * 0.5]
+      );
+
+      let entities = editor.intersects(queryExtent);   // Gather data in view
+      entities = filters.filterScene(entities, graph);   // Apply feature filters
+
+      data = {
+        polygons: new Map(),
+        lines: new Map(),
+        points: new Map(),
+        vertices: new Map()
+      };
+
+      for (const entity of entities) {
+        const geom = entity.geometry(graph);
+        if (geom === 'point') {
+          data.points.set(entity.id, entity);
+        } else if (geom === 'vertex') {
+          data.vertices.set(entity.id, entity);
+        } else if (geom === 'line') {
+          data.lines.set(entity.id, entity);
+        } else if (geom === 'area') {
+          data.polygons.set(entity.id, entity);
+        }
       }
+
+      this._cache = {
+        viewportExtent: queryExtent,
+        zoom: currentZoom,
+        entities: entities,
+        data: data,
+        filtersHash: filtersHash,
+        editorStagingHash: stagingHash
+      };
     }
 
     const allowPointFeatures = zoom >= 16;

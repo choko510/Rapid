@@ -90,6 +90,7 @@ export class GraphicsSystem extends AbstractSystem {
     this._timeToNextRender = 0;   // milliseconds of time to defer rendering
     this._appPending = false;
     this._drawPending = false;
+    this._redrawReasons = new Set();
     this._initPromise = null;
     this._startPromise = null;
 
@@ -311,13 +312,20 @@ export class GraphicsSystem extends AbstractSystem {
         return;
 
       } else {  // render now
+        const reasons = new Set(this._redrawReasons);
+        if (reasons.size === 0) {
+          reasons.add('data');
+        }
+        this._redrawReasons.clear();
+        this._currentRedrawReasons = reasons;
+
         if (perfDebug) {
           const frame = this._frame;
           const appStart = `app-${frame}-start`;
           const appEnd = `app-${frame}-end`;
           window.performance.mark(appStart);
 
-          this._app();
+          this._app(reasons);
 
           window.performance.mark(appEnd);
           window.performance.measure(`app-${frame}`, appStart, appEnd);
@@ -329,7 +337,7 @@ export class GraphicsSystem extends AbstractSystem {
           window.performance.clearMarks(appEnd);
           window.performance.clearMeasures(`app-${frame}`);
         } else {
-          this._app();
+          this._app(reasons);
         }
         return;
       }
@@ -342,7 +350,8 @@ export class GraphicsSystem extends AbstractSystem {
    * Schedules an APP pass but does not reset the timer.
    * This is for situations where new data is available, but we can wait a bit to show it.
    */
-  deferredRedraw() {
+  deferredRedraw(reason = 'data') {
+    this._redrawReasons.add(reason);
     this._appPending = true;
   }
 
@@ -353,8 +362,9 @@ export class GraphicsSystem extends AbstractSystem {
    * If there was a DRAW pending, cancel it.
    * This is for situations where we want the user to see the update immediately.
    */
-  immediateRedraw() {
+  immediateRedraw(reason = 'data') {
     this._timeToNextRender = 0;    // asap
+    this._redrawReasons.add(reason);
     this._appPending = true;
   }
 
@@ -412,7 +422,15 @@ export class GraphicsSystem extends AbstractSystem {
       promise = Promise.resolve(t);
     }
 
-    this._appPending = true;
+    const isZoomChanged = (t.k !== tCurr.k);
+    const isRotationChanged = (t.r !== tCurr.r);
+    let reason = 'transform';
+    if (isZoomChanged) {
+      reason = 'data';
+    } else if (isRotationChanged) {
+      reason = 'style';
+    }
+    this.deferredRedraw(reason);
     return promise;
   }
 
@@ -463,7 +481,15 @@ export class GraphicsSystem extends AbstractSystem {
         resolve(tNow);
         this._transformEase = null;
       }
-      this._appPending = true;  // needs occasional renders during/after easing
+      const isZoomChanged = (xform1.k !== xform0.k);
+      const isRotationChanged = (xform1.r !== xform0.r);
+      let reason = 'transform';
+      if (isZoomChanged) {
+        reason = 'data';
+      } else if (isRotationChanged) {
+        reason = 'style';
+      }
+      this.deferredRedraw(reason);
     }
 
     // Determine if the dimensions have changed.
@@ -486,8 +512,7 @@ export class GraphicsSystem extends AbstractSystem {
           mapViewport.transform = { x: t.x + dw, y: t.y + dh, k: t.k, r: t.r };
         }
 
-        this._appPending = true;
-        this._timeToNextRender = 0;    // asap
+        this.immediateRedraw('resize');
 
         // Return here and don't touch the temp transform anymore.
         // We are about to do APP then DRAW and will throw it out.
@@ -532,7 +557,7 @@ export class GraphicsSystem extends AbstractSystem {
    * The "Rapid" part of the drawing.
    * Where we set up the scene graph and tell Pixi what needs to be drawn.
    */
-  _app() {
+  _app(reasons = new Set(['data'])) {
     // Wait for textures to be loaded before attempting rendering.
     if (!this.textures?.loaded) return;
     if (!this._started || this._paused) return;
@@ -559,17 +584,21 @@ export class GraphicsSystem extends AbstractSystem {
     const dist = vecLength(pixiXY, mapXY);
     let offset;
 
-    if (pixiTransform.k !== mapTransform.k || dist > 100000) {
+    const isZoomChanged = (pixiTransform.k !== mapTransform.k);
+    const isRotationChanged = (pixiTransform.r !== mapTransform.r);
+
+    if (isZoomChanged || dist > 100000) {
       offset = [0,0];
       pixiViewport.transform = mapTransform;   // reset (sync pixi = map)
       this.scene.dirtyScene();                 // all geometry must be reprojected
+      reasons.add('data');
     } else {
       offset = vecSubtract(pixiXY, mapXY);
     }
 
-    if (pixiTransform.r !== mapTransform.r) {
+    if (isRotationChanged) {
       pixiTransform.rotation = mapTransform.r;
-      this.scene.dirtyScene();               // only really needs restyle
+      reasons.add('style');                    // rotation requires style/label update
     }
 
     // The `stage` should be positioned so that `[0,0]` is at the center of the viewport,
@@ -586,7 +615,7 @@ export class GraphicsSystem extends AbstractSystem {
 
     // Let's go!
     const effectiveZoom = map.effectiveZoom();
-    this.scene.render(this._frame, pixiViewport, effectiveZoom);
+    this.scene.render(this._frame, pixiViewport, effectiveZoom, reasons);
     // this._renderDebug();
 
     this._appPending = false;
@@ -630,7 +659,10 @@ export class GraphicsSystem extends AbstractSystem {
 //    });
 
     // Remove any temporary parent transform..
-    if (this._isTempTransformed) {
+    const reasons = this._currentRedrawReasons ?? new Set(['data']);
+    const shouldClearTempTransform = reasons.has('data') || reasons.has('resize');
+
+    if (this._isTempTransformed && shouldClearTempTransform) {
       utilSetTransform(this.supersurface, 0, 0, 1, 0);
       utilSetTransform(this.overlay, 0, 0, 1, 0);
       this._isTempTransformed = false;
