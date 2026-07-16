@@ -319,6 +319,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
 
   loadTile(tile, textureManager) {
+    this.gfx.recordTileReq();
     const image = new Image();
     image.crossOrigin = 'anonymous';
     tile.image = image;
@@ -411,6 +412,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     if (tile.sprite) {
       if (tile.loaded) {
         textureManager.free('tile', tile.sprite.label);
+      } else if (tile.image) {
+        this.gfx.recordTileAbort();
       }
       tile.sprite.destroy({ texture: true, textureSource: false });
     }

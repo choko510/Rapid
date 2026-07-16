@@ -1141,7 +1141,13 @@ export class OsmService extends AbstractSystem {
     if (this._paused || this.getRateLimit()) return;
 
     const cache = this._tileCache;
-    if (cache.loaded.has(tile.id) || cache.inflight[tile.id]) return;
+    const gfx = this.context.systems.gfx;
+    if (cache.loaded.has(tile.id) || cache.inflight[tile.id]) {
+      if (cache.loaded.has(tile.id)) {
+        gfx?.recordTileHit();
+      }
+      return;
+    }
 
     // Exit if this tile covers a blocked region (all corners are blocked)
     const locations = this.context.systems.locations;
@@ -1176,6 +1182,7 @@ export class OsmService extends AbstractSystem {
     const path = '/api/0.6/map.json?bbox=';
     const options = { skipSeen: true };
 
+    gfx?.recordTileReq();
     cache.inflight[tile.id] = this.loadFromAPI(
       path + tile.wgs84Extent.toParam(),
       gotTile,
@@ -1654,6 +1661,7 @@ export class OsmService extends AbstractSystem {
       if (cache.toLoad.has(k)) continue;
       if (visibleTiles.find(tile => tile.id === k)) continue;
 
+      this.context.systems.gfx?.recordTileAbort();
       this._abortRequest(cache.inflight[k]);
       delete cache.inflight[k];
     }

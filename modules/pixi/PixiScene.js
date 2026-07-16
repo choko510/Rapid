@@ -160,9 +160,26 @@ export class PixiScene extends EventEmitter {
    * @param  zoom       Effective zoom to use for rendering
    */
   render(frame, viewport, zoom) {
+    const perfDebug = this.context.getDebug('perf');
     for (const layer of this.layers.values()) {
-      layer.render(frame, viewport, zoom);
-      layer.cull(frame);
+      if (perfDebug) {
+        const t0 = performance.now();
+        layer.render(frame, viewport, zoom);
+        const t1 = performance.now();
+        layer.cull(frame);
+        const t2 = performance.now();
+
+        let layerMetric = this.gfx.performanceMetrics.layers[layer.id];
+        if (!layerMetric) {
+          layerMetric = { renderTimes: [], cullTimes: [] };
+          this.gfx.performanceMetrics.layers[layer.id] = layerMetric;
+        }
+        layerMetric.renderTimes.push(t1 - t0);
+        layerMetric.cullTimes.push(t2 - t1);
+      } else {
+        layer.render(frame, viewport, zoom);
+        layer.cull(frame);
+      }
     }
   }
 

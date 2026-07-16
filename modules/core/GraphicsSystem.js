@@ -59,6 +59,27 @@ export class GraphicsSystem extends AbstractSystem {
     this.events = null;
     this.textures = null;
 
+    // Performance metrics
+    this.performanceMetrics = {
+      appTimes: [],
+      drawTimes: [],
+      layers: {},
+      tileRequests: 0,
+      tileCacheHits: 0,
+      tileAborts: 0,
+      parserWaitTimes: []
+    };
+    this.performanceMetrics.reset = () => {
+      this.performanceMetrics.appTimes = [];
+      this.performanceMetrics.drawTimes = [];
+      this.performanceMetrics.layers = {};
+      this.performanceMetrics.tileRequests = 0;
+      this.performanceMetrics.tileCacheHits = 0;
+      this.performanceMetrics.tileAborts = 0;
+      this.performanceMetrics.parserWaitTimes = [];
+    };
+    window.rapidPerformanceMetrics = this.performanceMetrics;
+
     // Properties used to manage the scene transform
     this._pixiViewport = null;
     this._prevTransform = { x: 0, y: 0, k: 256 / Math.PI, r: 0 };    // transform at time of last draw
@@ -263,9 +284,13 @@ export class GraphicsSystem extends AbstractSystem {
 
         window.performance.mark(drawEnd);
         window.performance.measure(`draw-${frame}`, drawStart, drawEnd);
-        // const measureDraw = window.performance.getEntriesByName(`draw-${frame}`, 'measure')[0];
-        // const durationDraw = measureDraw.duration.toFixed(1);
-        // console.log(`draw-${frame} : ${durationDraw} ms`);
+        const measureDraw = window.performance.getEntriesByName(`draw-${frame}`, 'measure')[0];
+        if (measureDraw) {
+          this.performanceMetrics.drawTimes.push(measureDraw.duration);
+        }
+        window.performance.clearMarks(drawStart);
+        window.performance.clearMarks(drawEnd);
+        window.performance.clearMeasures(`draw-${frame}`);
       } else {
         this._draw();  // note that DRAW increments the frame counter
       }
@@ -296,9 +321,13 @@ export class GraphicsSystem extends AbstractSystem {
 
           window.performance.mark(appEnd);
           window.performance.measure(`app-${frame}`, appStart, appEnd);
-          // const measureApp = window.performance.getEntriesByName(`app-${frame}`, 'measure')[0];
-          // const durationApp = measureApp.duration.toFixed(1);
-          // console.log(`app-${frame} : ${durationApp} ms`);
+          const measureApp = window.performance.getEntriesByName(`app-${frame}`, 'measure')[0];
+          if (measureApp) {
+            this.performanceMetrics.appTimes.push(measureApp.duration);
+          }
+          window.performance.clearMarks(appStart);
+          window.performance.clearMarks(appEnd);
+          window.performance.clearMeasures(`app-${frame}`);
         } else {
           this._app();
         }
@@ -327,6 +356,20 @@ export class GraphicsSystem extends AbstractSystem {
   immediateRedraw() {
     this._timeToNextRender = 0;    // asap
     this._appPending = true;
+  }
+
+
+  recordTileReq() {
+    if (this.context.getDebug('perf')) this.performanceMetrics.tileRequests++;
+  }
+  recordTileHit() {
+    if (this.context.getDebug('perf')) this.performanceMetrics.tileCacheHits++;
+  }
+  recordTileAbort() {
+    if (this.context.getDebug('perf')) this.performanceMetrics.tileAborts++;
+  }
+  recordParserWait(ms) {
+    if (this.context.getDebug('perf')) this.performanceMetrics.parserWaitTimes.push(ms);
   }
 
 

@@ -282,13 +282,21 @@ export class VectorTileService extends AbstractSystem {
    */
   _loadTileAsync(source, tile) {
     const tileID = tile.id;
-    if (source.loaded.has(tileID) || source.inflight.has(tileID)) return;
+    const gfx = this.context.systems.gfx;
+    if (source.loaded.has(tileID) || source.inflight.has(tileID)) {
+      if (source.loaded.has(tileID)) {
+        gfx?.recordTileHit();
+      }
+      return;
+    }
 
     const controller = new AbortController();
     source.inflight.set(tileID, controller);
 
     const [x, y, z] = tile.xyz;
     let _fetch;
+
+    gfx?.recordTileReq();
 
     if (source.pmtiles) {
       _fetch = source.pmtiles
@@ -316,7 +324,10 @@ export class VectorTileService extends AbstractSystem {
         this._parseTileBuffer(source, tile, buffer);
       })
       .catch(err => {
-        if (err.name === 'AbortError') return;          // ok
+        if (err.name === 'AbortError') {
+          gfx?.recordTileAbort();
+          return;          // ok
+        }
         if (err instanceof Error) console.error(err);   // eslint-disable-line no-console
       })
       .finally(() => {

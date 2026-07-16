@@ -212,6 +212,63 @@ function setup(dataBlob) {
 //     console.log(benchmark.toString());
 // }
 
+async function runPanningScenario() {
+  const startT = viewport.transform.props;
+  for (let i = 0; i < 10; i++) {
+    const t = { x: startT.x + i * 20, y: startT.y + i * 20, k: startT.k, r: startT.r };
+    context.systems.gfx.setTransformAsync(t, 0);
+    context.systems.gfx._tick();
+    await waitForAnimationFrame();
+  }
+}
+
+async function runReversePanningScenario() {
+  const startT = viewport.transform.props;
+  let t = { x: startT.x + 50, y: startT.y + 50, k: startT.k, r: startT.r };
+  context.systems.gfx.setTransformAsync(t, 0);
+  context.systems.gfx._tick();
+  await waitForAnimationFrame();
+
+  t = { x: startT.x + 100, y: startT.y + 100, k: startT.k, r: startT.r };
+  context.systems.gfx.setTransformAsync(t, 0);
+  context.systems.gfx._tick();
+  await waitForAnimationFrame();
+
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  t = { x: startT.x + 50, y: startT.y + 50, k: startT.k, r: startT.r };
+  context.systems.gfx.setTransformAsync(t, 0);
+  context.systems.gfx._tick();
+  await waitForAnimationFrame();
+}
+
+async function runZoomScenario() {
+  const startT = viewport.transform.props;
+  let t = { x: startT.x, y: startT.y, k: startT.k * 1.5, r: startT.r };
+  context.systems.gfx.setTransformAsync(t, 0);
+  context.systems.gfx._tick();
+  await waitForAnimationFrame();
+
+  t = { x: startT.x, y: startT.y, k: startT.k / 1.5, r: startT.r };
+  context.systems.gfx.setTransformAsync(t, 0);
+  context.systems.gfx._tick();
+  await waitForAnimationFrame();
+}
+
+async function runVectorTileScenario() {
+  const vectortile = context.services.vectortile;
+  if (vectortile) {
+    const template = 'https://tile.example.com/{z}/{x}/{y}.mvt';
+    const startT = viewport.transform.props;
+    for (let i = 0; i < 5; i++) {
+      const t = { x: startT.x + i * 100, y: startT.y + i * 100, k: startT.k, r: startT.r };
+      context.viewport.transform = t;
+      vectortile.loadTiles(template);
+      await waitForAnimationFrame();
+    }
+  }
+}
+
 function complete(event) {
   const benchmark = event.target;
   const hz = Number(benchmark.hz.toFixed(benchmark.hz < 100 ? 2 : 0));
@@ -267,6 +324,62 @@ suite.add({
   // 'onCycle': event => cycle(event),
   'onComplete': event => complete(event),
 });
+suite.add({
+  'name': 'Warm Cache Continuous Panning Scenario',
+  'defer': true,
+  'fn': async function(deferred) {
+    await runPanningScenario();
+    deferred.resolve();
+  },
+  'onStart': () => {
+    setup(globalThis.tokyo_19);
+    context.setDebug('perf', true);
+    window.rapidPerformanceMetrics?.reset();
+  },
+  'onComplete': event => complete(event)
+});
+suite.add({
+  'name': 'Reverse Panning Scenario under Slow Network',
+  'defer': true,
+  'fn': async function(deferred) {
+    await runReversePanningScenario();
+    deferred.resolve();
+  },
+  'onStart': () => {
+    setup(globalThis.tokyo_19);
+    context.setDebug('perf', true);
+    window.rapidPerformanceMetrics?.reset();
+  },
+  'onComplete': event => complete(event)
+});
+suite.add({
+  'name': 'Zoom In and Out Scenario',
+  'defer': true,
+  'fn': async function(deferred) {
+    await runZoomScenario();
+    deferred.resolve();
+  },
+  'onStart': () => {
+    setup(globalThis.tokyo_19);
+    context.setDebug('perf', true);
+    window.rapidPerformanceMetrics?.reset();
+  },
+  'onComplete': event => complete(event)
+});
+suite.add({
+  'name': 'Vector Tiles Arrival Scenario',
+  'defer': true,
+  'fn': async function(deferred) {
+    await runVectorTileScenario();
+    deferred.resolve();
+  },
+  'onStart': () => {
+    setup(globalThis.tokyo_19);
+    context.setDebug('perf', true);
+    window.rapidPerformanceMetrics?.reset();
+  },
+  'onComplete': event => complete(event)
+});
 
 suite.on('error', event => {
   const error = event?.target?.error || new Error('Unknown benchmark error');
@@ -281,6 +394,7 @@ suite.on('complete', () => {
   }
   captureHeapSnapshot('suite_complete');
 
+  const pm = window.rapidPerformanceMetrics;
   const perfBaseline = {
     startup: startupMetrics,
     cpuProxy: {
@@ -289,7 +403,16 @@ suite.on('complete', () => {
         ...longTaskMetrics,
         totalDurationMs: roundMetric(longTaskMetrics.totalDurationMs),
         maxDurationMs: roundMetric(longTaskMetrics.maxDurationMs)
-      }
+      },
+      gfxPerformance: pm ? {
+        appTimes: pm.appTimes,
+        drawTimes: pm.drawTimes,
+        layers: pm.layers,
+        tileRequests: pm.tileRequests,
+        tileCacheHits: pm.tileCacheHits,
+        tileAborts: pm.tileAborts,
+        parserWaitTimes: pm.parserWaitTimes
+      } : null
     },
     memoryProxy: {
       supported: heapSnapshots.length > 0,
