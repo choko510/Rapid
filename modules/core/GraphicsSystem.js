@@ -67,7 +67,8 @@ export class GraphicsSystem extends AbstractSystem {
       tileRequests: 0,
       tileCacheHits: 0,
       tileAborts: 0,
-      parserWaitTimes: []
+      parserWaitTimes: [],
+      memory: null
     };
     this.performanceMetrics.reset = () => {
       this.performanceMetrics.appTimes = [];
@@ -77,6 +78,12 @@ export class GraphicsSystem extends AbstractSystem {
       this.performanceMetrics.tileCacheHits = 0;
       this.performanceMetrics.tileAborts = 0;
       this.performanceMetrics.parserWaitTimes = [];
+      this.performanceMetrics.memory = null;
+    };
+
+    this._memoryTelemetry = {
+      getStats: () => this._getMemoryStats(),
+      evict: () => 0
     };
     window.rapidPerformanceMetrics = this.performanceMetrics;
 
@@ -186,6 +193,8 @@ export class GraphicsSystem extends AbstractSystem {
       assets.initAsync(),
       urlhash.initAsync()
     ]);
+
+    this.context.systems.memory?.register('graphics', this._memoryTelemetry, 0);
 
     return this._initPromise = prerequisites
       .then(() => this._initPixiAsync())
@@ -366,6 +375,22 @@ export class GraphicsSystem extends AbstractSystem {
     this._timeToNextRender = 0;    // asap
     this._redrawReasons.add(reason);
     this._appPending = true;
+  }
+
+
+  _getMemoryStats() {
+    const memory = this.context.systems.memory;
+    const stats = memory ? memory.stats('graphics') : {};
+    this.performanceMetrics.memory = {
+      providers: Object.keys(stats).length,
+      stats,
+      heap: window.performance.memory ? {
+        usedJSHeapSize: window.performance.memory.usedJSHeapSize,
+        totalJSHeapSize: window.performance.memory.totalJSHeapSize,
+        jsHeapSizeLimit: window.performance.memory.jsHeapSizeLimit
+      } : null
+    };
+    return this.performanceMetrics.memory;
   }
 
 

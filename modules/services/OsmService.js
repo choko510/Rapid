@@ -94,6 +94,11 @@ export class OsmService extends AbstractSystem {
       this.loadUsers(uids, () => {});  // eagerly load user details
     }, 750);
 
+    this._memoryManager = {
+      getStats: () => this.getMemoryStats(),
+      evict: options => this.evictMemory(options)
+    };
+
     // Calculate the deafult OAuth2 `redirect_uri`.
     // - `redirect_uri` should be a page that the authorizing server (e.g. `openstreetmap.org`)
     //   can redirect the user back to as the final step in the OAuth2 handshake.
@@ -156,6 +161,7 @@ export class OsmService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed initialization
    */
   initAsync() {
+    this.context.systems.memory?.register('osm', this._memoryManager, 2);
     return this.resetAsync();
   }
 
@@ -1678,6 +1684,7 @@ export class OsmService extends AbstractSystem {
   _trimTileCache(visibleTiles) {
     const cache = this._tileCache;
     const visibleIDs = new Set(visibleTiles.map(tile => tile.id));
+    let removed = 0;
 
     // Touch visible tiles so frequently used ones stay in cache longer.
     for (const tileID of visibleIDs) {
@@ -1693,7 +1700,7 @@ export class OsmService extends AbstractSystem {
     ]);
 
     let over = cache.loaded.size - this._maxTileCacheEntries;
-    if (over <= 0) return;
+    if (over <= 0) return 0;
 
     for (const tileID of cache.loaded) {
       if (over <= 0) break;
@@ -1703,7 +1710,30 @@ export class OsmService extends AbstractSystem {
       cache.toLoad.delete(tileID);
       cache.rbush.remove({ id: tileID }, (a, b) => a.id === b.id);
       over--;
+      removed++;
     }
+    return removed;
+  }
+
+
+  getMemoryStats() {
+    return {
+      tileLoaded: this._tileCache.loaded?.size ?? 0,
+      tileInflight: Object.keys(this._tileCache.inflight ?? {}).length,
+      tileSeen: this._tileCache.seen?.size ?? 0,
+      notes: Object.keys(this._noteCache.note ?? {}).length,
+      users: Object.keys(this._userCache.user ?? {}).length
+    };
+  }
+
+
+  evictMemory() {
+    const cache = this._tileCache;
+    const visible = this._tiler.zoomRange(this._tileZoom).getTiles(this.context.viewport).tiles;
+    const removed = this._trimTileCache(visible);
+    const seenBefore = cache.seen?.size ?? 0;
+    utilLRUSetTrim(cache.seen, this._maxSeenEntityIDs);
+    return removed + (seenBefore - cache.seen.size);
   }
 
 

@@ -108,6 +108,11 @@ export class EditSystem extends AbstractSystem {
     this._lastSnapshotAt = 0;
     this._lastSnapshotChangeCount = 0;
 
+    this._memoryManager = {
+      getStats: () => this.getMemoryStats(),
+      evict: () => 0
+    };
+
     this._initPromise = null;
 
     // Make sure the event handlers have `this` bound correctly
@@ -131,8 +136,10 @@ export class EditSystem extends AbstractSystem {
     }
 
     this._reset();
+    this.context.systems.memory?.register('editor', this._memoryManager, 0);
 
     const storage = this.context.systems.storage;
+
     const prerequisites = storage.initAsync();
 
     return this._initPromise = prerequisites
@@ -225,6 +232,26 @@ export class EditSystem extends AbstractSystem {
     this._inTransaction = false;
     this._lastSnapshotAt = 0;
     this._lastSnapshotChangeCount = 0;
+  }
+
+
+  getMemoryStats() {
+    let graphLocals = 0;
+    for (const edit of this._history) {
+      graphLocals += edit.graph.local?.entities?.size ?? 0;
+    }
+    return {
+      history: this._history.length,
+      index: this._index,
+      checkpoints: this._checkpoints.size,
+      graphLocals,
+      stagingLocals: this._staging?.graph?.local?.entities?.size ?? 0
+    };
+  }
+
+
+  evictMemory() {
+    return 0;
   }
 
 

@@ -100,6 +100,11 @@ export class PixiTextures {
       tile: new AtlasAllocator('tile', size)       // 256 or 512px square imagery tiles
     };
 
+    const memory = this.context.systems.memory;
+    memory?.register('pixi-symbols', this._atlas.symbol, 1);
+    memory?.register('pixi-text', this._atlas.text, 1);
+    memory?.register('pixi-tiles', this._atlas.tile, 2);
+
     this._textureData.clear();
     this._svgIcons.clear();
     this._svgIconLoading.clear();
@@ -304,7 +309,7 @@ export class PixiTextures {
 
     tdata.refcount--;
 
-    if (tdata.refcount === 0) {
+    if (tdata.refcount <= 0) {
       atlas.free(tdata.texture);
       tdata.texture.destroy(false);   // false = don't destroy textureSource
       tdata.texture = null;

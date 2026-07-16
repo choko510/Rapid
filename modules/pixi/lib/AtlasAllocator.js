@@ -10,6 +10,29 @@ import { GuilloteneAllocator } from './GuilloteneAllocator.js';
  * @public
  */
 export class AtlasAllocator {
+
+  getStats() {
+    return {
+      slabs: this.slabs.length,
+      items: this.slabs.reduce((count, slab) => count + (slab._items?.size ?? 0), 0),
+      size: this.size
+    };
+  }
+
+
+  evict() {
+    let removed = 0;
+    for (let i = this.slabs.length - 1; i > 0; i--) {
+      const slab = this.slabs[i];
+      if (slab._items?.size) continue;
+      this.slabs.splice(i, 1);
+      // Keep the TextureSource alive so Pixi bind groups don't retain a null resource.
+      // `unload()` releases the GPU allocation but preserves source identity.
+      slab.unload();
+      removed++;
+    }
+    return removed;
+  }
   /**
    * Creates an atlas allocator.
    * @constructor
@@ -83,12 +106,17 @@ export class AtlasAllocator {
     item.texture = null;
     slab._items.delete(uid);
 
-//    // no items left, free the slab (unless it's the first slab)
-//    if (!slab._items.size && slab !== this.slabs[0]) {
-//      slab.destroy();
-//      slab._items = null;
-//      slab._binPacker = null;
-//    }
+    // Keep the first slab warm for fast reuse, but release empty overflow
+    // slabs so repeated tile churn cannot grow GPU memory forever.
+    if (!slab._items.size && slab !== this.slabs[0]) {
+      const index = this.slabs.indexOf(slab);
+      if (index !== -1) {
+        this.slabs.splice(index, 1);
+        // Keep the TextureSource alive so Pixi bind groups don't retain a null resource.
+        // `unload()` releases the GPU allocation but preserves source identity.
+        slab.unload();
+      }
+    }
   }
 
 

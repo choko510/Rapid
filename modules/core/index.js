@@ -10,6 +10,7 @@ import { LocalizationSystem } from './LocalizationSystem.js';
 import { LocationSystem } from './LocationSystem.js';
 import { Map3dSystem } from './Map3dSystem.js';
 import { MapSystem } from './MapSystem.js';
+import { MemoryManager } from './MemoryManager.js';
 import { PhotoSystem } from './PhotoSystem.js';
 import { PresetSystem } from './PresetSystem.js';
 import { PluginSystem } from './PluginSystem.js';
@@ -32,6 +33,7 @@ export {
   LocationSystem,
   Map3dSystem,
   MapSystem,
+  MemoryManager,
   PhotoSystem,
   PluginSystem,
   PresetSystem,
@@ -58,6 +60,7 @@ systems.available.set('l10n', LocalizationSystem);
 systems.available.set('locations', LocationSystem);
 systems.available.set('map', MapSystem);
 systems.available.set('map3d', Map3dSystem);
+systems.available.set('memory', MemoryManager);
 systems.available.set('photos', PhotoSystem);
 systems.available.set('plugins', PluginSystem);
 systems.available.set('presets', PresetSystem);

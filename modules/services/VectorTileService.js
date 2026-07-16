@@ -58,6 +58,10 @@ export class VectorTileService extends AbstractSystem {
    * @return {Promise} Promise resolved when this component has completed initialization
    */
   initAsync() {
+    this.context.systems.memory?.register('vectortile', {
+      getStats: () => this.getMemoryStats(),
+      evict: options => this.evictMemory(options)
+    }, 2);
     return Promise.resolve();
   }
 
@@ -108,6 +112,35 @@ export class VectorTileService extends AbstractSystem {
     this._sources.clear();
 
     return Promise.resolve();
+  }
+
+
+  getMemoryStats() {
+    let loaded = 0;
+    let zoomCaches = 0;
+    for (const source of this._sources.values()) {
+      loaded += source.loaded.size;
+      zoomCaches += source.zoomCache.size;
+    }
+    return {
+      sources: this._sources.size,
+      loaded,
+      zoomCaches,
+      queuedTasks: this._taskQueue.length
+    };
+  }
+
+
+  evictMemory() {
+    let removed = 0;
+    for (const source of this._sources.values()) {
+      const visibleTiles = this._tiler.getTiles(this.context.viewport).tiles;
+      const beforeTiles = source.loaded.size;
+      const beforeZooms = source.zoomCache.size;
+      this._evictSourceCache(source, new Set(visibleTiles.map(tile => tile.id)), visibleTiles);
+      removed += (beforeTiles - source.loaded.size) + (beforeZooms - source.zoomCache.size);
+    }
+    return removed;
   }
 
 
