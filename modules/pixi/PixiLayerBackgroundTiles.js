@@ -68,7 +68,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
   reset() {
     super.reset();
 
-    if (this._tileRefreshTimer) {
+    if (this._tileRefreshTimer !== null) {
       window.clearTimeout(this._tileRefreshTimer);
       this._tileRefreshTimer = null;
     }
@@ -104,6 +104,10 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
     if (isTransformOnly) {
       this._scheduleTileRefresh();
+      // The Pixi viewport and origin are already handling the temporary map
+      // transform.  Rebuilding the tile set here makes every pan recalculate
+      // low-zoom coverage and can start a second wave of image requests.
+      return;
     } else {
       this._cancelTileRefresh();
     }
@@ -367,7 +371,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
 
   _scheduleTileRefresh() {
-    if (this._tileRefreshTimer) {
+    if (this._tileRefreshTimer !== null) {
       window.clearTimeout(this._tileRefreshTimer);
     }
 
@@ -381,7 +385,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
 
   _cancelTileRefresh() {
-    if (!this._tileRefreshTimer) return;
+    if (this._tileRefreshTimer === null) return;
     window.clearTimeout(this._tileRefreshTimer);
     this._tileRefreshTimer = null;
   }
@@ -506,7 +510,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
 
       tile.loaded = true;
       tile.image = null;  // reference to `image` is held by the atlas, we can null it
-      this.gfx.deferredRedraw();
+      this.gfx.deferredRedraw('tile');
     };
 
     image.onerror = () => {
@@ -524,7 +528,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       }
 
       tile.image = null;
-      this.gfx.deferredRedraw();
+      this.gfx.deferredRedraw('tile');
     };
 
     image.src = tile.url;

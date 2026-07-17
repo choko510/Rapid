@@ -210,7 +210,8 @@ export class PixiLayerOsm extends AbstractLayer {
         this._cache.zoom === currentZoom &&
         this._cache.filtersHash === filtersHash &&
         this._cache.editorStagingHash === stagingHash &&
-        reasons.has('transform') && !reasons.has('data')) {
+        (reasons.has('transform') || (reasons.has('tile') && !reasons.has('style'))) &&
+        !reasons.has('data') && !reasons.has('resize')) {
       useCache = true;
     }
 

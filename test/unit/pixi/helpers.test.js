@@ -46,6 +46,10 @@ describe('pixi/helpers isTransformOnlyRedraw', () => {
     assert.equal(isTransformOnlyRedraw(new Set(['transform', 'resize'])), false);
     assert.equal(isTransformOnlyRedraw(new Set(['data'])), false);
   });
+
+  it('keeps transform-only redraws fast when a tile also arrived', () => {
+    assert.equal(isTransformOnlyRedraw(new Set(['transform', 'tile'])), true);
+  });
 });
 
 
