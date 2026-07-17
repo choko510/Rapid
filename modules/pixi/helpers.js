@@ -372,54 +372,6 @@ export function normalizeRect(rect) {
 }
 
 
-/**
- * getParentTileXYZ
- * Returns the tile coordinate that contains the given tile.
- * @param  xyz       Tile coordinate in [x, y, z] order
- * @param  zoomDelta Number of zoom levels to move up
- * @return Array<number>? Parent tile coordinate, or null for invalid input
- */
-export function getParentTileXYZ(xyz, zoomDelta = 1) {
-  if (!Array.isArray(xyz) || xyz.length < 3) return null;
-
-  const [x, y, z] = xyz;
-  const delta = Math.trunc(zoomDelta);
-  if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(z) || delta < 1 || z - delta < 0) {
-    return null;
-  }
-
-  const divisor = 2 ** delta;
-  return [Math.floor(x / divisor), Math.floor(y / divisor), z - delta];
-}
-
-
-/**
- * getFallbackTileZoom
- * Returns one zoom level below the requested tile zoom when possible.
- * @param  primaryZoom  Zoom of the sharp tiles
- * @param  minZoom      Lowest zoom that can be rendered
- * @return number? Fallback zoom, or null when unavailable
- */
-export function getFallbackTileZoom(primaryZoom, minZoom = 1) {
-  if (!Number.isInteger(primaryZoom) || !Number.isInteger(minZoom)) return null;
-
-  const fallbackZoom = primaryZoom - 1;
-  return fallbackZoom >= minZoom ? fallbackZoom : null;
-}
-
-
-/**
- * isTransformOnlyRedraw
- * Whether a redraw only changes the map transform.
- * @param  reasons  Set of redraw reasons
- * @return boolean
- */
-export function isTransformOnlyRedraw(reasons) {
-  return reasons instanceof Set && reasons.has('transform') &&
-    !reasons.has('data') && !reasons.has('resize');
-}
-
-
 export function getDebugBBox(x, y, width, height, color, alpha, name) {
   const sprite = new PIXI.Sprite({ texture: PIXI.Texture.WHITE });
   sprite.eventMode = 'none';

@@ -4,13 +4,8 @@ import { AdjustmentFilter, ConvolutionFilter } from 'pixi-filters';
 import { Tiler, geoScaleToZoom } from '@rapid-sdk/math';
 
 import { AbstractLayer } from './AbstractLayer.js';
-import { getFallbackTileZoom, isTransformOnlyRedraw } from './helpers.js';
 
 const DEBUGCOLOR = 0xffff00;
-const FALLBACK_TILE_KEEP_MS = 10000;
-const TILE_REFRESH_DELAY_MS = 200;
-const FAILED_URL_TTL_MS = 30000;
-const MAX_FAILED_URLS = 512;
 
 // scalars for use by the convolution filter to sharpen the imagery
 const sharpenMatrix = [
@@ -51,13 +46,6 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this._tiler = new Tiler();
     this._needTiles = new Map();   // Reused Map(tileID -> tile)
     this._sourceIDsToDestroy = []; // Reused Array<string>
-    this._tileRefreshTimer = null;
-    this._tileRefreshGeneration = 0;
-    this._failedAt = new Map();
-    this._memoryManager = {
-      getStats: () => this.getMemoryStats(),
-      evict: options => this.evictMemory(options)
-    };
   }
 
 
@@ -68,12 +56,6 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
   reset() {
     super.reset();
 
-    if (this._tileRefreshTimer !== null) {
-      window.clearTimeout(this._tileRefreshTimer);
-      this._tileRefreshTimer = null;
-    }
-    this._tileRefreshGeneration++;
-
     // Items in this layer don't need to be interactive
     const groupContainer = this.scene.groups.get('background');
     groupContainer.eventMode = 'none';
@@ -81,16 +63,12 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     this.destroyAll();
     this._tileMaps.clear();
     this._failed.clear();
-    this._failedAt.clear();
     this._needTiles.clear();
     this._sourceIDsToDestroy.length = 0;
     this._filterCacheKey = null;
     this._filterCache = null;
     this.convolutionFilter = null;
     this.blurFilter = null;
-
-    const memory = this.context.systems.memory;
-    memory?.register(`background-tiles-${this.layerID}`, this._memoryManager, 3);
   }
 
 
@@ -99,19 +77,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
    * @param  frame      Integer frame being rendered
    * @param  viewport   Pixi viewport to use for rendering
    */
-  render(_frame, viewport, _zoom, reasons = new Set(['data'])) {
-    const isTransformOnly = isTransformOnlyRedraw(reasons);
-
-    if (isTransformOnly) {
-      this._scheduleTileRefresh();
-      // The Pixi viewport and origin are already handling the temporary map
-      // transform.  Rebuilding the tile set here makes every pan recalculate
-      // low-zoom coverage and can start a second wave of image requests.
-      return;
-    } else {
-      this._cancelTileRefresh();
-    }
-
+  render(frame, viewport) {
     const imagery = this.context.systems.imagery;
     const groupContainer = this.scene.groups.get('background');
 
@@ -211,7 +177,6 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     // including any zoomed out tiles if this field contains any holes
     const needTiles = this._needTiles;
     needTiles.clear();
-    const primaryTiles = new Map();
 
     // Make sure the min zoom is at least 1.
     // z=0 causes a bug for Mapbox layers to disappear, these use very large tile size.
@@ -220,16 +185,12 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     const minZoom = Math.max(1, maxZoom - source.zoomRange);   // the mininimum zoom we'll accept
 
     let covered = false;
-    let primaryZoom = null;
     for (let tryZoom = maxZoom; !covered && tryZoom >= minZoom; tryZoom--) {
       if (!source.validZoom(tryZoom)) continue;  // not valid here, zoom out
       if (sourceIsLocatorOverlay && maxZoom > 17) continue;   // overlay is blurry if zoomed in this far
 
-      primaryZoom = tryZoom;
-
       const result = this._tiler
         .tileSize(tileSize)
-        .margin(0)
         .skipNullIsland(!!source.overlay)
         .zoomRange(tryZoom)
         .getTiles(this.isMinimap ? viewport : context.viewport);  // minimap passes in its own viewport
@@ -245,7 +206,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
         const sourceURL = source.url(tile.xyz);
         const fallbackURL = fallbackSource?.url(tile.xyz);
         if (this._setTileURLs(tile, sourceURL, fallbackURL)) {
-          primaryTiles.set(tile.id, tile);
+          needTiles.set(tile.id, tile);
         } else {
           hasHoles = true;   // url invalid or has failed in the past
         }
@@ -253,38 +214,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       covered = !hasHoles;
     }
 
-    // Keep a low-resolution parent layer visible while the primary tiles load.
-    // This prevents untextured sprites from exposing the renderer's black clear color.
-    const fallbackZoom = !source.overlay ? getFallbackTileZoom(primaryZoom ?? maxZoom, minZoom) : null;
-    if (fallbackZoom !== null && source.validZoom(fallbackZoom)) {
-      const result = this._tiler
-        .tileSize(tileSize)
-        .margin(1)
-        .skipNullIsland(!!source.overlay)
-        .zoomRange(fallbackZoom)
-        .getTiles(this.isMinimap ? viewport : context.viewport);
-
-      for (const tile of result.tiles) {
-        if (primaryTiles.has(tile.id)) continue;
-
-        const sourceURL = source.url(tile.xyz);
-        const fallbackURL = fallbackSource?.url(tile.xyz);
-        if (this._setTileURLs(tile, sourceURL, fallbackURL)) {
-          tile.isFallback = true;
-          needTiles.set(tile.id, tile);
-        }
-      }
-    }
-
-    // Add primary tiles after fallback tiles so their requests start later,
-    // while zIndex still guarantees that sharper imagery draws above parents.
-    for (const [tileID, tile] of primaryTiles) {
-      needTiles.set(tileID, tile);
-    }
-
 
     // Create a Sprite for each tile
-    // Parent tiles are inserted first so they can fill gaps while children load.
     for (const [tileID, tile] of needTiles) {
       if (tileMap.has(tileID)) continue;   // we made it already
 
@@ -294,10 +225,8 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       sprite.anchor.set(0, 1);    // left, bottom
       sprite.zIndex = tile.xyz[2];   // draw zoomed tiles above unzoomed tiles
       sprite.alpha = source.alpha;
-      sprite.visible = false;    // avoid drawing an untextured sprite as black
       sourceContainer.addChild(sprite);
       tile.sprite = sprite;
-      tile.timestamp = timestamp;
       tileMap.set(tileID, tile);
 
       // Start loading the image
@@ -318,8 +247,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       // Keep base (not overlay) tiles around a little while longer,
       // so they can stand in for a needed tile that has not loaded yet.
       } else if (!source.overlay) {
-        const keepMs = tile.isFallback ? FALLBACK_TILE_KEEP_MS : 3000;
-        keepTile = (timestamp - tile.timestamp < keepMs);
+        keepTile = (timestamp - tile.timestamp < 3000);  // 3 sec
       }
 
       if (keepTile) {   // Tile may be visible - update position and scale
@@ -370,107 +298,6 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
   }
 
 
-  _scheduleTileRefresh() {
-    if (this._tileRefreshTimer !== null) {
-      window.clearTimeout(this._tileRefreshTimer);
-    }
-
-    const generation = this._tileRefreshGeneration;
-    this._tileRefreshTimer = window.setTimeout(() => {
-      this._tileRefreshTimer = null;
-      if (generation !== this._tileRefreshGeneration) return;
-      this.gfx.deferredRedraw('tile');
-    }, TILE_REFRESH_DELAY_MS);
-  }
-
-
-  _cancelTileRefresh() {
-    if (this._tileRefreshTimer === null) return;
-    window.clearTimeout(this._tileRefreshTimer);
-    this._tileRefreshTimer = null;
-  }
-
-
-  getMemoryStats() {
-    let loaded = 0;
-    let inflight = 0;
-    let total = 0;
-    for (const tileMap of this._tileMaps.values()) {
-      total += tileMap.size;
-      for (const tile of tileMap.values()) {
-        if (tile.loaded) loaded++;
-        if (tile.image) inflight++;
-      }
-    }
-    return {
-      sources: this._tileMaps.size,
-      tiles: total,
-      loaded,
-      inflight,
-      failedURLs: this._failed.size
-    };
-  }
-
-
-  evictMemory(options = {}) {
-    const maxTiles = 240;
-    const now = window.performance.now();
-    let removed = 0;
-    const maxMs = options.maxMs ?? 4;
-    const maxRemovals = options.maxItems ?? 16;
-    const start = now;
-    const canContinue = () => {
-      return removed < maxRemovals && performance.now() - start < maxMs;
-    };
-
-    // Expire negative-cache entries independently of tile pressure.
-    for (const [url, time] of this._failedAt) {
-      if (!canContinue()) break;
-      if (now - time > FAILED_URL_TTL_MS) {
-        this._failedAt.delete(url);
-        this._failed.delete(url);
-      }
-    }
-
-    // Bound recent failures too, even when map tile count stays low.
-    while (this._failedAt.size > MAX_FAILED_URLS && canContinue()) {
-      const url = this._failedAt.keys().next().value;
-      this._failedAt.delete(url);
-      this._failed.delete(url);
-    }
-
-    for (const tileMap of this._tileMaps.values()) {
-      for (const [tileID, tile] of tileMap) {
-        if (!canContinue()) return removed;
-        if (tile.image || !tile.loaded || tile.isFallback) continue;
-        if (now - tile.timestamp < 3000) continue;
-
-        this.destroyTile(tile);
-        tileMap.delete(tileID);
-        removed++;
-      }
-    }
-
-    let over = [...this._tileMaps.values()]
-      .reduce((count, map) => count + map.size, 0) - maxTiles;
-    if (over <= 0) return removed;
-
-    for (const tileMap of this._tileMaps.values()) {
-      for (const [tileID, tile] of tileMap) {
-        if (!canContinue() || over <= 0) return removed;
-        if (tile.image || !tile.loaded || tile.isFallback) continue;
-        if (now - tile.timestamp < FALLBACK_TILE_KEEP_MS) continue;
-
-        this.destroyTile(tile);
-        tileMap.delete(tileID);
-        removed++;
-        over--;
-      }
-    }
-    return removed;
-  }
-
-
   _setTileURLs(tile, sourceURL, fallbackURL) {
     const hasFallback = !!fallbackURL && sourceURL !== fallbackURL;
     tile.fallbackURL = hasFallback ? fallbackURL : null;
@@ -500,24 +327,20 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
     // After the image loads, allocate space for it in the texture atlas
     image.onload = () => {
       this._failed.delete(tile.url);
-      this._failedAt.delete(tile.url);
       if (!tile.sprite || !tile.image) return;  // it's possible that the tile isn't needed anymore and got pruned
 
       const w = tile.image.naturalWidth;
       const h = tile.image.naturalHeight;
       tile.sprite.texture = textureManager.allocate('tile', tile.sprite.label, w, h, tile.image);
-      tile.sprite.visible = true;
 
       tile.loaded = true;
       tile.image = null;  // reference to `image` is held by the atlas, we can null it
-      this.gfx.deferredRedraw('tile');
+      this.gfx.deferredRedraw();
     };
 
     image.onerror = () => {
       const failedURL = tile.url;
       this._failed.add(failedURL);
-      this._failedAt.delete(failedURL);
-      this._failedAt.set(failedURL, window.performance.now());
 
       const fallbackURL = this._nextFallbackURL(tile, failedURL);
       if (fallbackURL) {
@@ -528,7 +351,7 @@ export class PixiLayerBackgroundTiles extends AbstractLayer {
       }
 
       tile.image = null;
-      this.gfx.deferredRedraw('tile');
+      this.gfx.deferredRedraw();
     };
 
     image.src = tile.url;
